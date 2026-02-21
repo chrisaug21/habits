@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>What's My Workout?</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #0d0d14;
+      --surface: #13131e;
+      --surface2: #1a1a28;
+      --border: #222235;
+      --border-active: #4040a0;
+      --accent: #6c63ff;
+      --accent-dark: #4a42cc;
+      --text-primary: #e4e4f4;
+      --text-secondary: #6a6a90;
+      --text-dim: #3a3a58;
+      --red: #ff5555;
+      --orange: #ff9944;
+      --green: #3ecf8e;
+      --red-bg: #2a0f0f;
+      --orange-bg: #2a1a0a;
+      --green-bg: #0a2018;
+    }
+
+    html {
+      background: var(--bg);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: env(safe-area-inset-top, 0) 0 env(safe-area-inset-bottom, 0);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 24px 16px 48px;
+    }
+
+    /* Header */
+    header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    header h1 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      letter-spacing: 0.04em;
+    }
+
+    /* Today's date */
+    .date-label {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      margin-top: 4px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    /* Suggestion card */
+    .suggestion-card {
+      background: var(--surface2);
+      border: 1px solid var(--border-active);
+      border-radius: 22px;
+      padding: 32px 24px 28px;
+      margin-bottom: 28px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .suggestion-card::before {
+      content: '';
+      position: absolute;
+      top: -40px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 200px;
+      height: 200px;
+      background: radial-gradient(circle, rgba(108, 99, 255, 0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .suggestion-eyebrow {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+
+    .suggestion-name {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      line-height: 1.15;
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+
+    .suggestion-subtitle {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-bottom: 28px;
+    }
+
+    .done-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 16px;
+      padding: 18px 48px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s, opacity 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      min-width: 180px;
+    }
+
+    .done-btn:active {
+      background: var(--accent-dark);
+      transform: scale(0.96);
+    }
+
+    .done-btn:disabled {
+      background: var(--surface);
+      color: var(--text-secondary);
+      cursor: default;
+      border: 1px solid var(--border);
+    }
+
+    .done-btn:disabled:active {
+      transform: none;
+    }
+
+    /* Workout list */
+    .list-header {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 10px;
+      padding: 0 4px;
+    }
+
+    .workout-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .workout-row {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px 16px 16px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: border-color 0.2s, opacity 0.2s;
+    }
+
+    .workout-row.is-suggested {
+      border-color: rgba(108, 99, 255, 0.4);
+    }
+
+    .workout-row.done-today {
+      opacity: 0.45;
+    }
+
+    .workout-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .workout-name {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .workout-last {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    /* Days pill */
+    .days-pill {
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 5px 11px;
+      border-radius: 20px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .days-pill.urgent   { background: var(--red-bg);    color: var(--red);    }
+    .days-pill.warning  { background: var(--orange-bg); color: var(--orange); }
+    .days-pill.ok       { background: var(--green-bg);  color: var(--green);  }
+    .days-pill.today    { background: var(--green-bg);  color: var(--green);  }
+
+    /* Row done button */
+    .row-done-btn {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 9px 14px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      min-width: 56px;
+    }
+
+    .row-done-btn:active {
+      background: var(--surface2);
+    }
+
+    .row-done-btn:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--surface2);
+      border: 1px solid var(--border-active);
+      color: var(--text-primary);
+      padding: 13px 26px;
+      border-radius: 14px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      pointer-events: none;
+      opacity: 0;
+      transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s;
+      white-space: nowrap;
+      z-index: 100;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>What's My Workout?</h1>
+      <div class="date-label" id="date-label"></div>
+    </header>
+
+    <div class="suggestion-card" id="suggestion-card">
+      <div class="suggestion-eyebrow">Most Overdue</div>
+      <div class="suggestion-name" id="suggestion-name"></div>
+      <div class="suggestion-subtitle" id="suggestion-subtitle"></div>
+      <button class="done-btn" id="main-done-btn">Done!</button>
+    </div>
+
+    <div class="list-header">All Workouts</div>
+    <div class="workout-list" id="workout-list"></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const WORKOUTS = [
+      { id: 'peloton',    name: 'Peloton Ride' },
+      { id: 'upper_push', name: 'Upper Push'   },
+      { id: 'upper_pull', name: 'Upper Pull'   },
+      { id: 'lower',      name: 'Lower Body'   },
+      { id: 'yoga',       name: 'Yoga'         },
+    ];
+
+    const STORAGE_KEY = 'wmw_v1';
+
+    function loadData() {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+      catch { return {}; }
+    }
+
+    function saveData(data) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    function todayStr() {
+      const d = new Date();
+      // Zero-pad manually to avoid locale issues
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function daysSince(dateStr) {
+      if (!dateStr) return null;
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const then = new Date(y, m - 1, d);
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      return Math.round((now - then) / 86_400_000);
+    }
+
+    // Most overdue = highest days (null = never = top priority)
+    function getSuggested(data) {
+      const today = todayStr();
+      return WORKOUTS.reduce((best, w) => {
+        const last = data[w.id];
+        // If already done today, don't suggest it unless everything is done today
+        const doneToday = last === today;
+        const days = last ? daysSince(last) : null;
+        const score = doneToday ? -1 : (days === null ? Infinity : days);
+
+        const lastBest = data[best.id];
+        const bestDoneToday = lastBest === today;
+        const bestDays = lastBest ? daysSince(lastBest) : null;
+        const bestScore = bestDoneToday ? -1 : (bestDays === null ? Infinity : bestDays);
+
+        return score > bestScore ? w : best;
+      });
+    }
+
+    function pillClass(days, doneToday) {
+      if (doneToday)       return 'today';
+      if (days === null || days >= 6) return 'urgent';
+      if (days >= 3)       return 'warning';
+      return 'ok';
+    }
+
+    function pillText(days, doneToday) {
+      if (doneToday)  return 'Today';
+      if (days === null) return 'Never';
+      if (days === 0) return 'Today';
+      if (days === 1) return '1 day';
+      return `${days}d`;
+    }
+
+    function lastDoneText(days, doneToday) {
+      if (doneToday)     return 'Completed today';
+      if (days === null) return 'Never done';
+      if (days === 1)    return 'Last done 1 day ago';
+      return `Last done ${days} days ago`;
+    }
+
+    let toastTimer;
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove('show'), 1800);
+    }
+
+    function markDone(id) {
+      const data = loadData();
+      data[id] = todayStr();
+      saveData(data);
+      render();
+      showToast('Logged \u2713');
+    }
+
+    function render() {
+      const data = loadData();
+      const today = todayStr();
+      const suggested = getSuggested(data);
+
+      // Date label
+      document.getElementById('date-label').textContent = new Date().toLocaleDateString(
+        undefined, { weekday: 'long', month: 'long', day: 'numeric' }
+      );
+
+      // Suggestion card
+      const sugLast = data[suggested.id];
+      const sugDays = sugLast ? daysSince(sugLast) : null;
+      const sugDoneToday = sugLast === today;
+
+      document.getElementById('suggestion-name').textContent = suggested.name;
+      document.getElementById('suggestion-subtitle').textContent = lastDoneText(sugDays, sugDoneToday);
+
+      const mainBtn = document.getElementById('main-done-btn');
+      mainBtn.disabled = sugDoneToday;
+      mainBtn.textContent = sugDoneToday ? 'Done Today \u2713' : 'Done!';
+      mainBtn.onclick = sugDoneToday ? null : () => markDone(suggested.id);
+
+      // Workout list — suggested first, then sorted by most overdue
+      const sorted = [...WORKOUTS].sort((a, b) => {
+        if (a.id === suggested.id) return -1;
+        if (b.id === suggested.id) return 1;
+        const doneA = data[a.id] === today;
+        const doneB = data[b.id] === today;
+        const daysA = data[a.id] ? daysSince(data[a.id]) : null;
+        const daysB = data[b.id] ? daysSince(data[b.id]) : null;
+        const scoreA = doneA ? -1 : (daysA === null ? Infinity : daysA);
+        const scoreB = doneB ? -1 : (daysB === null ? Infinity : daysB);
+        return scoreB - scoreA;
+      });
+
+      const list = document.getElementById('workout-list');
+      list.innerHTML = '';
+
+      for (const w of sorted) {
+        const last = data[w.id];
+        const days = last ? daysSince(last) : null;
+        const doneToday = last === today;
+        const isSuggested = w.id === suggested.id;
+
+        const row = document.createElement('div');
+        row.className = [
+          'workout-row',
+          isSuggested ? 'is-suggested' : '',
+          doneToday    ? 'done-today'   : '',
+        ].filter(Boolean).join(' ');
+
+        // Info
+        const info = document.createElement('div');
+        info.className = 'workout-info';
+
+        const nameEl = document.createElement('div');
+        nameEl.className = 'workout-name';
+        nameEl.textContent = w.name;
+
+        const lastEl = document.createElement('div');
+        lastEl.className = 'workout-last';
+        lastEl.textContent = lastDoneText(days, doneToday);
+
+        info.appendChild(nameEl);
+        info.appendChild(lastEl);
+
+        // Days pill
+        const pill = document.createElement('span');
+        pill.className = 'days-pill ' + pillClass(days, doneToday);
+        pill.textContent = pillText(days, doneToday);
+
+        // Done button
+        const btn = document.createElement('button');
+        btn.className = 'row-done-btn';
+        btn.textContent = doneToday ? '\u2713' : 'Done';
+        btn.disabled = doneToday;
+        if (!doneToday) btn.onclick = () => markDone(w.id);
+
+        row.appendChild(info);
+        row.appendChild(pill);
+        row.appendChild(btn);
+        list.appendChild(row);
+      }
+    }
+
+    render();
+  </script>
+</body>
+</html>
