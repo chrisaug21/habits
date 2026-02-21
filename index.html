@@ -164,6 +164,41 @@
       transform: none;
     }
 
+    .card-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .skip-btn {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 11px 28px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      min-width: 180px;
+    }
+
+    .skip-btn:active {
+      background: var(--surface);
+    }
+
+    .skip-btn:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+
+    .skip-btn:disabled:active {
+      background: transparent;
+    }
+
     /* Workout list */
     .list-header {
       font-size: 0.68rem;
@@ -296,10 +331,13 @@
     </header>
 
     <div class="suggestion-card" id="suggestion-card">
-      <div class="suggestion-eyebrow">Most Overdue</div>
+      <div class="suggestion-eyebrow">Next Up</div>
       <div class="suggestion-name" id="suggestion-name"></div>
       <div class="suggestion-subtitle" id="suggestion-subtitle"></div>
-      <button class="done-btn" id="main-done-btn">Done!</button>
+      <div class="card-actions">
+        <button class="done-btn" id="main-done-btn">Done!</button>
+        <button class="skip-btn" id="skip-btn">Skip Today</button>
+      </div>
     </div>
 
     <div class="list-header">All Workouts</div>
@@ -317,6 +355,14 @@
       { id: 'yoga',       name: 'Yoga'         },
     ];
 
+    // Fixed rotation: Peloton every other slot
+    const ROTATION = [
+      'peloton', 'upper_push',
+      'peloton', 'upper_pull',
+      'peloton', 'lower',
+      'peloton', 'yoga',
+    ];
+
     const STORAGE_KEY = 'wmw_v1';
 
     function loadData() {
@@ -330,7 +376,6 @@
 
     function todayStr() {
       const d = new Date();
-      // Zero-pad manually to avoid locale issues
       const y = d.getFullYear();
       const m = String(d.getMonth() + 1).padStart(2, '0');
       const day = String(d.getDate()).padStart(2, '0');
@@ -346,37 +391,23 @@
       return Math.round((now - then) / 86_400_000);
     }
 
-    // Most overdue = highest days (null = never = top priority)
+    // Next workout is always the current rotation position
     function getSuggested(data) {
-      const today = todayStr();
-      return WORKOUTS.reduce((best, w) => {
-        const last = data[w.id];
-        // If already done today, don't suggest it unless everything is done today
-        const doneToday = last === today;
-        const days = last ? daysSince(last) : null;
-        const score = doneToday ? -1 : (days === null ? Infinity : days);
-
-        const lastBest = data[best.id];
-        const bestDoneToday = lastBest === today;
-        const bestDays = lastBest ? daysSince(lastBest) : null;
-        const bestScore = bestDoneToday ? -1 : (bestDays === null ? Infinity : bestDays);
-
-        return score > bestScore ? w : best;
-      });
+      const idx = (data.rotationIndex || 0) % ROTATION.length;
+      return WORKOUTS.find(w => w.id === ROTATION[idx]);
     }
 
     function pillClass(days, doneToday) {
-      if (doneToday)       return 'today';
+      if (doneToday)                  return 'today';
       if (days === null || days >= 6) return 'urgent';
-      if (days >= 3)       return 'warning';
+      if (days >= 3)                  return 'warning';
       return 'ok';
     }
 
     function pillText(days, doneToday) {
-      if (doneToday)  return 'Today';
+      if (doneToday)     return 'Today';
       if (days === null) return 'Never';
-      if (days === 0) return 'Today';
-      if (days === 1) return '1 day';
+      if (days === 1)    return '1 day';
       return `${days}d`;
     }
 
@@ -396,9 +427,47 @@
       toastTimer = setTimeout(() => el.classList.remove('show'), 1800);
     }
 
-    function markDone(id) {
+    // Main "Done!" — logs the workout and advances the rotation
+    function markDone() {
       const data = loadData();
-      data[id] = todayStr();
+      const today = todayStr();
+      const idx = (data.rotationIndex || 0) % ROTATION.length;
+      const workoutId = ROTATION[idx];
+
+      data[workoutId] = today;                              // keep last-done date for the UI
+      data.rotationIndex = (idx + 1) % ROTATION.length;    // advance rotation
+      data.actionDate = today;                              // lock today's card
+      data.history = data.history || [];
+      data.history.push({ type: workoutId, date: today });
+
+      saveData(data);
+      render();
+      showToast('Logged \u2713');
+    }
+
+    // "Skip Today" — logs an off day, rotation stays put
+    function skipToday() {
+      const data = loadData();
+      const today = todayStr();
+
+      data.actionDate = today;
+      data.history = data.history || [];
+      data.history.push({ type: 'off', date: today });
+
+      saveData(data);
+      render();
+      showToast('Day off logged');
+    }
+
+    // Row-level done — marks a specific workout without affecting the rotation
+    function markRowDone(id) {
+      const data = loadData();
+      const today = todayStr();
+
+      data[id] = today;
+      data.history = data.history || [];
+      data.history.push({ type: id, date: today });
+
       saveData(data);
       render();
       showToast('Logged \u2713');
@@ -408,6 +477,11 @@
       const data = loadData();
       const today = todayStr();
       const suggested = getSuggested(data);
+      const actionTakenToday = data.actionDate === today;
+
+      // What specifically happened today (if anything)
+      const todayEntry = [...(data.history || [])].reverse().find(e => e.date === today);
+      const skippedToday = todayEntry?.type === 'off';
 
       // Date label
       document.getElementById('date-label').textContent = new Date().toLocaleDateString(
@@ -415,19 +489,26 @@
       );
 
       // Suggestion card
-      const sugLast = data[suggested.id];
-      const sugDays = sugLast ? daysSince(sugLast) : null;
-      const sugDoneToday = sugLast === today;
-
+      const sugDays = data[suggested.id] ? daysSince(data[suggested.id]) : null;
       document.getElementById('suggestion-name').textContent = suggested.name;
-      document.getElementById('suggestion-subtitle').textContent = lastDoneText(sugDays, sugDoneToday);
+
+      let subtitleText;
+      if (skippedToday)        subtitleText = 'Day off \u2014 same workout tomorrow';
+      else if (actionTakenToday) subtitleText = 'Completed today';
+      else                       subtitleText = lastDoneText(sugDays, false);
+      document.getElementById('suggestion-subtitle').textContent = subtitleText;
 
       const mainBtn = document.getElementById('main-done-btn');
-      mainBtn.disabled = sugDoneToday;
-      mainBtn.textContent = sugDoneToday ? 'Done Today \u2713' : 'Done!';
-      mainBtn.onclick = sugDoneToday ? null : () => markDone(suggested.id);
+      mainBtn.disabled = actionTakenToday;
+      mainBtn.textContent = (actionTakenToday && !skippedToday) ? 'Done Today \u2713' : 'Done!';
+      mainBtn.onclick = actionTakenToday ? null : markDone;
 
-      // Workout list — suggested first, then sorted by most overdue
+      const skipBtn = document.getElementById('skip-btn');
+      skipBtn.disabled = actionTakenToday;
+      skipBtn.textContent = skippedToday ? 'Skipped Today' : 'Skip Today';
+      skipBtn.onclick = actionTakenToday ? null : skipToday;
+
+      // Workout list — suggested first, then by most recently done
       const sorted = [...WORKOUTS].sort((a, b) => {
         if (a.id === suggested.id) return -1;
         if (b.id === suggested.id) return 1;
@@ -453,10 +534,9 @@
         row.className = [
           'workout-row',
           isSuggested ? 'is-suggested' : '',
-          doneToday    ? 'done-today'   : '',
+          doneToday   ? 'done-today'   : '',
         ].filter(Boolean).join(' ');
 
-        // Info
         const info = document.createElement('div');
         info.className = 'workout-info';
 
@@ -471,17 +551,15 @@
         info.appendChild(nameEl);
         info.appendChild(lastEl);
 
-        // Days pill
         const pill = document.createElement('span');
         pill.className = 'days-pill ' + pillClass(days, doneToday);
         pill.textContent = pillText(days, doneToday);
 
-        // Done button
         const btn = document.createElement('button');
         btn.className = 'row-done-btn';
         btn.textContent = doneToday ? '\u2713' : 'Done';
         btn.disabled = doneToday;
-        if (!doneToday) btn.onclick = () => markDone(w.id);
+        if (!doneToday) btn.onclick = () => markRowDone(w.id);
 
         row.appendChild(info);
         row.appendChild(pill);
