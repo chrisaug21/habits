@@ -14,7 +14,7 @@ Peloton Ride → Upper Push → Peloton Ride → Upper Pull → Peloton Ride →
 - "Done!" advances the rotation; "Skip Today" logs an off day without advancing it
 - **Undo** — reverses the most recent log entry (today's or yesterday's); restores rotation if it was a rotation-advancing done
 - **Log for yesterday** — each workout row has a subtle link to immediately log that workout for yesterday (no confirmation), without affecting the rotation
-- **Off Day row** — always-visible item at the bottom of the list; "Done" logs a day off (same as Skip Today), "Log for yesterday" logs an off day for yesterday
+- **Tomorrow preview** — shows the next workout in the rotation between the hero card and the All Workouts list
 - Full workout history stored in localStorage as `{type, date}` entries
 - Installable as a home screen PWA on iPhone (standalone mode, offline-capable)
 

@@ -337,6 +337,29 @@
       cursor: default;
     }
 
+    /* Tomorrow row */
+    .tomorrow-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 4px;
+      margin-bottom: 20px;
+    }
+
+    .tomorrow-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    .tomorrow-name {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
     /* Toast */
     .toast {
       position: fixed;
@@ -379,6 +402,11 @@
         <button class="skip-btn" id="skip-btn">Skip Today</button>
         <button class="undo-btn" id="undo-btn" hidden></button>
       </div>
+    </div>
+
+    <div class="tomorrow-row">
+      <span class="tomorrow-label">Tomorrow</span>
+      <span class="tomorrow-name" id="tomorrow-name"></span>
     </div>
 
     <div class="list-header">All Workouts</div>
@@ -664,6 +692,14 @@
         undoBtn.hidden = true;
       }
 
+      // Tomorrow row — one step ahead of whatever is currently next
+      // If action was taken today, rotation already advanced so nextInRotation IS tomorrow.
+      // If today hasn't been actioned yet, rotation still points to today, so add 1.
+      const tomorrowWorkout = actionTakenToday
+        ? nextInRotation
+        : WORKOUTS.find(w => w.id === ROTATION[((data.rotationIndex || 0) + 1) % ROTATION.length]);
+      document.getElementById('tomorrow-name').textContent = tomorrowWorkout.name;
+
       // Workout list — suggested first, then by most recently done
       const sorted = [...WORKOUTS].sort((a, b) => {
         if (a.id === nextInRotation.id) return -1;
@@ -733,52 +769,6 @@
         list.appendChild(row);
       }
 
-      // Off Day — always at the bottom, not part of the rotation
-      const lastOffEntry = [...history].reverse().find(e => e.type === 'off');
-      const lastOffDate   = lastOffEntry ? lastOffEntry.date : null;
-      const offDays       = lastOffDate ? daysSince(lastOffDate) : null;
-      const offDoneToday  = lastOffDate === today;
-      const offAlreadyYesterday = history.some(e => e.date === yesterday && e.type === 'off');
-
-      const offRow = document.createElement('div');
-      offRow.className = ['workout-row', offDoneToday ? 'done-today' : ''].filter(Boolean).join(' ');
-
-      const offInfo = document.createElement('div');
-      offInfo.className = 'workout-info';
-
-      const offName = document.createElement('div');
-      offName.className = 'workout-name';
-      offName.textContent = 'Off Day';
-
-      const offLast = document.createElement('div');
-      offLast.className = 'workout-last';
-      offLast.textContent = lastDoneText(offDays, offDoneToday);
-
-      offInfo.appendChild(offName);
-      offInfo.appendChild(offLast);
-
-      if (!offAlreadyYesterday) {
-        const offYLink = document.createElement('button');
-        offYLink.className = 'log-yesterday-link';
-        offYLink.textContent = '\u21a9 Log for yesterday';
-        offYLink.onclick = () => logYesterday('off');
-        offInfo.appendChild(offYLink);
-      }
-
-      const offPill = document.createElement('span');
-      offPill.className = 'days-pill ' + pillClass(offDays, offDoneToday);
-      offPill.textContent = pillText(offDays, offDoneToday);
-
-      const offBtn = document.createElement('button');
-      offBtn.className = 'row-done-btn';
-      offBtn.textContent = offDoneToday ? '\u2713' : 'Done';
-      offBtn.disabled = offDoneToday;
-      if (!offDoneToday) offBtn.onclick = skipToday;
-
-      offRow.appendChild(offInfo);
-      offRow.appendChild(offPill);
-      offRow.appendChild(offBtn);
-      list.appendChild(offRow);
     }
 
     render();
