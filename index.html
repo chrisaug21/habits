@@ -476,12 +476,18 @@
     function render() {
       const data = loadData();
       const today = todayStr();
-      const suggested = getSuggested(data);
+      const nextInRotation = getSuggested(data);
       const actionTakenToday = data.actionDate === today;
 
       // What specifically happened today (if anything)
       const todayEntry = [...(data.history || [])].reverse().find(e => e.date === today);
       const skippedToday = todayEntry?.type === 'off';
+
+      // Hero card stays on the completed workout for the rest of the day.
+      // Only flip to the next rotation item when a new day begins.
+      const heroWorkout = (actionTakenToday && !skippedToday && todayEntry)
+        ? (WORKOUTS.find(w => w.id === todayEntry.type) || nextInRotation)
+        : nextInRotation;
 
       // Date label
       document.getElementById('date-label').textContent = new Date().toLocaleDateString(
@@ -489,8 +495,8 @@
       );
 
       // Suggestion card
-      const sugDays = data[suggested.id] ? daysSince(data[suggested.id]) : null;
-      document.getElementById('suggestion-name').textContent = suggested.name;
+      const sugDays = data[heroWorkout.id] ? daysSince(data[heroWorkout.id]) : null;
+      document.getElementById('suggestion-name').textContent = heroWorkout.name;
 
       let subtitleText;
       if (skippedToday)        subtitleText = 'Day off \u2014 same workout tomorrow';
@@ -510,8 +516,8 @@
 
       // Workout list — suggested first, then by most recently done
       const sorted = [...WORKOUTS].sort((a, b) => {
-        if (a.id === suggested.id) return -1;
-        if (b.id === suggested.id) return 1;
+        if (a.id === nextInRotation.id) return -1;
+        if (b.id === nextInRotation.id) return 1;
         const doneA = data[a.id] === today;
         const doneB = data[b.id] === today;
         const daysA = data[a.id] ? daysSince(data[a.id]) : null;
@@ -528,7 +534,7 @@
         const last = data[w.id];
         const days = last ? daysSince(last) : null;
         const doneToday = last === today;
-        const isSuggested = w.id === suggested.id;
+        const isSuggested = w.id === nextInRotation.id;
 
         const row = document.createElement('div');
         row.className = [
