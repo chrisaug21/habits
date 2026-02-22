@@ -199,6 +199,46 @@
       background: transparent;
     }
 
+    /* Undo button */
+    .undo-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 8px 16px;
+      border-radius: 8px;
+      transition: color 0.15s, background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .undo-btn:active {
+      color: var(--text-secondary);
+      background: var(--surface);
+    }
+
+    /* Log for yesterday link inside each workout row */
+    .log-yesterday-link {
+      display: inline-block;
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: 0.72rem;
+      font-weight: 500;
+      cursor: pointer;
+      padding: 3px 0 0;
+      margin-top: 1px;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      text-align: left;
+    }
+
+    .log-yesterday-link:active {
+      color: var(--text-secondary);
+    }
+
     /* Workout list */
     .list-header {
       font-size: 0.68rem;
@@ -337,6 +377,7 @@
       <div class="card-actions">
         <button class="done-btn" id="main-done-btn">Done!</button>
         <button class="skip-btn" id="skip-btn">Skip Today</button>
+        <button class="undo-btn" id="undo-btn" hidden></button>
       </div>
     </div>
 
@@ -345,6 +386,7 @@
   </div>
 
   <div class="toast" id="toast"></div>
+
 
   <script>
     const WORKOUTS = [
@@ -376,6 +418,15 @@
 
     function todayStr() {
       const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function getYesterdayStr() {
+      const d = new Date();
+      d.setDate(d.getDate() - 1);
       const y = d.getFullYear();
       const m = String(d.getMonth() + 1).padStart(2, '0');
       const day = String(d.getDate()).padStart(2, '0');
@@ -438,7 +489,7 @@
       data.rotationIndex = (idx + 1) % ROTATION.length;    // advance rotation
       data.actionDate = today;                              // lock today's card
       data.history = data.history || [];
-      data.history.push({ type: workoutId, date: today });
+      data.history.push({ type: workoutId, date: today, advanced: true });
 
       saveData(data);
       render();
@@ -459,6 +510,88 @@
       showToast('Day off logged');
     }
 
+    // Undo — removes the most recent history entry if it's from today or yesterday
+    function undoLastEntry() {
+      const data = loadData();
+      const today = todayStr();
+      const yesterday = getYesterdayStr();
+      const history = data.history || [];
+      if (!history.length) return;
+
+      const last = history[history.length - 1];
+      if (last.date !== today && last.date !== yesterday) return;
+
+      // Remove the entry
+      data.history = history.slice(0, -1);
+
+      // Restore the previous last-done date for this workout type
+      if (last.type !== 'off') {
+        const prev = [...data.history].reverse().find(e => e.type === last.type);
+        if (prev) {
+          data[last.type] = prev.date;
+        } else {
+          delete data[last.type];
+        }
+      }
+
+      // Roll back rotation if this entry advanced it.
+      // New entries use advanced:true/false explicitly.
+      // Old entries (no 'advanced' key) are assumed rotation-advancing if they're a workout,
+      // since only markDone logged workouts before the advanced flag was introduced.
+      const wasRotationAdvancing =
+        last.advanced === true ||
+        (!('advanced' in last) && last.type !== 'off');
+      if (wasRotationAdvancing) {
+        data.rotationIndex = ((data.rotationIndex || 0) - 1 + ROTATION.length) % ROTATION.length;
+      }
+
+      // Recalculate actionDate from what remains in history rather than guessing.
+      // The card is locked today only if a rotation-advancing done or a skip still exists for today.
+      const stillLockedToday = (data.history || []).some(e =>
+        e.date === today && (
+          e.advanced === true ||                          // new markDone entry
+          e.type === 'off' ||                            // skip entry
+          (!('advanced' in e) && e.type !== 'off')       // old entry without flag (backward compat)
+        )
+      );
+      if (stillLockedToday) {
+        data.actionDate = today;
+      } else {
+        delete data.actionDate;
+      }
+
+      saveData(data);
+      render();
+      const name = last.type === 'off'
+        ? 'day off'
+        : (WORKOUTS.find(w => w.id === last.type)?.name ?? last.type);
+      showToast(`Undone \u2014 ${name}`);
+    }
+
+    // Log for yesterday — adds a history entry for yesterday without touching the rotation
+    function logYesterday(type) {
+      const data = loadData();
+      const yesterday = getYesterdayStr();
+
+      if (type !== 'off') {
+        // Only update the last-done date if yesterday is more recent than what's stored
+        const current = data[type];
+        if (!current || yesterday > current) {
+          data[type] = yesterday;
+        }
+      }
+
+      data.history = data.history || [];
+      data.history.push({ type, date: yesterday, advanced: false });
+
+      saveData(data);
+      render();
+      const name = type === 'off'
+        ? 'Day off'
+        : (WORKOUTS.find(w => w.id === type)?.name ?? type);
+      showToast(`${name} \u2014 logged for yesterday`);
+    }
+
     // Row-level done — marks a specific workout without affecting the rotation
     function markRowDone(id) {
       const data = loadData();
@@ -466,7 +599,7 @@
 
       data[id] = today;
       data.history = data.history || [];
-      data.history.push({ type: id, date: today });
+      data.history.push({ type: id, date: today, advanced: false });
 
       saveData(data);
       render();
@@ -476,6 +609,7 @@
     function render() {
       const data = loadData();
       const today = todayStr();
+      const yesterday = getYesterdayStr();
       const nextInRotation = getSuggested(data);
       const actionTakenToday = data.actionDate === today;
 
@@ -513,6 +647,22 @@
       skipBtn.disabled = actionTakenToday;
       skipBtn.textContent = skippedToday ? 'Skipped Today' : 'Skip Today';
       skipBtn.onclick = actionTakenToday ? null : skipToday;
+
+      // Undo button — visible when the most recent history entry is from today or yesterday
+      const history = data.history || [];
+      const undoCandidate = history.length ? history[history.length - 1] : null;
+      const undoBtn = document.getElementById('undo-btn');
+      if (undoCandidate && (undoCandidate.date === today || undoCandidate.date === yesterday)) {
+        const undoName = undoCandidate.type === 'off'
+          ? 'day off'
+          : (WORKOUTS.find(w => w.id === undoCandidate.type)?.name ?? undoCandidate.type);
+        const undoWhen = undoCandidate.date === today ? 'today' : 'yesterday';
+        undoBtn.textContent = `\u21a9 Undo ${undoName} (${undoWhen})`;
+        undoBtn.onclick = undoLastEntry;
+        undoBtn.hidden = false;
+      } else {
+        undoBtn.hidden = true;
+      }
 
       // Workout list — suggested first, then by most recently done
       const sorted = [...WORKOUTS].sort((a, b) => {
@@ -557,6 +707,16 @@
         info.appendChild(nameEl);
         info.appendChild(lastEl);
 
+        // "Log for yesterday" link — hidden if this workout was already logged for yesterday
+        const alreadyLoggedYesterday = history.some(e => e.date === yesterday && e.type === w.id);
+        if (!alreadyLoggedYesterday) {
+          const yLink = document.createElement('button');
+          yLink.className = 'log-yesterday-link';
+          yLink.textContent = '\u21a9 Log for yesterday';
+          yLink.onclick = () => logYesterday(w.id);
+          info.appendChild(yLink);
+        }
+
         const pill = document.createElement('span');
         pill.className = 'days-pill ' + pillClass(days, doneToday);
         pill.textContent = pillText(days, doneToday);
@@ -572,6 +732,53 @@
         row.appendChild(btn);
         list.appendChild(row);
       }
+
+      // Off Day — always at the bottom, not part of the rotation
+      const lastOffEntry = [...history].reverse().find(e => e.type === 'off');
+      const lastOffDate   = lastOffEntry ? lastOffEntry.date : null;
+      const offDays       = lastOffDate ? daysSince(lastOffDate) : null;
+      const offDoneToday  = lastOffDate === today;
+      const offAlreadyYesterday = history.some(e => e.date === yesterday && e.type === 'off');
+
+      const offRow = document.createElement('div');
+      offRow.className = ['workout-row', offDoneToday ? 'done-today' : ''].filter(Boolean).join(' ');
+
+      const offInfo = document.createElement('div');
+      offInfo.className = 'workout-info';
+
+      const offName = document.createElement('div');
+      offName.className = 'workout-name';
+      offName.textContent = 'Off Day';
+
+      const offLast = document.createElement('div');
+      offLast.className = 'workout-last';
+      offLast.textContent = lastDoneText(offDays, offDoneToday);
+
+      offInfo.appendChild(offName);
+      offInfo.appendChild(offLast);
+
+      if (!offAlreadyYesterday) {
+        const offYLink = document.createElement('button');
+        offYLink.className = 'log-yesterday-link';
+        offYLink.textContent = '\u21a9 Log for yesterday';
+        offYLink.onclick = () => logYesterday('off');
+        offInfo.appendChild(offYLink);
+      }
+
+      const offPill = document.createElement('span');
+      offPill.className = 'days-pill ' + pillClass(offDays, offDoneToday);
+      offPill.textContent = pillText(offDays, offDoneToday);
+
+      const offBtn = document.createElement('button');
+      offBtn.className = 'row-done-btn';
+      offBtn.textContent = offDoneToday ? '\u2713' : 'Done';
+      offBtn.disabled = offDoneToday;
+      if (!offDoneToday) offBtn.onclick = skipToday;
+
+      offRow.appendChild(offInfo);
+      offRow.appendChild(offPill);
+      offRow.appendChild(offBtn);
+      list.appendChild(offRow);
     }
 
     render();
