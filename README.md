@@ -1,31 +1,55 @@
 # What's My Workout?
 
-A single-file mobile-first workout tracker that follows a fixed rotation and tells you what's next.
+A single-file mobile-first PWA that follows a fixed workout rotation and tells you what's next.
 
 Live at: https://habits.chrisaug.com
 
 ## Rotation
 
-Peloton Ride → Upper Push → Peloton Ride → Upper Pull → Peloton Ride → Lower Body → Peloton Ride → Yoga → repeat
+Peloton alternates with every other workout. Yoga appears every 4th workout overall. The full 12-step cycle:
+
+| Step | Workout |
+|------|---------|
+| 1 | Peloton Ride |
+| 2 | Upper Push (chest / shoulders / triceps) |
+| 3 | Peloton Ride |
+| 4 | **Yoga** |
+| 5 | Peloton Ride |
+| 6 | Upper Pull (back / biceps) |
+| 7 | Peloton Ride |
+| 8 | **Yoga** |
+| 9 | Peloton Ride |
+| 10 | Lower Body |
+| 11 | Peloton Ride |
+| 12 | **Yoga** |
+| → repeat | |
+
+The rotation is position-based, not time-based — it always picks up where it left off regardless of how many days pass between workouts.
 
 ## Features
 
-- Shows the next workout in the rotation
-- "Done!" advances the rotation; "Skip Today" logs an off day without advancing it
-- **Undo** — reverses the most recent log entry (today's or yesterday's); restores rotation if it was a rotation-advancing done
-- **Log for yesterday** — each workout row has a subtle link to immediately log that workout for yesterday (no confirmation), without affecting the rotation
-- **Tomorrow preview** — shows the next workout in the rotation between the hero card and the All Workouts list
-- Full workout history stored in localStorage as `{type, date}` entries
-- Installable as a home screen PWA on iPhone (standalone mode, offline-capable)
+- **Hero card** — shows today's workout (Next Up), locks after Done or Skip Today
+- **Tomorrow preview** — shows the next step in the rotation so you can plan ahead
+- **Done!** — logs the workout and advances the rotation
+- **Skip Today** — logs an off day without advancing the rotation (same workout suggested tomorrow)
+- **Undo** — reverses the most recent log entry (today's or yesterday's); rolls back the rotation if applicable
+- **Log for yesterday** — each workout row has a link to immediately backfill that workout for yesterday, without affecting the rotation
+- **All Workouts list** — shows all 5 workout types with days since last completed
+- Offline-capable PWA, installable on iPhone home screen
 
 ## Storage (`localStorage` key: `wmw_v1`)
 
-| Field | Description |
-|---|---|
-| `peloton`, `upper_push`, etc. | Date of last completion per workout type |
-| `rotationIndex` | Current position in the 8-step rotation (0–7) |
-| `actionDate` | Date the rotation was last actioned (locks the card for the day) |
-| `history` | Array of `{type, date, advanced}` — every workout and off day logged; `advanced: true` = rotation-advancing done, `advanced: false` = row-level done / log-yesterday / off-day row; no `advanced` key = pre-flag legacy entry (treated as rotation-advancing for backward compat) |
+| Field | Type | Description |
+|---|---|---|
+| `peloton`, `upper_push`, `upper_pull`, `lower`, `yoga` | `string` (YYYY-MM-DD) | Date of last completion per workout type |
+| `rotationIndex` | `number` (0–7) | Current position in the 8-step rotation |
+| `actionDate` | `string` (YYYY-MM-DD) | Date the rotation was last actioned — locks the hero card for the day |
+| `history` | `array` | Every workout and off day ever logged as `{type, date, advanced}` |
+
+**`history` entry flags:**
+- `advanced: true` — logged via Done! (rotation-advancing)
+- `advanced: false` — logged via row-level Done or Log for yesterday (does not affect rotation)
+- no `advanced` key — legacy entry from before flag was introduced (treated as rotation-advancing for backward compat)
 
 ## PWA
 
@@ -33,5 +57,6 @@ Requires `apple-touch-icon.png` (180×180 PNG, generated from `icon.svg`) for a 
 
 ## Next Steps
 
-1. ~~Deploy to Netlify~~ ✓
-2. Add cardio/strength alternation logic
+1. Migrate storage to Supabase (replace localStorage with a real DB)
+2. Build a history view — calendar or log of past workouts and off days
+3. Improve backtracking — ability to edit or correct past entries beyond yesterday
