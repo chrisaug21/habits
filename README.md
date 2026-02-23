@@ -6,8 +6,11 @@ Live at: https://habits.chrisaug.com
 
 ## Vision
 What’s My Workout? started as a personal tool to answer one simple question: what should I do today? The goal was never to replace a gym app or a coach — just to remove the daily friction of deciding, and to build a streak worth protecting.
+
 The longer-term vision expands that idea into a small daily habit dashboard for a close-knit group of friends and family. Alongside the workout rotation, the app will grow to track a handful of other healthy daily habits — things like journaling and hitting a water intake goal — visualized in a calendar view that shows your past consistency and keeps your future goals in sight.
+
 The calendar is the centerpiece: a simple, honest record of the days you showed up, paired with a forward-looking view of what’s coming. Not just where you’ve been, but where you’re headed — your next workout already planned, your weekly habit targets visible, your streaks worth protecting. No gamification, no social pressure, no algorithms. Just your habits, your history, and a clear picture of whether you’re living the way you want to live.
+
 Planned for a small user base — a handful of people with logins plus a public guest view — the app will stay intentionally simple. No integrations, no notifications, no noise. Just a few good habits, a honest look at the past, and a clear path forward.
 
 ## Rotation
