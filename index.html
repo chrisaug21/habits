@@ -13,6 +13,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="My Workout">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <!-- Supabase JS client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     *, *::before, *::after {
       box-sizing: border-box;
@@ -417,6 +419,12 @@
 
 
   <script>
+    // ── Supabase config ──────────────────────────────────────────────────────
+    const SUPABASE_URL = 'https://zgikmahauuykyrjqhqrz.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_VAEH5EypGXX0FlVRj0uIeA_HUS266J3';
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // ────────────────────────────────────────────────────────────────────────
+
     const WORKOUTS = [
       { id: 'peloton',    name: 'Peloton Ride' },
       { id: 'upper_push', name: 'Upper Push'   },
@@ -437,13 +445,64 @@
 
     const STORAGE_KEY = 'wmw_v1';
 
-    function loadData() {
-      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
-      catch { return {}; }
+    async function loadData() {
+      try {
+        const [stateRes, historyRes] = await Promise.all([
+          sb.from('state').select('*').eq('id', 1).maybeSingle(),
+          sb.from('history').select('*').order('created_at', { ascending: true }),
+        ]);
+        if (stateRes.error) throw stateRes.error;
+        if (historyRes.error) throw historyRes.error;
+
+        const state = stateRes.data || {};
+        const historyRows = historyRes.data || [];
+
+        const data = {
+          rotationIndex: state.rotation_index ?? 0,
+          actionDate:    state.action_date   ?? null,
+          history: historyRows.map(r => ({ type: r.type, date: r.date, advanced: r.advanced })),
+        };
+
+        // Derive each workout's last-done date from history
+        for (const { type, date } of historyRows) {
+          if (type !== 'off' && (!data[type] || date > data[type])) {
+            data[type] = date;
+          }
+        }
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); // keep local cache fresh
+        return data;
+      } catch (err) {
+        console.warn('Supabase read failed, falling back to localStorage:', err);
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+        catch { return {}; }
+      }
     }
 
-    function saveData(data) {
+    async function saveData(data) {
+      // Always write localStorage immediately so the fallback is always fresh
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      try {
+        // Upsert the single state row (rotation position + today's lock)
+        const { error: stateErr } = await sb.from('state').upsert({
+          id: 1,
+          rotation_index: data.rotationIndex ?? 0,
+          action_date:    data.actionDate    ?? null,
+        });
+        if (stateErr) throw stateErr;
+
+        // Full history sync: clear all rows then re-insert the current array.
+        const { error: delErr } = await sb.from('history').delete().not('id', 'is', null);
+        if (delErr) throw delErr;
+
+        if (data.history?.length) {
+          const rows = data.history.map(e => ({ type: e.type, date: e.date, advanced: e.advanced ?? true }));
+          const { error: insErr } = await sb.from('history').insert(rows);
+          if (insErr) throw insErr;
+        }
+      } catch (err) {
+        console.warn('Supabase write failed (data saved locally):', err);
+      }
     }
 
     function todayStr() {
@@ -509,8 +568,8 @@
     }
 
     // Main "Done!" — logs the workout and advances the rotation
-    function markDone() {
-      const data = loadData();
+    async function markDone() {
+      const data = await loadData();
       const today = todayStr();
       const idx = (data.rotationIndex || 0) % ROTATION.length;
       const workoutId = ROTATION[idx];
@@ -521,28 +580,28 @@
       data.history = data.history || [];
       data.history.push({ type: workoutId, date: today, advanced: true });
 
-      saveData(data);
-      render();
+      await saveData(data);
+      render(data);
       showToast('Logged \u2713');
     }
 
     // "Skip Today" — logs an off day, rotation stays put
-    function skipToday() {
-      const data = loadData();
+    async function skipToday() {
+      const data = await loadData();
       const today = todayStr();
 
       data.actionDate = today;
       data.history = data.history || [];
       data.history.push({ type: 'off', date: today });
 
-      saveData(data);
-      render();
+      await saveData(data);
+      render(data);
       showToast('Day off logged');
     }
 
     // Undo — removes the most recent history entry if it's from today or yesterday
-    function undoLastEntry() {
-      const data = loadData();
+    async function undoLastEntry() {
+      const data = await loadData();
       const today = todayStr();
       const yesterday = getYesterdayStr();
       const history = data.history || [];
@@ -590,8 +649,8 @@
         delete data.actionDate;
       }
 
-      saveData(data);
-      render();
+      await saveData(data);
+      render(data);
       const name = last.type === 'off'
         ? 'day off'
         : (WORKOUTS.find(w => w.id === last.type)?.name ?? last.type);
@@ -599,8 +658,8 @@
     }
 
     // Log for yesterday — adds a history entry for yesterday without touching the rotation
-    function logYesterday(type) {
-      const data = loadData();
+    async function logYesterday(type) {
+      const data = await loadData();
       const yesterday = getYesterdayStr();
 
       if (type !== 'off') {
@@ -614,8 +673,8 @@
       data.history = data.history || [];
       data.history.push({ type, date: yesterday, advanced: false });
 
-      saveData(data);
-      render();
+      await saveData(data);
+      render(data);
       const name = type === 'off'
         ? 'Day off'
         : (WORKOUTS.find(w => w.id === type)?.name ?? type);
@@ -623,21 +682,21 @@
     }
 
     // Row-level done — marks a specific workout without affecting the rotation
-    function markRowDone(id) {
-      const data = loadData();
+    async function markRowDone(id) {
+      const data = await loadData();
       const today = todayStr();
 
       data[id] = today;
       data.history = data.history || [];
       data.history.push({ type: id, date: today, advanced: false });
 
-      saveData(data);
-      render();
+      await saveData(data);
+      render(data);
       showToast('Logged \u2713');
     }
 
-    function render() {
-      const data = loadData();
+    async function render(preloadedData = null) {
+      const data = preloadedData || await loadData();
       const today = todayStr();
       const yesterday = getYesterdayStr();
       const nextInRotation = getSuggested(data);
