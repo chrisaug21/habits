@@ -1,4 +1,4 @@
-const CACHE = 'wmw-v8';
+const CACHE = 'wmw-v9';
 const PRECACHE = ['/', '/index.html', '/manifest.json', '/icon.svg'];
 
 self.addEventListener('install', event => {

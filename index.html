@@ -422,7 +422,12 @@
     // ── Supabase config ──────────────────────────────────────────────────────
     const SUPABASE_URL = 'https://zgikmahauuykyrjqhqrz.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_VAEH5EypGXX0FlVRj0uIeA_HUS266J3';
-    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    let sb = null;
+    try {
+      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    } catch (e) {
+      console.warn('Supabase unavailable; running in localStorage-only mode.', e);
+    }
     // ────────────────────────────────────────────────────────────────────────
 
     const WORKOUTS = [
@@ -446,6 +451,10 @@
     const STORAGE_KEY = 'wmw_v1';
 
     async function loadData() {
+      if (!sb) {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+        catch { return {}; }
+      }
       try {
         const [stateRes, historyRes] = await Promise.all([
           sb.from('state').select('*').eq('id', 1).maybeSingle(),
@@ -460,7 +469,7 @@
         const data = {
           rotationIndex: state.rotation_index ?? 0,
           actionDate:    state.action_date   ?? null,
-          history: historyRows.map(r => ({ type: r.type, date: r.date, advanced: r.advanced })),
+          history: historyRows.map(r => ({ type: r.type, date: r.date, advanced: r.advanced, _sid: r.id })),
         };
 
         // Derive each workout's last-done date from history
@@ -479,9 +488,10 @@
       }
     }
 
-    async function saveData(data) {
+    async function saveData(data, deletedSid = null) {
       // Always write localStorage immediately so the fallback is always fresh
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      if (!sb) return; // localStorage-only mode (Supabase client unavailable)
       try {
         // Upsert the single state row (rotation position + today's lock)
         const { error: stateErr } = await sb.from('state').upsert({
@@ -491,14 +501,21 @@
         });
         if (stateErr) throw stateErr;
 
-        // Full history sync: clear all rows then re-insert the current array.
-        const { error: delErr } = await sb.from('history').delete().not('id', 'is', null);
-        if (delErr) throw delErr;
+        // If this save was triggered by an undo, delete only that one row
+        if (deletedSid) {
+          const { error: delErr } = await sb.from('history').delete().eq('id', deletedSid);
+          if (delErr) throw delErr;
+        }
 
-        if (data.history?.length) {
-          const rows = data.history.map(e => ({ type: e.type, date: e.date, advanced: e.advanced ?? true }));
-          const { error: insErr } = await sb.from('history').insert(rows);
+        // Insert only new entries — those not yet synced (no _sid means never written to Supabase)
+        const newEntries = (data.history || []).filter(e => !e._sid);
+        if (newEntries.length) {
+          const rows = newEntries.map(e => ({ type: e.type, date: e.date, advanced: e.advanced ?? true }));
+          const { data: inserted, error: insErr } = await sb.from('history').insert(rows).select('id');
           if (insErr) throw insErr;
+          // Store the Supabase-assigned IDs back so future saves know these rows exist
+          inserted.forEach((row, i) => { newEntries[i]._sid = row.id; });
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         }
       } catch (err) {
         console.warn('Supabase write failed (data saved locally):', err);
@@ -592,7 +609,7 @@
 
       data.actionDate = today;
       data.history = data.history || [];
-      data.history.push({ type: 'off', date: today });
+      data.history.push({ type: 'off', date: today, advanced: false });
 
       await saveData(data);
       render(data);
@@ -609,6 +626,8 @@
 
       const last = history[history.length - 1];
       if (last.date !== today && last.date !== yesterday) return;
+
+      const deletedSid = last._sid ?? null; // capture before removing so saveData can delete the right row
 
       // Remove the entry
       data.history = history.slice(0, -1);
@@ -649,7 +668,7 @@
         delete data.actionDate;
       }
 
-      await saveData(data);
+      await saveData(data, deletedSid);
       render(data);
       const name = last.type === 'off'
         ? 'day off'
