@@ -14,6 +14,12 @@ Warn me before anything that could break the app or lose data — deleting files
 - Before every `git commit` and `git push`, bump the service worker cache version in `sw.js` (wmw-v1 → wmw-v2 → wmw-v3, etc.) so that deployed users always get fresh content immediately after a deploy
 - Always update `README.md` to reflect the current state of the app before committing
 
+## Commit Messages
+- One-line summary for small changes (text, style, minor fixes)
+- Detailed multi-paragraph message for significant changes (new features, migrations, refactors)
+- Always cover ALL changes in the current session since last commit, not just the most recent edit
+- Include service worker bump in message if sw.js was changed
+
 ## Platform priorities
 This is a mobile-first PWA for iPhone. In every UI or UX decision, optimize for one-handed phone use — large tap targets, minimal typing, fast load, works offline.
 
