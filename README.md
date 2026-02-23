@@ -37,19 +37,40 @@ The rotation is position-based, not time-based — it always picks up where it l
 - **All Workouts list** — shows all 5 workout types with days since last completed
 - Offline-capable PWA, installable on iPhone home screen
 
-## Storage (`localStorage` key: `wmw_v1`)
+## Storage
+
+Data is stored in **Supabase** (primary) with **localStorage** (`wmw_v1`) as an offline fallback. On every load the app reads from Supabase and mirrors the result to localStorage; on every write it saves to localStorage first (instant) then syncs to Supabase.
+
+### Supabase tables
+
+**`state`** — single row (id = 1), tracks rotation position
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | `int` | Always 1 |
+| `rotation_index` | `int` | Current position in the 12-step rotation |
+| `action_date` | `text` (YYYY-MM-DD) | Date the card was last actioned — locks the hero card for the day |
+
+**`history`** — one row per logged event
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | auto | Primary key |
+| `type` | `text` | Workout ID (`peloton`, `upper_push`, `upper_pull`, `lower`, `yoga`) or `off` for a skipped day |
+| `date` | `text` (YYYY-MM-DD) | Date of the logged event |
+| `advanced` | `boolean` | `true` = rotation-advancing (Done! button); `false` = non-advancing (row Done or Log for yesterday) |
+| `created_at` | `timestamptz` | Set automatically by Supabase |
+
+### localStorage cache (`wmw_v1`)
+
+The local cache mirrors the Supabase data plus derived fields:
 
 | Field | Type | Description |
 |---|---|---|
-| `peloton`, `upper_push`, `upper_pull`, `lower`, `yoga` | `string` (YYYY-MM-DD) | Date of last completion per workout type |
-| `rotationIndex` | `number` (0–7) | Current position in the 8-step rotation |
-| `actionDate` | `string` (YYYY-MM-DD) | Date the rotation was last actioned — locks the hero card for the day |
-| `history` | `array` | Every workout and off day ever logged as `{type, date, advanced}` |
-
-**`history` entry flags:**
-- `advanced: true` — logged via Done! (rotation-advancing)
-- `advanced: false` — logged via row-level Done or Log for yesterday (does not affect rotation)
-- no `advanced` key — legacy entry from before flag was introduced (treated as rotation-advancing for backward compat)
+| `peloton`, `upper_push`, `upper_pull`, `lower`, `yoga` | `string` (YYYY-MM-DD) | Date of last completion per workout type (derived from history) |
+| `rotationIndex` | `number` | Current position in the rotation |
+| `actionDate` | `string` (YYYY-MM-DD) | Locks the hero card for the day |
+| `history` | `array` | Every logged event as `{type, date, advanced}` |
 
 ## PWA
 
@@ -57,6 +78,5 @@ Requires `apple-touch-icon.png` (180×180 PNG, generated from `icon.svg`) for a 
 
 ## Next Steps
 
-1. Migrate storage to Supabase (replace localStorage with a real DB)
-2. Build a history view — calendar or log of past workouts and off days
-3. Improve backtracking — ability to edit or correct past entries beyond yesterday
+1. Build a history view — calendar or log of past workouts and off days
+2. Improve backtracking — ability to edit or correct past entries beyond yesterday
