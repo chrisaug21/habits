@@ -13,8 +13,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="My Workout">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-  <!-- Supabase JS client -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Supabase JS client — defer so it doesn't block page render; crossorigin for SW caching -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer crossorigin="anonymous"></script>
   <style>
     *, *::before, *::after {
       box-sizing: border-box;
@@ -419,6 +419,12 @@
 
 
   <script>
+  // DOMContentLoaded ensures the deferred Supabase CDN script has executed before
+  // app initialisation runs. Without this wrapper, the inline script would run
+  // during HTML parsing — before the deferred script — and window.supabase
+  // would be undefined.
+  document.addEventListener('DOMContentLoaded', function () {
+
     // ── Supabase config ──────────────────────────────────────────────────────
     const SUPABASE_URL = '%%SUPABASE_URL%%';
     const SUPABASE_KEY = '%%SUPABASE_KEY%%';
@@ -458,7 +464,10 @@
       try {
         const [stateRes, historyRes] = await Promise.all([
           sb.from('state').select('*').eq('id', 1).maybeSingle(),
-          sb.from('history').select('*').order('created_at', { ascending: true }),
+          // Order by sequence (explicit insert order) rather than created_at so that
+          // batch re-inserts — which share the same timestamp — come back in the
+          // correct order.
+          sb.from('history').select('*').order('sequence', { ascending: true, nullsFirst: true }),
         ]);
         if (stateRes.error) throw stateRes.error;
         if (historyRes.error) throw historyRes.error;
@@ -510,7 +519,15 @@
         // Insert only new entries — those not yet synced (no _sid means never written to Supabase)
         const newEntries = (data.history || []).filter(e => !e._sid);
         if (newEntries.length) {
-          const rows = newEntries.map(e => ({ type: e.type, date: e.date, advanced: e.advanced ?? true }));
+          // sequence = the entry's position in the full history array, so ordering
+          // by sequence always reproduces insertion order even across batch inserts
+          // that share the same created_at timestamp.
+          const rows = newEntries.map(e => ({
+            type: e.type,
+            date: e.date,
+            advanced: e.advanced ?? true,
+            sequence: data.history.indexOf(e),
+          }));
           const { data: inserted, error: insErr } = await sb.from('history').insert(rows).select('id');
           if (insErr) throw insErr;
           // Store the Supabase-assigned IDs back so future saves know these rows exist
@@ -584,134 +601,186 @@
       toastTimer = setTimeout(() => el.classList.remove('show'), 1800);
     }
 
+    // ── Double-tap guard ─────────────────────────────────────────────────────
+    // Each action function sets this true at the start and false when complete
+    // (via try/finally). Any tap that arrives during a network round-trip hits
+    // the guard and returns immediately — no duplicate mutations.
+    let isProcessing = false;
+
+    function setButtonsDisabled(disabled) {
+      ['main-done-btn', 'skip-btn', 'undo-btn'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = disabled;
+      });
+      document.querySelectorAll('.row-done-btn, .log-yesterday-link').forEach(el => {
+        el.disabled = disabled;
+      });
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
     // Main "Done!" — logs the workout and advances the rotation
     async function markDone() {
-      const data = await loadData();
-      const today = todayStr();
-      const idx = (data.rotationIndex || 0) % ROTATION.length;
-      const workoutId = ROTATION[idx];
+      if (isProcessing) return;
+      isProcessing = true;
+      setButtonsDisabled(true);
+      try {
+        const data = await loadData();
+        const today = todayStr();
+        const idx = (data.rotationIndex || 0) % ROTATION.length;
+        const workoutId = ROTATION[idx];
 
-      data[workoutId] = today;                              // keep last-done date for the UI
-      data.rotationIndex = (idx + 1) % ROTATION.length;    // advance rotation
-      data.actionDate = today;                              // lock today's card
-      data.history = data.history || [];
-      data.history.push({ type: workoutId, date: today, advanced: true });
+        data[workoutId] = today;                              // keep last-done date for the UI
+        data.rotationIndex = (idx + 1) % ROTATION.length;    // advance rotation
+        data.actionDate = today;                              // lock today's card
+        data.history = data.history || [];
+        data.history.push({ type: workoutId, date: today, advanced: true });
 
-      await saveData(data);
-      render(data);
-      showToast('Logged \u2713');
+        await saveData(data);
+        render(data);
+        showToast('Logged \u2713');
+      } finally {
+        isProcessing = false;
+      }
     }
 
     // "Skip Today" — logs an off day, rotation stays put
     async function skipToday() {
-      const data = await loadData();
-      const today = todayStr();
+      if (isProcessing) return;
+      isProcessing = true;
+      setButtonsDisabled(true);
+      try {
+        const data = await loadData();
+        const today = todayStr();
 
-      data.actionDate = today;
-      data.history = data.history || [];
-      data.history.push({ type: 'off', date: today, advanced: false });
+        data.actionDate = today;
+        data.history = data.history || [];
+        data.history.push({ type: 'off', date: today, advanced: false });
 
-      await saveData(data);
-      render(data);
-      showToast('Day off logged');
+        await saveData(data);
+        render(data);
+        showToast('Day off logged');
+      } finally {
+        isProcessing = false;
+      }
     }
 
     // Undo — removes the most recent history entry if it's from today or yesterday
     async function undoLastEntry() {
-      const data = await loadData();
-      const today = todayStr();
-      const yesterday = getYesterdayStr();
-      const history = data.history || [];
-      if (!history.length) return;
+      if (isProcessing) return;
+      isProcessing = true;
+      setButtonsDisabled(true);
+      try {
+        const data = await loadData();
+        const today = todayStr();
+        const yesterday = getYesterdayStr();
+        const history = data.history || [];
+        if (!history.length) { render(data); return; }
 
-      const last = history[history.length - 1];
-      if (last.date !== today && last.date !== yesterday) return;
+        const last = history[history.length - 1];
+        if (last.date !== today && last.date !== yesterday) { render(data); return; }
 
-      const deletedSid = last._sid ?? null; // capture before removing so saveData can delete the right row
+        const deletedSid = last._sid ?? null; // capture before removing so saveData can delete the right row
 
-      // Remove the entry
-      data.history = history.slice(0, -1);
+        // Remove the entry
+        data.history = history.slice(0, -1);
 
-      // Restore the previous last-done date for this workout type
-      if (last.type !== 'off') {
-        const prev = [...data.history].reverse().find(e => e.type === last.type);
-        if (prev) {
-          data[last.type] = prev.date;
-        } else {
-          delete data[last.type];
+        // Restore the previous last-done date for this workout type
+        if (last.type !== 'off') {
+          const prev = [...data.history].reverse().find(e => e.type === last.type);
+          if (prev) {
+            data[last.type] = prev.date;
+          } else {
+            delete data[last.type];
+          }
         }
-      }
 
-      // Roll back rotation if this entry advanced it.
-      // New entries use advanced:true/false explicitly.
-      // Old entries (no 'advanced' key) are assumed rotation-advancing if they're a workout,
-      // since only markDone logged workouts before the advanced flag was introduced.
-      const wasRotationAdvancing =
-        last.advanced === true ||
-        (!('advanced' in last) && last.type !== 'off');
-      if (wasRotationAdvancing) {
-        data.rotationIndex = ((data.rotationIndex || 0) - 1 + ROTATION.length) % ROTATION.length;
-      }
+        // Roll back rotation if this entry advanced it.
+        // New entries use advanced:true/false explicitly.
+        // Old entries (no 'advanced' key) are assumed rotation-advancing if they're a workout,
+        // since only markDone logged workouts before the advanced flag was introduced.
+        const wasRotationAdvancing =
+          last.advanced === true ||
+          (!('advanced' in last) && last.type !== 'off');
+        if (wasRotationAdvancing) {
+          data.rotationIndex = ((data.rotationIndex || 0) - 1 + ROTATION.length) % ROTATION.length;
+        }
 
-      // Recalculate actionDate from what remains in history rather than guessing.
-      // The card is locked today only if a rotation-advancing done or a skip still exists for today.
-      const stillLockedToday = (data.history || []).some(e =>
-        e.date === today && (
-          e.advanced === true ||                          // new markDone entry
-          e.type === 'off' ||                            // skip entry
-          (!('advanced' in e) && e.type !== 'off')       // old entry without flag (backward compat)
-        )
-      );
-      if (stillLockedToday) {
-        data.actionDate = today;
-      } else {
-        delete data.actionDate;
-      }
+        // Recalculate actionDate from what remains in history rather than guessing.
+        // The card is locked today only if a rotation-advancing done or a skip still exists for today.
+        const stillLockedToday = (data.history || []).some(e =>
+          e.date === today && (
+            e.advanced === true ||                          // new markDone entry
+            e.type === 'off' ||                            // skip entry
+            (!('advanced' in e) && e.type !== 'off')       // old entry without flag (backward compat)
+          )
+        );
+        if (stillLockedToday) {
+          data.actionDate = today;
+        } else {
+          delete data.actionDate;
+        }
 
-      await saveData(data, deletedSid);
-      render(data);
-      const name = last.type === 'off'
-        ? 'day off'
-        : (WORKOUTS.find(w => w.id === last.type)?.name ?? last.type);
-      showToast(`Undone \u2014 ${name}`);
+        await saveData(data, deletedSid);
+        render(data);
+        const name = last.type === 'off'
+          ? 'day off'
+          : (WORKOUTS.find(w => w.id === last.type)?.name ?? last.type);
+        showToast(`Undone \u2014 ${name}`);
+      } finally {
+        isProcessing = false;
+      }
     }
 
     // Log for yesterday — adds a history entry for yesterday without touching the rotation
     async function logYesterday(type) {
-      const data = await loadData();
-      const yesterday = getYesterdayStr();
+      if (isProcessing) return;
+      isProcessing = true;
+      setButtonsDisabled(true);
+      try {
+        const data = await loadData();
+        const yesterday = getYesterdayStr();
 
-      if (type !== 'off') {
-        // Only update the last-done date if yesterday is more recent than what's stored
-        const current = data[type];
-        if (!current || yesterday > current) {
-          data[type] = yesterday;
+        if (type !== 'off') {
+          // Only update the last-done date if yesterday is more recent than what's stored
+          const current = data[type];
+          if (!current || yesterday > current) {
+            data[type] = yesterday;
+          }
         }
+
+        data.history = data.history || [];
+        data.history.push({ type, date: yesterday, advanced: false });
+
+        await saveData(data);
+        render(data);
+        const name = type === 'off'
+          ? 'Day off'
+          : (WORKOUTS.find(w => w.id === type)?.name ?? type);
+        showToast(`${name} \u2014 logged for yesterday`);
+      } finally {
+        isProcessing = false;
       }
-
-      data.history = data.history || [];
-      data.history.push({ type, date: yesterday, advanced: false });
-
-      await saveData(data);
-      render(data);
-      const name = type === 'off'
-        ? 'Day off'
-        : (WORKOUTS.find(w => w.id === type)?.name ?? type);
-      showToast(`${name} \u2014 logged for yesterday`);
     }
 
     // Row-level done — marks a specific workout without affecting the rotation
     async function markRowDone(id) {
-      const data = await loadData();
-      const today = todayStr();
+      if (isProcessing) return;
+      isProcessing = true;
+      setButtonsDisabled(true);
+      try {
+        const data = await loadData();
+        const today = todayStr();
 
-      data[id] = today;
-      data.history = data.history || [];
-      data.history.push({ type: id, date: today, advanced: false });
+        data[id] = today;
+        data.history = data.history || [];
+        data.history.push({ type: id, date: today, advanced: false });
 
-      await saveData(data);
-      render(data);
-      showToast('Logged \u2713');
+        await saveData(data);
+        render(data);
+        showToast('Logged \u2713');
+      } finally {
+        isProcessing = false;
+      }
     }
 
     async function render(preloadedData = null) {
@@ -853,12 +922,15 @@
 
     render();
 
-    // Register service worker for PWA / offline support
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch(() => {});
-      });
-    }
+  }); // end DOMContentLoaded
+
+  // Register service worker outside DOMContentLoaded so it starts as early as
+  // possible — it does not depend on the Supabase client.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+  }
   </script>
 </body>
 </html>

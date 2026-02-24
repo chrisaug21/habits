@@ -68,7 +68,8 @@ Data is stored in **Supabase** (primary) with **localStorage** (`wmw_v1`) as an 
 | `type` | `text` | Workout ID (`peloton`, `upper_push`, `upper_pull`, `lower`, `yoga`) or `off` for a skipped day |
 | `date` | `text` (YYYY-MM-DD) | Date of the logged event |
 | `advanced` | `boolean` | `true` = rotation-advancing (Done! button); `false` = non-advancing (row Done or Log for yesterday) |
-| `created_at` | `timestamptz` | Set automatically by Supabase |
+| `sequence` | `integer` | Explicit insert order (the entry's index in the history array). Used for sorting instead of `created_at` because batch re-inserts share the same timestamp. Add with: `ALTER TABLE history ADD COLUMN sequence integer;` |
+| `created_at` | `timestamptz` | Set automatically by Supabase; not used for ordering |
 
 ### localStorage cache (`wmw_v1`)
 
@@ -105,6 +106,8 @@ For local testing, temporarily replace the placeholder tokens in `index.html` wi
 ## PWA
 
 Requires `apple-touch-icon.png` (180×180 PNG, generated from `icon.svg`) for a proper home screen icon on iOS. Until added, iOS uses a page screenshot as the icon.
+
+The service worker (`sw.js`) precaches the Supabase JS client from the CDN alongside the app's own files. This means the app loads correctly offline after the first visit — no network request to the CDN needed.
 
 ## Next Steps
 

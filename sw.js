@@ -1,5 +1,13 @@
-const CACHE = 'wmw-v10';
-const PRECACHE = ['/', '/index.html', '/manifest.json', '/icon.svg'];
+const CACHE = 'wmw-v11';
+const PRECACHE = [
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/icon.svg',
+  // Cache the Supabase JS client so the app loads correctly offline without
+  // a blocking network round-trip to the CDN.
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
+];
 
 self.addEventListener('install', event => {
   event.waitUntil(
