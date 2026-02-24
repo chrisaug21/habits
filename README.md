@@ -103,6 +103,10 @@ Set these in **Netlify Dashboard → Your site → Site configuration → Enviro
 
 For local testing, temporarily replace the placeholder tokens in `index.html` with your actual credentials, but **do not commit that change**. Restore the placeholders before pushing.
 
+### Keep-alive function
+
+`netlify/functions/keep-alive.js` is a Netlify scheduled function that runs once daily (configured via `netlify.toml`). It makes a lightweight read against the Supabase `state` table using the same `SUPABASE_URL` and `SUPABASE_KEY` environment variables, preventing the free-tier Supabase project from pausing due to inactivity. No additional setup is required — it runs automatically after each deploy.
+
 ## PWA
 
 Requires `apple-touch-icon.png` (180×180 PNG, generated from `icon.svg`) for a proper home screen icon on iOS. Until added, iOS uses a page screenshot as the icon.
