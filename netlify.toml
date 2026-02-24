@@ -3,3 +3,8 @@
   # Set SUPABASE_URL and SUPABASE_KEY in: Netlify Dashboard → Site → Environment variables
   command = "sed -i \"s|%%SUPABASE_URL%%|${SUPABASE_URL}|g; s|%%SUPABASE_KEY%%|${SUPABASE_KEY}|g\" index.html"
   publish = "."
+
+[build.environment]
+  # index.html intentionally contains injected secrets after the build command runs.
+  # Skip secrets scanning for this file to prevent a false-positive build failure.
+  SECRETS_SCAN_OMIT_PATHS = "index.html"
