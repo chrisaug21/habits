@@ -122,7 +122,7 @@
     }
 
     .suggestion-name {
-      font-size: 2.2rem;
+      font-size: 1.5rem;
       font-weight: 800;
       color: var(--text-primary);
       line-height: 1.15;
@@ -140,6 +140,10 @@
       height: 48px;
       color: var(--accent);
       flex-shrink: 0;
+      /* align-items:center uses geometric box centers, but the visual center of
+         large cap text sits below the box midpoint due to descender/baseline space.
+         Shift the icon down to optically align with the text's cap-height center. */
+      transform: translateY(8px);
     }
 
     .suggestion-subtitle {
