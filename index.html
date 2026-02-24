@@ -339,13 +339,18 @@
       cursor: default;
     }
 
-    /* Tomorrow row */
-    .tomorrow-row {
+    /* Tomorrow preview */
+    .tomorrow-preview {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px 20px 18px;
+      margin-bottom: 24px;
       display: flex;
+      flex-direction: column;
       align-items: center;
-      justify-content: space-between;
-      padding: 0 4px;
-      margin-bottom: 20px;
+      gap: 6px;
+      text-align: center;
     }
 
     .tomorrow-label {
@@ -357,9 +362,9 @@
     }
 
     .tomorrow-name {
-      font-size: 0.82rem;
-      font-weight: 600;
-      color: var(--text-secondary);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-primary);
     }
 
     /* Toast */
@@ -406,7 +411,7 @@
       </div>
     </div>
 
-    <div class="tomorrow-row">
+    <div class="tomorrow-preview">
       <span class="tomorrow-label">Tomorrow</span>
       <span class="tomorrow-name" id="tomorrow-name"></span>
     </div>
@@ -437,11 +442,11 @@
     // ────────────────────────────────────────────────────────────────────────
 
     const WORKOUTS = [
-      { id: 'peloton',    name: 'Peloton Ride' },
-      { id: 'upper_push', name: 'Upper Push'   },
-      { id: 'upper_pull', name: 'Upper Pull'   },
-      { id: 'lower',      name: 'Lower Body'   },
-      { id: 'yoga',       name: 'Yoga'         },
+      { id: 'peloton',    name: 'Cardio \u2014 Peloton Ride'    },
+      { id: 'upper_push', name: 'Strength \u2014 Upper Push'    },
+      { id: 'upper_pull', name: 'Strength \u2014 Upper Pull'    },
+      { id: 'lower',      name: 'Strength \u2014 Lower Body'    },
+      { id: 'yoga',       name: 'Flexibility \u2014 Yoga'       },
     ];
 
     // Fixed rotation: Peloton every other slot, Yoga every 4th workout overall
