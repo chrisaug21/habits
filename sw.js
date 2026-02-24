@@ -1,12 +1,19 @@
-const CACHE = 'wmw-v12';
+const CACHE = 'wmw-v18';
 const PRECACHE = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/icon.svg',
-  // Cache the Supabase JS client so the app loads correctly offline without
-  // a blocking network round-trip to the CDN.
+  // Favicon & app icons
+  '/favicon.ico',
+  '/favicon.svg',
+  '/favicon-96x96.png',
+  '/apple-touch-icon.png',
+  '/web-app-manifest-192x192.png',
+  '/web-app-manifest-512x512.png',
+  // Cache CDN scripts so the app loads correctly offline without blocking
+  // network round-trips to external hosts.
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
+  'https://cdn.jsdelivr.net/npm/lucide@0.563.0/dist/umd/lucide.min.js',
 ];
 
 self.addEventListener('install', event => {

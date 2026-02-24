@@ -12,9 +12,14 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="My Workout">
+  <link rel="icon" href="/favicon.ico" sizes="48x48">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <!-- Supabase JS client — defer so it doesn't block page render; crossorigin for SW caching -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer crossorigin="anonymous"></script>
+  <!-- Lucide Icons — defer matches Supabase script; crossorigin for SW caching -->
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.563.0/dist/umd/lucide.min.js" defer crossorigin="anonymous"></script>
   <style>
     *, *::before, *::after {
       box-sizing: border-box;
@@ -123,6 +128,18 @@
       line-height: 1.15;
       margin-bottom: 8px;
       letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .suggestion-name .hero-icon {
+      display: block;
+      width: 48px;
+      height: 48px;
+      color: var(--accent);
+      flex-shrink: 0;
     }
 
     .suggestion-subtitle {
@@ -287,9 +304,23 @@
       font-weight: 600;
       color: var(--text-primary);
       margin-bottom: 3px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .workout-name span {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+
+    /* Workout type icons */
+    .row-icon {
+      flex-shrink: 0;
+      width: 15px;
+      height: 15px;
+      color: var(--text-secondary);
     }
 
     .workout-last {
@@ -339,13 +370,18 @@
       cursor: default;
     }
 
-    /* Tomorrow row */
-    .tomorrow-row {
+    /* Tomorrow preview */
+    .tomorrow-preview {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px 20px 18px;
+      margin-bottom: 24px;
       display: flex;
+      flex-direction: column;
       align-items: center;
-      justify-content: space-between;
-      padding: 0 4px;
-      margin-bottom: 20px;
+      gap: 6px;
+      text-align: center;
     }
 
     .tomorrow-label {
@@ -357,9 +393,19 @@
     }
 
     .tomorrow-name {
-      font-size: 0.82rem;
-      font-weight: 600;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .tomorrow-name .tomorrow-icon {
+      width: 16px;
+      height: 16px;
       color: var(--text-secondary);
+      flex-shrink: 0;
     }
 
     /* Toast */
@@ -406,7 +452,7 @@
       </div>
     </div>
 
-    <div class="tomorrow-row">
+    <div class="tomorrow-preview">
       <span class="tomorrow-label">Tomorrow</span>
       <span class="tomorrow-name" id="tomorrow-name"></span>
     </div>
@@ -437,11 +483,11 @@
     // ────────────────────────────────────────────────────────────────────────
 
     const WORKOUTS = [
-      { id: 'peloton',    name: 'Peloton Ride' },
-      { id: 'upper_push', name: 'Upper Push'   },
-      { id: 'upper_pull', name: 'Upper Pull'   },
-      { id: 'lower',      name: 'Lower Body'   },
-      { id: 'yoga',       name: 'Yoga'         },
+      { id: 'peloton',    name: 'Cardio \u2014 Peloton Ride',    icon: 'bike'            },
+      { id: 'upper_push', name: 'Strength \u2014 Upper Push',    icon: 'dumbbell'        },
+      { id: 'upper_pull', name: 'Strength \u2014 Upper Pull',    icon: 'dumbbell'        },
+      { id: 'lower',      name: 'Strength \u2014 Lower Body',    icon: 'dumbbell'        },
+      { id: 'yoga',       name: 'Flexibility \u2014 Yoga',       icon: 'flower-2'        },
     ];
 
     // Fixed rotation: Peloton every other slot, Yoga every 4th workout overall
@@ -807,7 +853,15 @@
 
       // Suggestion card
       const sugDays = data[heroWorkout.id] ? daysSince(data[heroWorkout.id]) : null;
-      document.getElementById('suggestion-name').textContent = heroWorkout.name;
+
+      // Hero name — icon inline to the left of the text, matching the list row pattern
+      const heroNameEl = document.getElementById('suggestion-name');
+      heroNameEl.innerHTML = '';
+      const heroIconEl = document.createElement('i');
+      heroIconEl.setAttribute('data-lucide', heroWorkout.icon);
+      heroIconEl.className = 'hero-icon';
+      heroNameEl.appendChild(heroIconEl);
+      heroNameEl.appendChild(document.createTextNode(heroWorkout.name));
 
       let subtitleText;
       if (skippedToday)        subtitleText = 'Day off \u2014 same workout tomorrow';
@@ -847,7 +901,13 @@
       const tomorrowWorkout = actionTakenToday
         ? nextInRotation
         : WORKOUTS.find(w => w.id === ROTATION[((data.rotationIndex || 0) + 1) % ROTATION.length]);
-      document.getElementById('tomorrow-name').textContent = tomorrowWorkout.name;
+      const tomorrowNameEl = document.getElementById('tomorrow-name');
+      tomorrowNameEl.innerHTML = '';
+      const tomorrowIconEl = document.createElement('i');
+      tomorrowIconEl.setAttribute('data-lucide', tomorrowWorkout.icon);
+      tomorrowIconEl.className = 'tomorrow-icon';
+      tomorrowNameEl.appendChild(tomorrowIconEl);
+      tomorrowNameEl.appendChild(document.createTextNode(tomorrowWorkout.name));
 
       // Workout list — suggested first, then by most recently done
       const sorted = [...WORKOUTS].sort((a, b) => {
@@ -883,7 +943,13 @@
 
         const nameEl = document.createElement('div');
         nameEl.className = 'workout-name';
-        nameEl.textContent = w.name;
+        const rowIconEl = document.createElement('i');
+        rowIconEl.setAttribute('data-lucide', w.icon);
+        rowIconEl.className = 'row-icon';
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = w.name;
+        nameEl.appendChild(rowIconEl);
+        nameEl.appendChild(nameSpan);
 
         const lastEl = document.createElement('div');
         lastEl.className = 'workout-last';
@@ -917,6 +983,9 @@
         row.appendChild(btn);
         list.appendChild(row);
       }
+
+      // Replace all data-lucide placeholder elements with SVG icons
+      if (typeof lucide !== 'undefined') lucide.createIcons();
 
     }
 
