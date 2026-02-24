@@ -8,3 +8,8 @@
   # index.html intentionally contains injected secrets after the build command runs.
   # Skip secrets scanning for this file to prevent a false-positive build failure.
   SECRETS_SCAN_OMIT_PATHS = "index.html"
+
+[functions."keep-alive"]
+  # Run once a day to prevent the Supabase free-tier project from pausing.
+  # SUPABASE_URL and SUPABASE_KEY are read from Netlify environment variables at runtime.
+  schedule = "@daily"
