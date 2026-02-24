@@ -81,6 +81,27 @@ The local cache mirrors the Supabase data plus derived fields:
 | `actionDate` | `string` (YYYY-MM-DD) | Locks the hero card for the day |
 | `history` | `array` | Every logged event as `{type, date, advanced}` |
 
+## Deployment
+
+This is a static site deployed on Netlify. The Supabase credentials are **not** stored in the source code — they are injected at deploy time from Netlify environment variables.
+
+### Required environment variables
+
+Set these in **Netlify Dashboard → Your site → Site configuration → Environment variables**:
+
+| Variable | Description |
+|---|---|
+| `SUPABASE_URL` | Your Supabase project URL (e.g. `https://xxxx.supabase.co`) |
+| `SUPABASE_KEY` | Your Supabase publishable (anon) key |
+
+### How it works
+
+`netlify.toml` defines a one-line build command that uses `sed` to replace the `%%SUPABASE_URL%%` and `%%SUPABASE_KEY%%` placeholder tokens in `index.html` with the real values before Netlify serves the site. The source file always contains the placeholder tokens — the real credentials only exist inside the deployed build.
+
+### Local development
+
+For local testing, temporarily replace the placeholder tokens in `index.html` with your actual credentials, but **do not commit that change**. Restore the placeholders before pushing.
+
 ## PWA
 
 Requires `apple-touch-icon.png` (180×180 PNG, generated from `icon.svg`) for a proper home screen icon on iOS. Until added, iOS uses a page screenshot as the icon.
