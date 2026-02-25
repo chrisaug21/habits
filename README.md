@@ -90,6 +90,17 @@ The local cache mirrors the Supabase data plus derived fields:
 | `history` | `array` | Every logged event as `{type, date, advanced, note?}` — `note` is only present for `type: 'other'` entries |
 | `wmw_other_activities` (separate key) | `string[]` | Up to 10 most-recently used other activity names, most-recent first, deduplicated case-insensitively |
 
+### Test-mode localStorage keys (`wmw_test`, `wmw_test_other_activities`)
+
+When test mode is active (`?test=true` in the URL), the app writes to separate keys so real data is never touched. All Supabase calls are skipped; localStorage is the sole store.
+
+| Key | Type | Shape | Description |
+|---|---|---|---|
+| `wmw_test` | JSON object | Identical to `wmw_v1` | Isolated copy of the full app state used during test mode. Same fields: `rotationIndex`, `actionDate`, `history`, and last-completion dates per workout type. Wiped by the Reset button in the test banner. |
+| `wmw_test_other_activities` | `string[]` | Same as `wmw_other_activities` | Up to 10 most-recently used other activity names recorded during a test session, most-recent first, deduplicated case-insensitively. Wiped alongside `wmw_test` on Reset. |
+
+**Migration note:** when migrating localStorage to a database, check for both the production keys (`wmw_v1`, `wmw_other_activities`) and the test keys (`wmw_test`, `wmw_test_other_activities`). The test keys can be safely discarded — they contain no real user data.
+
 ## Deployment
 
 This is a static site deployed on Netlify. The Supabase credentials are **not** stored in the source code — they are injected at deploy time from Netlify environment variables.
