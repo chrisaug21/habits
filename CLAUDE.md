@@ -38,5 +38,15 @@ We will migrate to a database later. Keep the localStorage structure clean and m
 ## Task management
 For complex tasks (more than 2–3 steps), create a todo list at the start to track progress. Check off items as they're completed.
 
+## Version numbering
+The app version is defined as a `VERSION` constant near the top of `index.html` and must follow `MAJOR.MINOR.BUILD` format (e.g. `1.0.27`).
+
+On every PR:
+- Always increment BUILD by 1, keeping it in sync with the sw.js cache version (they should always match — e.g. `VERSION = '1.0.27'` and `CACHE = 'wmw-v27'`)
+- Increment MINOR when the PR ships a complete new feature or screen; reset to 0 only when MAJOR increments — BUILD never resets under any circumstance
+- Increment MAJOR only for transformative changes (e.g. multi-user auth, full redesign); MINOR resets to 0, BUILD keeps climbing
+- Never reset BUILD under any circumstance — it is a permanent monotonic counter
+- If unsure whether a PR warrants a MINOR or MAJOR increment, ask before committing
+
 ## After completing work
 Summarize what changed and flag anything that is still pending, broken, or needs a follow-up decision.
