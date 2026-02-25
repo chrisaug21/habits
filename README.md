@@ -37,16 +37,17 @@ The rotation is position-based, not time-based — it always picks up where it l
 
 ## Features
 
-- **Hero card** — shows today's workout (Next Up), locks after Done or Skip Today
+- **Hero card** — shows today's workout (Next Up), locks after Done, Skip Today, or Log Other Activity
 - **Tomorrow preview** — shows the next step in the rotation so you can plan ahead
 - **Done!** — logs the workout and advances the rotation
 - **Skip Today** — logs an off day without advancing the rotation (same workout suggested tomorrow)
+- **Log Other Activity** — opens a modal to record a free-form activity (e.g. "Morning walk", "Swim"); does not advance the rotation; stores recent activities in `wmw_other_activities` for quick re-selection
 - **Undo** — reverses the most recent log entry (today's or yesterday's); rolls back the rotation if applicable
 - **Log for yesterday** — each workout row has a link to immediately backfill that workout for yesterday, without affecting the rotation
 - **All Workouts list** — shows all 5 workout types with days since last completed
 - **History view** — accessible via a bottom navigation bar (Today / History tabs)
-  - **Calendar** (default): monthly grid with prev/next month navigation; each day shows a purple workout icon for completed workouts, an amber moon for rest/skip days, a dimmed projected icon for future days based on the rotation, or is empty for past days with no data; today is subtly highlighted
-  - **List**: chronological log of all past entries (newest first), with workout icon, date, day of week, and name; a "Coming Up" section below shows the next 14 projected workouts (dimmed)
+  - **Calendar** (default): monthly grid with prev/next month navigation; each day shows a purple workout icon for completed workouts, an amber moon for rest/skip days, a teal zap icon for other activities, a dimmed projected icon for future days based on the rotation, or is empty for past days with no data; today is subtly highlighted
+  - **List**: chronological log of all past entries (newest first), with workout icon, date, day of week, and name; other activities show the free-form name in teal with a zap icon; a "Coming Up" section below shows the next 14 projected workouts (dimmed)
   - Both views are read-only
 - Offline-capable PWA, installable on iPhone home screen
 
@@ -69,9 +70,10 @@ Data is stored in **Supabase** (primary) with **localStorage** (`wmw_v1`) as an 
 | Column | Type | Description |
 |---|---|---|
 | `id` | auto | Primary key |
-| `type` | `text` | Workout ID (`peloton`, `upper_push`, `upper_pull`, `lower`, `yoga`) or `off` for a skipped day |
+| `type` | `text` | Workout ID (`peloton`, `upper_push`, `upper_pull`, `lower`, `yoga`), `off` for a skipped day, or `other` for a free-form activity |
 | `date` | `text` (YYYY-MM-DD) | Date of the logged event |
-| `advanced` | `boolean` | `true` = rotation-advancing (Done! button); `false` = non-advancing (row Done or Log for yesterday) |
+| `advanced` | `boolean` | `true` = rotation-advancing (Done! button); `false` = non-advancing (Skip, Other Activity, row Done, Log for yesterday) |
+| `note` | `text` (nullable) | Free-form activity name; only set when `type = 'other'`. Add with: `ALTER TABLE history ADD COLUMN note text;` |
 | `sequence` | `integer` | Explicit insert order (the entry's index in the history array). Used for sorting instead of `created_at` because batch re-inserts share the same timestamp. Add with: `ALTER TABLE history ADD COLUMN sequence integer;` |
 | `created_at` | `timestamptz` | Set automatically by Supabase; not used for ordering |
 
@@ -84,7 +86,8 @@ The local cache mirrors the Supabase data plus derived fields:
 | `peloton`, `upper_push`, `upper_pull`, `lower`, `yoga` | `string` (YYYY-MM-DD) | Date of last completion per workout type (derived from history) |
 | `rotationIndex` | `number` | Current position in the rotation |
 | `actionDate` | `string` (YYYY-MM-DD) | Locks the hero card for the day |
-| `history` | `array` | Every logged event as `{type, date, advanced}` |
+| `history` | `array` | Every logged event as `{type, date, advanced, note?}` — `note` is only present for `type: 'other'` entries |
+| `wmw_other_activities` (separate key) | `string[]` | Up to 10 most-recently used other activity names, most-recent first, deduplicated case-insensitively |
 
 ## Deployment
 
