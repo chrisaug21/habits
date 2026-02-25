@@ -773,6 +773,41 @@
       padding: 48px 0 24px;
     }
 
+    /* ── Test Mode Banner ─────────────────────────────────────────────────── */
+    .test-banner {
+      background: rgba(245, 158, 11, 0.12);
+      border-bottom: 2px solid var(--amber);
+      color: var(--amber);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 11px 16px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .test-reset-btn {
+      background: var(--amber);
+      color: #0d0d14;
+      border: none;
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 0.7rem;
+      font-weight: 800;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      transition: opacity 0.15s;
+    }
+
+    .test-reset-btn:active {
+      opacity: 0.7;
+    }
+
     /* ── Other Activity Modal ──────────────────────────────────────────────── */
     .modal-overlay {
       position: fixed;
@@ -899,6 +934,12 @@
   </style>
 </head>
 <body>
+  <!-- ── Test Mode Banner ────────────────────────────────────────────────── -->
+  <div class="test-banner" id="test-banner" hidden>
+    TEST MODE — no real data affected
+    <button class="test-reset-btn" id="test-reset-btn">Reset</button>
+  </div>
+
   <div class="container">
     <header>
       <h1>What's My Workout?</h1>
@@ -1006,10 +1047,13 @@
       'peloton', 'yoga',
     ];
 
-    const STORAGE_KEY = 'wmw_v1';
+    // ── Test mode ────────────────────────────────────────────────────────────
+    const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
+    const STORAGE_KEY = TEST_MODE ? 'wmw_test' : 'wmw_v1';
+    // ────────────────────────────────────────────────────────────────────────
 
     async function loadData() {
-      if (!sb) {
+      if (!sb || TEST_MODE) {
         try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
         catch { return {}; }
       }
@@ -1052,7 +1096,7 @@
     async function saveData(data, deletedSid = null) {
       // Always write localStorage immediately so the fallback is always fresh
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-      if (!sb) return; // localStorage-only mode (Supabase client unavailable)
+      if (!sb || TEST_MODE) return; // localStorage-only or test mode — skip Supabase
       try {
         // Upsert the single state row (rotation position + today's lock)
         const { error: stateErr } = await sb.from('state').upsert({
@@ -1350,7 +1394,7 @@
     }
 
     // ── Other Activity helpers ───────────────────────────────────────────────
-    const OTHER_ACTIVITIES_KEY = 'wmw_other_activities';
+    const OTHER_ACTIVITIES_KEY = TEST_MODE ? 'wmw_test_other_activities' : 'wmw_other_activities';
 
     function loadOtherActivities() {
       try {
@@ -1904,6 +1948,17 @@
       if (typeof lucide !== 'undefined') lucide.createIcons();
 
     }
+
+    // ── Test mode banner ─────────────────────────────────────────────────────
+    if (TEST_MODE) {
+      document.getElementById('test-banner').hidden = false;
+      document.getElementById('test-reset-btn').onclick = () => {
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(OTHER_ACTIVITIES_KEY);
+        render();
+      };
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
     render();
 
