@@ -1339,6 +1339,16 @@
       }
     }
 
+    // ── HTML escape helper (prevents XSS when injecting user text into innerHTML)
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     // ── Other Activity helpers ───────────────────────────────────────────────
     const OTHER_ACTIVITIES_KEY = 'wmw_other_activities';
 
@@ -1371,6 +1381,7 @@
         chip.onclick = () => {
           input.value = a;
           confirmBtn.disabled = false;
+          setTimeout(() => input.focus(), 50);
         };
         chipsEl.appendChild(chip);
       }
@@ -1390,8 +1401,8 @@
       if (!activityName || isProcessing) return;
       isProcessing = true;
       setButtonsDisabled(true);
-      closeOtherActivityModal();
       try {
+        closeOtherActivityModal();
         const data = await loadData();
         const today = todayStr();
 
@@ -1603,7 +1614,7 @@
               <div class="hlist-date-main">${dateMain}</div>
               <div class="hlist-date-sub">${dayName}</div>
             </div>
-            <div class="hlist-name ${color}">${dispName}</div>
+            <div class="hlist-name ${color}">${escapeHtml(dispName)}</div>
           </div>`;
       }
 
