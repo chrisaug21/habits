@@ -27,6 +27,9 @@
       padding: 0;
     }
 
+    /* Ensure the HTML `hidden` attribute always wins over any display: rule */
+    [hidden] { display: none !important; }
+
     :root {
       --bg: #0d0d14;
       --surface: #13131e;
