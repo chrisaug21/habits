@@ -50,7 +50,7 @@ The rotation is position-based, not time-based — it always picks up where it l
   - **List**: chronological log of all past entries (newest first), with workout icon, date, day of week, and name; other activities show the free-form name in teal with a zap icon; a "Coming Up" section below shows the next 14 projected workouts (dimmed)
   - Both views are read-only
 - Offline-capable PWA, installable on iPhone home screen
-- **Test mode** — hidden feature; triple-tap the version stamp (bottom of Today screen) or press Ctrl+Shift+T to toggle; shows an amber banner confirming no real data is affected; uses isolated localStorage keys (`wmw_test`, `wmw_test_other_activities`) and skips all Supabase calls
+- **Test mode** — hidden feature; triple-tap the version stamp (bottom of Today screen) or press Alt+Shift+T to toggle; shows an amber banner confirming no real data is affected; uses isolated localStorage keys (`wmw_test`, `wmw_test_other_activities`) and skips all Supabase calls
 
 ## Storage
 

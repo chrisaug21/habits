@@ -936,7 +936,7 @@
     #version-stamp {
       text-align: center;
       font-size: 11px;
-      color: #555;
+      color: var(--text-dim);
       margin-top: 24px;
       user-select: none;
       -webkit-user-select: none;
@@ -948,6 +948,7 @@
   <div class="test-banner" id="test-banner" hidden>
     TEST MODE — no real data affected
     <button class="test-reset-btn" id="test-reset-btn">Reset</button>
+    <button class="test-reset-btn" id="test-exit-btn">Exit</button>
   </div>
 
   <div class="container">
@@ -1971,6 +1972,7 @@
         localStorage.removeItem(OTHER_ACTIVITIES_KEY);
         render();
       };
+      document.getElementById('test-exit-btn').onclick = toggleTestMode;
     }
     // ────────────────────────────────────────────────────────────────────────
 
@@ -2002,9 +2004,9 @@
       _tapTimer = setTimeout(() => { _tapCount = 0; }, 600);
     });
 
-    // Ctrl+Shift+T (desktop) — same toggle
+    // Alt+Shift+T (desktop) — same toggle (Ctrl+Shift+T is reserved by browsers)
     document.addEventListener('keydown', e => {
-      if (e.ctrlKey && e.shiftKey && e.key === 'T') toggleTestMode();
+      if (e.altKey && e.shiftKey && e.key === 'T') toggleTestMode();
     });
     // ──────────────────────────────────────────────────────────────────────────
 
