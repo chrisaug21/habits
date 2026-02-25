@@ -1455,7 +1455,10 @@
       // 'done'     = workout completed today → Undo visible, action buttons hidden
       // 'skipped'  = rest day logged today  → Undo visible, action buttons hidden
       const history = data.history || [];
-      const heroState = skippedToday ? 'skipped' : (actionTakenToday ? 'done' : 'default');
+      // Derive state from todayEntry (the source of truth), not actionTakenToday.
+      // actionDate and history can drift out of sync on a partial Supabase write,
+      // so using todayEntry prevents a false 'done' state with no actual log entry.
+      const heroState = skippedToday ? 'skipped' : (todayEntry ? 'done' : 'default');
       const sugDays = data[heroWorkout.id] ? daysSince(data[heroWorkout.id]) : null;
 
       // Eyebrow label
@@ -1482,6 +1485,13 @@
       const mainBtn = document.getElementById('main-done-btn');
       const skipBtn = document.getElementById('skip-btn');
       const undoBtn = document.getElementById('undo-btn');
+
+      // Re-enable all three hero buttons: setButtonsDisabled(true) fires at the
+      // start of every action and is never explicitly reversed — render() is the
+      // natural place to restore interactive state after a round-trip completes.
+      mainBtn.disabled = false;
+      skipBtn.disabled = false;
+      undoBtn.disabled = false;
 
       mainBtn.hidden = heroState !== 'default';
       skipBtn.hidden = heroState !== 'default';
