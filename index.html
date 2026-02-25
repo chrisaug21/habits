@@ -633,6 +633,13 @@
       opacity: 0.7;
     }
 
+    /* Today's un-logged workout: bright white, not dimmed */
+    .cal-day.is-today.is-projected .cal-icon,
+    .cal-day.is-today.is-projected svg {
+      color: var(--text-primary);
+      opacity: 1;
+    }
+
     /* ── History List ──────────────────────────────────────────────────────── */
     .hlist {
       display: flex;
