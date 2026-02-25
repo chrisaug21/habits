@@ -40,14 +40,14 @@ The rotation is position-based, not time-based — it always picks up where it l
 - **Hero card** — shows today's workout (Next Up), locks after Done, Skip Today, or Log Other Activity
 - **Tomorrow preview** — shows the next step in the rotation so you can plan ahead
 - **Done!** — logs the workout and advances the rotation
-- **Skip Today** — logs an off day without advancing the rotation (same workout suggested tomorrow)
+- **Skip Today** — opens a "Rest Day" modal with an optional reason field and suggestion chips (defaults: Sick, Travel, Vacation, Social obligation); recent reasons are saved and shown as chips on future skips; logs an off day without advancing the rotation; reason appears as a subtitle in the history list
 - **Log Other Activity** — opens a modal to record a free-form activity (e.g. "Morning walk", "Swim"); does not advance the rotation; stores recent activities in `wmw_other_activities` for quick re-selection
 - **Undo** — reverses the most recent log entry (today's or yesterday's); rolls back the rotation if applicable
 - **Log for yesterday** — each workout row has a link to immediately backfill that workout for yesterday, without affecting the rotation
 - **All Workouts list** — shows all 5 workout types with days since last completed
 - **History view** — accessible via a bottom navigation bar (Today / History tabs)
   - **Calendar** (default): monthly grid with prev/next month navigation; each day shows a purple workout icon for completed workouts, an amber moon for rest/skip days, a teal zap icon for other activities, a dimmed projected icon for future days based on the rotation, or is empty for past days with no data; today is subtly highlighted
-  - **List**: chronological log of all past entries (newest first), with workout icon, date, day of week, and name; other activities show the free-form name in teal with a zap icon; a "Coming Up" section below shows the next 14 projected workouts (dimmed)
+  - **List**: chronological log of all past entries (newest first), with workout icon, date, day of week, and name; other activities show the free-form name in teal with a zap icon; rest days show the reason as a muted subtitle if one was entered; a "Coming Up" section below shows the next 14 projected workouts (dimmed)
   - Both views are read-only
 - Offline-capable PWA, installable on iPhone home screen
 - **Test mode** — hidden feature; triple-tap the version stamp (bottom of Today screen) or press Alt+Shift+T to toggle; shows an amber banner confirming no real data is affected; uses isolated localStorage keys (`wmw_test`, `wmw_test_other_activities`) and skips all Supabase calls
@@ -89,8 +89,9 @@ The local cache mirrors the Supabase data plus derived fields:
 | `actionDate` | `string` (YYYY-MM-DD) | Locks the hero card for the day |
 | `history` | `array` | Every logged event as `{type, date, advanced, note?}` — `note` is only present for `type: 'other'` entries |
 | `wmw_other_activities` (separate key) | `string[]` | Up to 10 most-recently used other activity names, most-recent first, deduplicated case-insensitively |
+| `wmw_v1_skip_reasons` (separate key) | `string[]` | Up to 10 most-recently used skip reasons (e.g. "Sick", "Travel"), most-recent first, deduplicated case-insensitively; shown as chips in the Rest Day modal |
 
-### Test-mode localStorage keys (`wmw_test`, `wmw_test_other_activities`)
+### Test-mode localStorage keys (`wmw_test`, `wmw_test_other_activities`, `wmw_test_skip_reasons`)
 
 When test mode is active (`?test=true` in the URL), the app writes to separate keys so real data is never touched. All Supabase calls are skipped; localStorage is the sole store.
 
@@ -98,8 +99,9 @@ When test mode is active (`?test=true` in the URL), the app writes to separate k
 |---|---|---|---|
 | `wmw_test` | JSON object | Identical to `wmw_v1` | Isolated copy of the full app state used during test mode. Same fields: `rotationIndex`, `actionDate`, `history`, and last-completion dates per workout type. Wiped by the Reset button in the test banner. |
 | `wmw_test_other_activities` | `string[]` | Same as `wmw_other_activities` | Up to 10 most-recently used other activity names recorded during a test session, most-recent first, deduplicated case-insensitively. Wiped alongside `wmw_test` on Reset. |
+| `wmw_test_skip_reasons` | `string[]` | Same as `wmw_v1_skip_reasons` | Up to 10 most-recently used skip reasons recorded during a test session. Wiped alongside `wmw_test` on Reset. |
 
-**Migration note:** when migrating localStorage to a database, check for both the production keys (`wmw_v1`, `wmw_other_activities`) and the test keys (`wmw_test`, `wmw_test_other_activities`). The test keys can be safely discarded — they contain no real user data.
+**Migration note:** when migrating localStorage to a database, check for both the production keys (`wmw_v1`, `wmw_other_activities`, `wmw_v1_skip_reasons`) and the test keys (`wmw_test`, `wmw_test_other_activities`, `wmw_test_skip_reasons`). The test keys can be safely discarded — they contain no real user data.
 
 ## Deployment
 
