@@ -50,7 +50,7 @@ The rotation is position-based, not time-based — it always picks up where it l
   - **List**: chronological log of all past entries (newest first), with workout icon, date, day of week, and name; other activities show the free-form name in teal with a zap icon; a "Coming Up" section below shows the next 14 projected workouts (dimmed)
   - Both views are read-only
 - Offline-capable PWA, installable on iPhone home screen
-- **Test mode** — hidden feature; triple-tap the version stamp (bottom of Today screen) or press Ctrl+Shift+T to toggle; shows an amber banner confirming no real data is affected; uses isolated localStorage keys (`wmw_test`, `wmw_test_other_activities`) and skips all Supabase calls
+- **Test mode** — hidden feature; triple-tap the version stamp (bottom of Today screen) or press Alt+Shift+T to toggle; shows an amber banner confirming no real data is affected; uses isolated localStorage keys (`wmw_test`, `wmw_test_other_activities`) and skips all Supabase calls
 
 ## Storage
 
@@ -89,6 +89,17 @@ The local cache mirrors the Supabase data plus derived fields:
 | `actionDate` | `string` (YYYY-MM-DD) | Locks the hero card for the day |
 | `history` | `array` | Every logged event as `{type, date, advanced, note?}` — `note` is only present for `type: 'other'` entries |
 | `wmw_other_activities` (separate key) | `string[]` | Up to 10 most-recently used other activity names, most-recent first, deduplicated case-insensitively |
+
+### Test-mode localStorage keys (`wmw_test`, `wmw_test_other_activities`)
+
+When test mode is active (`?test=true` in the URL), the app writes to separate keys so real data is never touched. All Supabase calls are skipped; localStorage is the sole store.
+
+| Key | Type | Shape | Description |
+|---|---|---|---|
+| `wmw_test` | JSON object | Identical to `wmw_v1` | Isolated copy of the full app state used during test mode. Same fields: `rotationIndex`, `actionDate`, `history`, and last-completion dates per workout type. Wiped by the Reset button in the test banner. |
+| `wmw_test_other_activities` | `string[]` | Same as `wmw_other_activities` | Up to 10 most-recently used other activity names recorded during a test session, most-recent first, deduplicated case-insensitively. Wiped alongside `wmw_test` on Reset. |
+
+**Migration note:** when migrating localStorage to a database, check for both the production keys (`wmw_v1`, `wmw_other_activities`) and the test keys (`wmw_test`, `wmw_test_other_activities`). The test keys can be safely discarded — they contain no real user data.
 
 ## Deployment
 

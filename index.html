@@ -931,6 +931,16 @@
     .modal-cancel-btn:active {
       background: var(--surface2);
     }
+
+    /* ── Version stamp ──────────────────────────────────────────────────────── */
+    #version-stamp {
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 24px;
+      user-select: none;
+      -webkit-user-select: none;
+    }
   </style>
 </head>
 <body>
@@ -938,6 +948,7 @@
   <div class="test-banner" id="test-banner" hidden>
     TEST MODE — no real data affected
     <button class="test-reset-btn" id="test-reset-btn">Reset</button>
+    <button class="test-reset-btn" id="test-exit-btn">Exit</button>
   </div>
 
   <div class="container">
@@ -970,6 +981,8 @@
 
       <div class="list-header">All Workouts</div>
       <div class="workout-list" id="workout-list"></div>
+
+      <div id="version-stamp"></div>
     </div>
 
     <!-- ── History view ───────────────────────────────────────────────────── -->
@@ -1046,6 +1059,8 @@
       'peloton', 'lower',
       'peloton', 'yoga',
     ];
+
+    const VERSION = '1.0.27';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -1957,8 +1972,43 @@
         localStorage.removeItem(OTHER_ACTIVITIES_KEY);
         render();
       };
+      document.getElementById('test-exit-btn').onclick = toggleTestMode;
     }
     // ────────────────────────────────────────────────────────────────────────
+
+    // ── Version stamp ─────────────────────────────────────────────────────────
+    document.getElementById('version-stamp').textContent = 'v' + VERSION;
+
+    function toggleTestMode() {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get('test') === 'true') {
+        url.searchParams.delete('test');
+      } else {
+        url.searchParams.set('test', 'true');
+      }
+      window.location.href = url.toString();
+    }
+
+    // Triple-tap within 600 ms to toggle test mode
+    let _tapCount = 0;
+    let _tapTimer = null;
+    document.getElementById('version-stamp').addEventListener('click', () => {
+      _tapCount++;
+      if (_tapCount === 3) {
+        _tapCount = 0;
+        clearTimeout(_tapTimer);
+        toggleTestMode();
+        return;
+      }
+      clearTimeout(_tapTimer);
+      _tapTimer = setTimeout(() => { _tapCount = 0; }, 600);
+    });
+
+    // Alt+Shift+T (desktop) — same toggle (Ctrl+Shift+T is reserved by browsers)
+    document.addEventListener('keydown', e => {
+      if (e.altKey && e.shiftKey && e.key === 'T') toggleTestMode();
+    });
+    // ──────────────────────────────────────────────────────────────────────────
 
     render();
 
