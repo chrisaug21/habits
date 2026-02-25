@@ -45,6 +45,7 @@
       --orange: #ff9944;
       --green: #3ecf8e;
       --amber: #f59e0b;
+      --teal: #2dd4bf;
       --red-bg: #2a0f0f;
       --orange-bg: #2a1a0a;
       --green-bg: #0a2018;
@@ -144,6 +145,12 @@
     .hero-icon-wrap.is-rest i,
     .hero-icon-wrap.is-rest svg {
       color: var(--amber);
+    }
+
+    /* Other-activity zap shown in teal */
+    .hero-icon-wrap.is-other i,
+    .hero-icon-wrap.is-other svg {
+      color: var(--teal);
     }
 
     .suggestion-name {
@@ -658,6 +665,15 @@
       color: var(--amber);
     }
 
+    .cal-day.has-other .cal-day-num {
+      color: var(--text-secondary);
+    }
+
+    .cal-day.has-other .cal-icon,
+    .cal-day.has-other svg {
+      color: var(--teal);
+    }
+
     /* Projected future days: dimmed icon */
     .cal-day.is-projected .cal-icon,
     .cal-day.is-projected svg {
@@ -708,6 +724,7 @@
 
     .hlist-icon.purple { color: var(--accent); }
     .hlist-icon.amber  { color: var(--amber); }
+    .hlist-icon.teal   { color: var(--teal); }
 
     .hlist-date {
       flex: 1;
@@ -738,6 +755,7 @@
 
     .hlist-name.purple { color: var(--text-primary); }
     .hlist-name.amber  { color: var(--amber); }
+    .hlist-name.teal   { color: var(--teal); }
 
     .hlist-section-label {
       font-size: 0.62rem;
@@ -753,6 +771,130 @@
       color: var(--text-dim);
       font-size: 0.85rem;
       padding: 48px 0 24px;
+    }
+
+    /* ── Other Activity Modal ──────────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      z-index: 200;
+      display: flex;
+      align-items: flex-end;
+    }
+
+    .modal-sheet {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: 1px solid var(--border-active);
+      border-radius: 24px 24px 0 0;
+      padding: 28px 20px calc(28px + env(safe-area-inset-bottom, 0px));
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .modal-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-align: center;
+    }
+
+    .modal-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .activity-chip {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 9px 16px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+
+    .activity-chip:active {
+      background: rgba(108, 99, 255, 0.15);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .modal-input {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-size: 0.95rem;
+      color: var(--text-primary);
+      width: 100%;
+      outline: none;
+      font-family: inherit;
+      transition: border-color 0.15s;
+      -webkit-appearance: none;
+    }
+
+    .modal-input:focus {
+      border-color: var(--accent);
+    }
+
+    .modal-input::placeholder {
+      color: var(--text-dim);
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .modal-confirm-btn {
+      flex: 1;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      padding: 16px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .modal-confirm-btn:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+
+    .modal-confirm-btn:active:not(:disabled) {
+      background: var(--accent-dark);
+    }
+
+    .modal-cancel-btn {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 20px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .modal-cancel-btn:active {
+      background: var(--surface2);
     }
   </style>
 </head>
@@ -775,6 +917,7 @@
         <div class="card-actions">
           <button class="done-btn" id="main-done-btn">Done!</button>
           <button class="skip-btn" id="skip-btn">Skip Today</button>
+          <button class="skip-btn" id="log-other-btn">Log Other Activity</button>
           <button class="undo-btn" id="undo-btn" hidden></button>
         </div>
       </div>
@@ -800,6 +943,20 @@
   </div>
 
   <div class="toast" id="toast"></div>
+
+  <!-- ── Other Activity Modal ────────────────────────────────────────────── -->
+  <div class="modal-overlay" id="other-activity-modal" hidden>
+    <div class="modal-sheet">
+      <div class="modal-title">Log Other Activity</div>
+      <div class="modal-chips" id="other-activity-chips"></div>
+      <input class="modal-input" id="other-activity-input" type="text"
+             placeholder="Activity name…" maxlength="100" autocomplete="off">
+      <div class="modal-actions">
+        <button class="modal-cancel-btn" id="modal-cancel-btn">Cancel</button>
+        <button class="modal-confirm-btn" id="modal-confirm-btn" disabled>Log It</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ── Bottom Navigation ──────────────────────────────────────────────── -->
   <nav class="bottom-nav">
@@ -873,7 +1030,7 @@
         const data = {
           rotationIndex: state.rotation_index ?? 0,
           actionDate:    state.action_date   ?? null,
-          history: historyRows.map(r => ({ type: r.type, date: r.date, advanced: r.advanced, _sid: r.id })),
+          history: historyRows.map(r => ({ type: r.type, date: r.date, advanced: r.advanced, note: r.note ?? undefined, _sid: r.id })),
         };
 
         // Derive each workout's last-done date from history
@@ -921,6 +1078,7 @@
             type: e.type,
             date: e.date,
             advanced: e.advanced ?? true,
+            note: e.note ?? null,
             sequence: data.history.indexOf(e),
           }));
           const { data: inserted, error: insErr } = await sb.from('history').insert(rows).select('id');
@@ -1003,7 +1161,7 @@
     let isProcessing = false;
 
     function setButtonsDisabled(disabled) {
-      ['main-done-btn', 'skip-btn', 'undo-btn'].forEach(id => {
+      ['main-done-btn', 'skip-btn', 'log-other-btn', 'undo-btn'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = disabled;
       });
@@ -1106,6 +1264,7 @@
           e.date === today && (
             e.advanced === true ||                          // new markDone entry
             e.type === 'off' ||                            // skip entry
+            e.type === 'other' ||                          // other activity entry
             (!('advanced' in e) && e.type !== 'off')       // old entry without flag (backward compat)
           )
         );
@@ -1119,6 +1278,8 @@
         render(data);
         const name = last.type === 'off'
           ? 'day off'
+          : last.type === 'other'
+          ? (last.note || 'other activity')
           : (WORKOUTS.find(w => w.id === last.type)?.name ?? last.type);
         showToast(`Undone \u2014 ${name}`);
       } finally {
@@ -1177,6 +1338,95 @@
         isProcessing = false;
       }
     }
+
+    // ── HTML escape helper (prevents XSS when injecting user text into innerHTML)
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // ── Other Activity helpers ───────────────────────────────────────────────
+    const OTHER_ACTIVITIES_KEY = 'wmw_other_activities';
+
+    function loadOtherActivities() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(OTHER_ACTIVITIES_KEY));
+        if (typeof parsed === 'string') return [parsed];
+        if (Array.isArray(parsed)) return parsed.filter(a => typeof a === 'string');
+        return [];
+      } catch { return []; }
+    }
+
+    function saveOtherActivities(name) {
+      const existing = loadOtherActivities();
+      const nameLower = name.toLowerCase();
+      // Remove any existing entry that matches case-insensitively, then prepend
+      const deduped = existing.filter(a => a.toLowerCase() !== nameLower);
+      localStorage.setItem(OTHER_ACTIVITIES_KEY, JSON.stringify([name, ...deduped].slice(0, 10)));
+    }
+
+    function openOtherActivityModal() {
+      const modal      = document.getElementById('other-activity-modal');
+      const input      = document.getElementById('other-activity-input');
+      const chipsEl    = document.getElementById('other-activity-chips');
+      const confirmBtn = document.getElementById('modal-confirm-btn');
+
+      // Populate previous-activity chips
+      chipsEl.innerHTML = '';
+      for (const a of loadOtherActivities()) {
+        const chip = document.createElement('button');
+        chip.className = 'activity-chip';
+        chip.textContent = a;
+        chip.type = 'button';
+        chip.onclick = () => {
+          input.value = a;
+          confirmBtn.disabled = false;
+          setTimeout(() => input.focus(), 50);
+        };
+        chipsEl.appendChild(chip);
+      }
+
+      input.value = '';
+      confirmBtn.disabled = true;
+      modal.hidden = false;
+      // Brief delay so the sheet animates into view before keyboard pops
+      setTimeout(() => input.focus(), 80);
+    }
+
+    function closeOtherActivityModal() {
+      document.getElementById('other-activity-modal').hidden = true;
+    }
+
+    const MAX_ACTIVITY_LENGTH = 100;
+
+    async function logOtherActivity(activityName) {
+      const name = String(activityName || '').trim().slice(0, MAX_ACTIVITY_LENGTH);
+      if (!name || isProcessing) return;
+      isProcessing = true;
+      setButtonsDisabled(true);
+      try {
+        closeOtherActivityModal();
+        const data = await loadData();
+        const today = todayStr();
+
+        data.actionDate = today;
+        data.history = data.history || [];
+        data.history.push({ type: 'other', date: today, advanced: false, note: name });
+
+        saveOtherActivities(name);
+
+        await saveData(data);
+        render(data);
+        showToast(`${name} logged`);
+      } finally {
+        isProcessing = false;
+      }
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
     // ── History view state ──────────────────────────────────────────────────
     let cachedData = null;        // last-loaded data, used by history renders
@@ -1284,6 +1534,9 @@
           if (histEntry.type === 'off') {
             classes.push('has-rest');
             iconHtml = '<i class="cal-icon" data-lucide="moon"></i>';
+          } else if (histEntry.type === 'other') {
+            classes.push('has-other');
+            iconHtml = '<i class="cal-icon" data-lucide="zap"></i>';
           } else {
             classes.push('has-workout');
             const w = WORKOUTS.find(w => w.id === histEntry.type);
@@ -1339,18 +1592,21 @@
       }
 
       // Helper: build one list row's HTML
-      function rowHtml(dateStr, type, isProjected, isToday) {
+      function rowHtml(dateStr, type, isProjected, isToday, note = null) {
         const d = new Date(dateStr + 'T00:00:00');
         const thisYear = new Date().getFullYear();
         const yearSuffix = d.getFullYear() !== thisYear ? `, ${d.getFullYear()}` : '';
         const dateMain = `${MONTHS[d.getMonth()]} ${d.getDate()}${yearSuffix}`;
         const dayName  = WEEKDAYS[d.getDay()];
 
-        const isOff    = type === 'off';
-        const workout  = isOff ? null : WORKOUTS.find(w => w.id === type);
-        const iconName = isOff ? 'moon' : (workout ? workout.icon : 'dumbbell');
-        const color    = isOff ? 'amber' : 'purple';
-        const dispName = isOff ? 'Rest Day' : (workout ? workout.name : type);
+        const isOff   = type === 'off';
+        const isOther = type === 'other';
+        const workout  = (isOff || isOther) ? null : WORKOUTS.find(w => w.id === type);
+        const iconName = isOff ? 'moon' : isOther ? 'zap' : (workout ? workout.icon : 'dumbbell');
+        const color    = isOff ? 'amber' : isOther ? 'teal' : 'purple';
+        const dispName = isOff   ? 'Rest Day' :
+                         isOther ? (note || 'Other Activity') :
+                         (workout ? workout.name : type);
 
         const rowCls = [
           'hlist-row',
@@ -1365,7 +1621,7 @@
               <div class="hlist-date-main">${dateMain}</div>
               <div class="hlist-date-sub">${dayName}</div>
             </div>
-            <div class="hlist-name ${color}">${dispName}</div>
+            <div class="hlist-name ${color}">${escapeHtml(dispName)}</div>
           </div>`;
       }
 
@@ -1374,7 +1630,7 @@
       if (entries.length) {
         html += '<div class="hlist">';
         for (const e of entries) {
-          html += rowHtml(e.date, e.type, false, e.date === today);
+          html += rowHtml(e.date, e.type, false, e.date === today, e.note);
         }
         html += '</div>';
       } else {
@@ -1419,6 +1675,26 @@
       if (cachedData) renderHistoryView(cachedData);
     }
 
+    // ── Modal event listeners ───────────────────────────────────────────────
+    // Tapping the dark overlay (outside the sheet) dismisses the modal
+    document.getElementById('other-activity-modal').addEventListener('click', function (e) {
+      if (e.target === this) closeOtherActivityModal();
+    });
+    document.getElementById('modal-cancel-btn').onclick = closeOtherActivityModal;
+    document.getElementById('modal-confirm-btn').onclick = () => {
+      const name = document.getElementById('other-activity-input').value.trim();
+      if (name) logOtherActivity(name);
+    };
+    document.getElementById('other-activity-input').addEventListener('input', function () {
+      document.getElementById('modal-confirm-btn').disabled = this.value.trim() === '';
+    });
+    document.getElementById('other-activity-input').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        const name = this.value.trim();
+        if (name) logOtherActivity(name);
+      }
+    });
+
     // ── Nav event listeners ─────────────────────────────────────────────────
     document.getElementById('nav-today-btn').onclick   = () => switchMainTab('today');
     document.getElementById('nav-history-btn').onclick = () => switchMainTab('history');
@@ -1438,10 +1714,11 @@
       // What specifically happened today (if anything)
       const todayEntry = [...(data.history || [])].reverse().find(e => e.date === today);
       const skippedToday = todayEntry?.type === 'off';
+      const otherToday   = todayEntry?.type === 'other';
 
       // Hero card stays on the completed workout for the rest of the day.
       // Only flip to the next rotation item when a new day begins.
-      const heroWorkout = (actionTakenToday && !skippedToday && todayEntry)
+      const heroWorkout = (actionTakenToday && !skippedToday && !otherToday && todayEntry)
         ? (WORKOUTS.find(w => w.id === todayEntry.type) || nextInRotation)
         : nextInRotation;
 
@@ -1450,59 +1727,75 @@
         undefined, { weekday: 'long', month: 'long', day: 'numeric' }
       );
 
-      // ── Hero card — three distinct states ────────────────────────────────
-      // 'default'  = nothing logged today → Done! + Skip Today visible, Undo hidden
+      // ── Hero card — four distinct states ─────────────────────────────────
+      // 'default'  = nothing logged today → Done! + Skip + Other visible, Undo hidden
       // 'done'     = workout completed today → Undo visible, action buttons hidden
       // 'skipped'  = rest day logged today  → Undo visible, action buttons hidden
+      // 'other'    = other activity logged  → Undo visible, action buttons hidden
       const history = data.history || [];
       // Derive state from todayEntry (the source of truth), not actionTakenToday.
       // actionDate and history can drift out of sync on a partial Supabase write,
       // so using todayEntry prevents a false 'done' state with no actual log entry.
-      const heroState = skippedToday ? 'skipped' : (todayEntry ? 'done' : 'default');
+      const heroState = skippedToday ? 'skipped' : otherToday ? 'other' : (todayEntry ? 'done' : 'default');
       const sugDays = data[heroWorkout.id] ? daysSince(data[heroWorkout.id]) : null;
 
       // Eyebrow label
       document.getElementById('suggestion-eyebrow').textContent =
-        heroState === 'done' ? 'Completed' : heroState === 'skipped' ? 'Day Off' : 'Next Up';
+        heroState === 'done'    ? 'Completed'      :
+        heroState === 'skipped' ? 'Day Off'        :
+        heroState === 'other'   ? 'Other Activity' : 'Next Up';
 
       // Icon — rebuild the inner element so lucide picks up the change each render
       const heroIconWrap = document.getElementById('hero-icon-wrap');
-      const heroIconName = heroState === 'skipped' ? 'moon' : heroWorkout.icon;
-      heroIconWrap.className = 'hero-icon-wrap' + (heroState === 'skipped' ? ' is-rest' : '');
+      const heroIconName =
+        heroState === 'skipped' ? 'moon' :
+        heroState === 'other'   ? 'zap'  : heroWorkout.icon;
+      heroIconWrap.className = 'hero-icon-wrap' +
+        (heroState === 'skipped' ? ' is-rest' : heroState === 'other' ? ' is-other' : '');
       heroIconWrap.innerHTML = `<i data-lucide="${heroIconName}"></i>`;
 
       // Name
       document.getElementById('suggestion-name').textContent =
-        heroState === 'skipped' ? 'Rest Day' : heroWorkout.name;
+        heroState === 'skipped' ? 'Rest Day' :
+        heroState === 'other'   ? (todayEntry?.note || 'Other Activity') :
+        heroWorkout.name;
 
       // Subtitle
       document.getElementById('suggestion-subtitle').textContent =
-        heroState === 'done'    ? 'Completed today' :
-        heroState === 'skipped' ? 'Day off logged'  :
+        heroState === 'done'    ? 'Completed today'       :
+        heroState === 'skipped' ? 'Day off logged'        :
+        heroState === 'other'   ? 'Other activity logged' :
                                    lastDoneText(sugDays, false);
 
       // Buttons — mutually exclusive per state
-      const mainBtn = document.getElementById('main-done-btn');
-      const skipBtn = document.getElementById('skip-btn');
-      const undoBtn = document.getElementById('undo-btn');
+      const mainBtn      = document.getElementById('main-done-btn');
+      const skipBtn      = document.getElementById('skip-btn');
+      const logOtherBtn  = document.getElementById('log-other-btn');
+      const undoBtn      = document.getElementById('undo-btn');
 
-      // Re-enable all three hero buttons: setButtonsDisabled(true) fires at the
-      // start of every action and is never explicitly reversed — render() is the
-      // natural place to restore interactive state after a round-trip completes.
-      mainBtn.disabled = false;
-      skipBtn.disabled = false;
-      undoBtn.disabled = false;
+      // Re-enable all hero buttons: setButtonsDisabled(true) fires at the start of
+      // every action and is never explicitly reversed — render() is the natural
+      // place to restore interactive state after a round-trip completes.
+      mainBtn.disabled     = false;
+      skipBtn.disabled     = false;
+      logOtherBtn.disabled = false;
+      undoBtn.disabled     = false;
 
-      mainBtn.hidden = heroState !== 'default';
-      skipBtn.hidden = heroState !== 'default';
+      mainBtn.hidden     = heroState !== 'default';
+      skipBtn.hidden     = heroState !== 'default';
+      logOtherBtn.hidden = heroState !== 'default';
 
       if (heroState === 'default') {
-        mainBtn.onclick = markDone;
-        skipBtn.onclick = skipToday;
+        mainBtn.onclick    = markDone;
+        skipBtn.onclick    = skipToday;
+        logOtherBtn.onclick = openOtherActivityModal;
         undoBtn.hidden = true;
       } else {
         // Undo button with lucide icon (no iOS emoji arrow)
-        const undoLabel = heroState === 'skipped' ? 'Rest Day' : heroWorkout.name;
+        const undoLabel =
+          heroState === 'skipped' ? 'Rest Day' :
+          heroState === 'other'   ? (todayEntry?.note || 'Other Activity') :
+          heroWorkout.name;
         undoBtn.innerHTML = '';
         const undoIcon = document.createElement('i');
         undoIcon.setAttribute('data-lucide', 'undo-2');

@@ -14,6 +14,12 @@ Warn me before anything that could break the app or lose data — deleting files
 - Before every `git commit` and `git push`, bump the service worker cache version in `sw.js` (wmw-v1 → wmw-v2 → wmw-v3, etc.) so that deployed users always get fresh content immediately after a deploy
 - Always update `README.md` to reflect the current state of the app before committing
 
+## Branches and Pull Requests
+- Branch names must follow the format `ca/<issue-number>-<short-description>` (e.g. `ca/42-test-mode`)
+- When opening a PR, always include "Closes #<issue-number>" in the PR description, where the issue number comes from the branch name
+- If unsure of the issue number, ask before creating the branch
+- If there is no issue number, omit it from both the branch name and PR description
+
 ## Commit Messages
 - One-line summary for small changes (text, style, minor fixes)
 - Detailed multi-paragraph message for significant changes (new features, migrations, refactors)
