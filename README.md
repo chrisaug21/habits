@@ -44,6 +44,10 @@ The rotation is position-based, not time-based — it always picks up where it l
 - **Undo** — reverses the most recent log entry (today's or yesterday's); rolls back the rotation if applicable
 - **Log for yesterday** — each workout row has a link to immediately backfill that workout for yesterday, without affecting the rotation
 - **All Workouts list** — shows all 5 workout types with days since last completed
+- **History view** — accessible via a bottom navigation bar (Today / History tabs)
+  - **Calendar** (default): monthly grid with prev/next month navigation; each day shows a purple workout icon for completed workouts, an amber moon for rest/skip days, a dimmed projected icon for future days based on the rotation, or is empty for past days with no data; today is subtly highlighted
+  - **List**: chronological log of all past entries (newest first), with workout icon, date, day of week, and name; a "Coming Up" section below shows the next 14 projected workouts (dimmed)
+  - Both views are read-only
 - Offline-capable PWA, installable on iPhone home screen
 
 ## Storage
@@ -115,6 +119,6 @@ The service worker (`sw.js`) precaches the Supabase JS client from the CDN along
 
 ## Next Steps
 
-1. Build a history view — calendar or log of past workouts and off days
-2. Improve backtracking — ability to edit or correct past entries beyond yesterday
-3. Visibility into future days / weeks suggestions and goals
+1. Improve backtracking — ability to edit or correct past entries beyond yesterday
+2. Multi-user support with logins and a public guest view
+3. Habit tracking beyond workouts (journaling, water intake, etc.)

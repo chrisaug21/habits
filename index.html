@@ -41,6 +41,7 @@
       --red: #ff5555;
       --orange: #ff9944;
       --green: #3ecf8e;
+      --amber: #f59e0b;
       --red-bg: #2a0f0f;
       --orange-bg: #2a1a0a;
       --green-bg: #0a2018;
@@ -56,14 +57,15 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
       min-height: 100vh;
       min-height: 100dvh;
-      padding: env(safe-area-inset-top, 0) 0 env(safe-area-inset-bottom, 0);
+      padding: env(safe-area-inset-top, 0) 0 0;
       -webkit-font-smoothing: antialiased;
     }
 
     .container {
       max-width: 500px;
       margin: 0 auto;
-      padding: 24px 16px 48px;
+      /* Extra bottom padding so content scrolls above the fixed bottom nav */
+      padding: 24px 16px calc(80px + env(safe-area-inset-bottom, 0px));
     }
 
     /* Header */
@@ -412,10 +414,10 @@
       flex-shrink: 0;
     }
 
-    /* Toast */
+    /* Toast — raised above the bottom nav bar */
     .toast {
       position: fixed;
-      bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+      bottom: calc(72px + env(safe-area-inset-bottom, 0px));
       left: 50%;
       transform: translateX(-50%) translateY(20px);
       background: var(--surface2);
@@ -436,6 +438,290 @@
       transform: translateX(-50%) translateY(0);
       opacity: 1;
     }
+
+    /* ── Bottom Navigation ─────────────────────────────────────────────────── */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      z-index: 50;
+      /* Push visible content above the iPhone home bar */
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    .nav-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 10px 0;
+      min-height: 56px;
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      transition: color 0.15s;
+    }
+
+    .nav-btn.active {
+      color: var(--accent);
+    }
+
+    /* Target both the placeholder <i> and the SVG lucide generates */
+    .nav-btn i,
+    .nav-btn svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    /* ── History view ──────────────────────────────────────────────────────── */
+
+    /* Sub-tab row: Calendar / List toggle */
+    .history-tabs {
+      display: flex;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 4px;
+      margin-bottom: 20px;
+    }
+
+    .htab {
+      flex: 1;
+      padding: 10px;
+      background: none;
+      border: none;
+      border-radius: 10px;
+      color: var(--text-secondary);
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .htab.active {
+      background: var(--surface2);
+      color: var(--accent);
+    }
+
+    /* ── Calendar ──────────────────────────────────────────────────────────── */
+    .cal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .cal-month-label {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .cal-nav-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text-secondary);
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .cal-nav-btn:active {
+      background: var(--surface2);
+      color: var(--text-primary);
+    }
+
+    .cal-nav-btn i,
+    .cal-nav-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 3px;
+    }
+
+    .cal-dow {
+      text-align: center;
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      padding: 2px 0 8px;
+    }
+
+    .cal-day {
+      aspect-ratio: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      border-radius: 8px;
+    }
+
+    .cal-day.is-today {
+      background: rgba(108, 99, 255, 0.12);
+      outline: 1px solid rgba(108, 99, 255, 0.35);
+    }
+
+    /* Day number inside each cell */
+    .cal-day-num {
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      line-height: 1;
+    }
+
+    .cal-day.is-today .cal-day-num {
+      color: var(--text-primary);
+      font-weight: 700;
+    }
+
+    /* Cells with actual logged data get a slightly brighter number */
+    .cal-day.has-workout .cal-day-num,
+    .cal-day.has-rest .cal-day-num {
+      color: var(--text-secondary);
+    }
+
+    /* Small icon inside calendar cells */
+    .cal-icon,
+    .cal-day svg {
+      width: 13px;
+      height: 13px;
+    }
+
+    .cal-day.has-workout .cal-icon,
+    .cal-day.has-workout svg {
+      color: var(--accent);
+    }
+
+    .cal-day.has-rest .cal-icon,
+    .cal-day.has-rest svg {
+      color: var(--amber);
+    }
+
+    /* Projected future days: dimmed icon */
+    .cal-day.is-projected .cal-icon,
+    .cal-day.is-projected svg {
+      color: var(--text-dim);
+      opacity: 0.7;
+    }
+
+    /* Today's un-logged workout: bright white, not dimmed */
+    .cal-day.is-today.is-projected .cal-icon,
+    .cal-day.is-today.is-projected svg {
+      color: var(--text-primary);
+      opacity: 1;
+    }
+
+    /* ── History List ──────────────────────────────────────────────────────── */
+    .hlist {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .hlist-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+
+    .hlist-row.is-today {
+      border-color: rgba(108, 99, 255, 0.4);
+      background: var(--surface2);
+    }
+
+    /* Projected rows are faded */
+    .hlist-row.is-projected {
+      opacity: 0.4;
+    }
+
+    .hlist-icon {
+      flex-shrink: 0;
+      width: 16px;
+      height: 16px;
+      color: var(--text-dim);
+    }
+
+    .hlist-icon.purple { color: var(--accent); }
+    .hlist-icon.amber  { color: var(--amber); }
+
+    .hlist-date {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .hlist-date-main {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.2;
+    }
+
+    .hlist-date-sub {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      margin-top: 1px;
+    }
+
+    .hlist-name {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-align: right;
+      flex-shrink: 0;
+      max-width: 52%;
+    }
+
+    .hlist-name.purple { color: var(--text-primary); }
+    .hlist-name.amber  { color: var(--amber); }
+
+    .hlist-section-label {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      padding: 20px 4px 8px;
+    }
+
+    .hlist-empty {
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      padding: 48px 0 24px;
+    }
   </style>
 </head>
 <body>
@@ -445,28 +731,52 @@
       <div class="date-label" id="date-label"></div>
     </header>
 
-    <div class="suggestion-card" id="suggestion-card">
-      <div class="suggestion-eyebrow">Next Up</div>
-      <div class="suggestion-name" id="suggestion-name"></div>
-      <div class="suggestion-subtitle" id="suggestion-subtitle"></div>
-      <div class="card-actions">
-        <button class="done-btn" id="main-done-btn">Done!</button>
-        <button class="skip-btn" id="skip-btn">Skip Today</button>
-        <button class="undo-btn" id="undo-btn" hidden></button>
+    <!-- ── Today view ─────────────────────────────────────────────────────── -->
+    <div id="view-today">
+      <div class="suggestion-card" id="suggestion-card">
+        <div class="suggestion-eyebrow">Next Up</div>
+        <div class="suggestion-name" id="suggestion-name"></div>
+        <div class="suggestion-subtitle" id="suggestion-subtitle"></div>
+        <div class="card-actions">
+          <button class="done-btn" id="main-done-btn">Done!</button>
+          <button class="skip-btn" id="skip-btn">Skip Today</button>
+          <button class="undo-btn" id="undo-btn" hidden></button>
+        </div>
       </div>
+
+      <div class="tomorrow-preview">
+        <span class="tomorrow-label">Tomorrow</span>
+        <span class="tomorrow-name" id="tomorrow-name"></span>
+      </div>
+
+      <div class="list-header">All Workouts</div>
+      <div class="workout-list" id="workout-list"></div>
     </div>
 
-    <div class="tomorrow-preview">
-      <span class="tomorrow-label">Tomorrow</span>
-      <span class="tomorrow-name" id="tomorrow-name"></span>
+    <!-- ── History view ───────────────────────────────────────────────────── -->
+    <div id="view-history" hidden>
+      <div class="history-tabs">
+        <button class="htab active" id="htab-calendar">Calendar</button>
+        <button class="htab" id="htab-list">List</button>
+      </div>
+      <div id="hview-calendar"></div>
+      <div id="hview-list" hidden></div>
     </div>
-
-    <div class="list-header">All Workouts</div>
-    <div class="workout-list" id="workout-list"></div>
   </div>
 
   <div class="toast" id="toast"></div>
 
+  <!-- ── Bottom Navigation ──────────────────────────────────────────────── -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" id="nav-today-btn">
+      <i data-lucide="dumbbell"></i>
+      <span>Today</span>
+    </button>
+    <button class="nav-btn" id="nav-history-btn">
+      <i data-lucide="calendar"></i>
+      <span>History</span>
+    </button>
+  </nav>
 
   <script>
   // DOMContentLoaded ensures the deferred Supabase CDN script has executed before
@@ -833,8 +1143,258 @@
       }
     }
 
+    // ── History view state ──────────────────────────────────────────────────
+    let cachedData = null;        // last-loaded data, used by history renders
+    let historyViewActive = false;
+    let historySubTab = 'calendar'; // 'calendar' or 'list'
+    let calViewDate = new Date(); // month currently shown in the calendar
+
+    // Convert a Date object → 'YYYY-MM-DD' string (local time)
+    function dateToStr(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    // Build a lookup map: dateStr → last history entry for that date
+    function buildHistoryMap(data) {
+      const map = {};
+      for (const entry of (data.history || [])) {
+        // Later entries override earlier ones for the same date
+        map[entry.date] = entry;
+      }
+      return map;
+    }
+
+    // Project future workouts: starting from today (or the first un-logged day),
+    // assign one rotation workout per calendar day going forward (up to 365 days).
+    // data.rotationIndex already accounts for all past logged workouts.
+    function buildProjectionMap(data) {
+      const histMap = buildHistoryMap(data);
+      const map = {};
+      let rotIdx = data.rotationIndex || 0;
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+
+      for (let i = 0; i <= 365; i++) {
+        const d = new Date(start);
+        d.setDate(d.getDate() + i);
+        const ds = dateToStr(d);
+        // Only project days that have no actual logged data
+        if (!histMap[ds]) {
+          map[ds] = ROTATION[rotIdx % ROTATION.length];
+          rotIdx = (rotIdx + 1) % ROTATION.length;
+        }
+      }
+      return map;
+    }
+
+    // ── Calendar renderer ───────────────────────────────────────────────────
+    function renderCalendar(data) {
+      const container = document.getElementById('hview-calendar');
+      const histMap = buildHistoryMap(data);
+      const projMap = buildProjectionMap(data);
+      const today = todayStr();
+
+      const year  = calViewDate.getFullYear();
+      const month = calViewDate.getMonth(); // 0-indexed
+
+      const MONTH_NAMES = [
+        'January','February','March','April','May','June',
+        'July','August','September','October','November','December',
+      ];
+
+      const firstDayDow = new Date(year, month, 1).getDay();  // 0=Sun
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+      let html = `
+        <div class="cal-header">
+          <button class="cal-nav-btn" id="cal-prev-btn">
+            <i data-lucide="chevron-left"></i>
+          </button>
+          <span class="cal-month-label">${MONTH_NAMES[month]} ${year}</span>
+          <button class="cal-nav-btn" id="cal-next-btn">
+            <i data-lucide="chevron-right"></i>
+          </button>
+        </div>
+        <div class="cal-grid">
+      `;
+
+      // Day-of-week column headers
+      for (const d of ['S','M','T','W','T','F','S']) {
+        html += `<div class="cal-dow">${d}</div>`;
+      }
+
+      // Empty filler cells before the 1st of the month
+      for (let i = 0; i < firstDayDow; i++) {
+        html += '<div class="cal-day"></div>';
+      }
+
+      // One cell per day
+      for (let day = 1; day <= daysInMonth; day++) {
+        const ds = `${year}-${String(month + 1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+        const isToday   = ds === today;
+        const isFuture  = ds > today;
+        const histEntry = histMap[ds];
+        const projId    = projMap[ds]; // set for un-logged days >= today
+
+        const classes = ['cal-day'];
+        if (isToday) classes.push('is-today');
+
+        let iconHtml = '';
+
+        if (histEntry) {
+          // Actual logged data — show the real result
+          if (histEntry.type === 'off') {
+            classes.push('has-rest');
+            iconHtml = '<i class="cal-icon" data-lucide="moon"></i>';
+          } else {
+            classes.push('has-workout');
+            const w = WORKOUTS.find(w => w.id === histEntry.type);
+            if (w) iconHtml = `<i class="cal-icon" data-lucide="${w.icon}"></i>`;
+          }
+        } else if (projId) {
+          // No log yet (today un-actioned or a future date) — show projected
+          classes.push('is-projected');
+          const w = WORKOUTS.find(w => w.id === projId);
+          if (w) iconHtml = `<i class="cal-icon" data-lucide="${w.icon}"></i>`;
+        }
+        // Past days with no data: just the number, no icon
+
+        html += `<div class="${classes.join(' ')}">${iconHtml}<span class="cal-day-num">${day}</span></div>`;
+      }
+
+      html += '</div>';
+      container.innerHTML = html;
+
+      // Month navigation
+      document.getElementById('cal-prev-btn').onclick = () => {
+        calViewDate = new Date(calViewDate.getFullYear(), calViewDate.getMonth() - 1, 1);
+        renderCalendar(data);
+      };
+      document.getElementById('cal-next-btn').onclick = () => {
+        calViewDate = new Date(calViewDate.getFullYear(), calViewDate.getMonth() + 1, 1);
+        renderCalendar(data);
+      };
+
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    // ── History list renderer ───────────────────────────────────────────────
+    function renderHistoryList(data) {
+      const container = document.getElementById('hview-list');
+      const today = todayStr();
+
+      const MONTHS   = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const WEEKDAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+      // Build one row per history entry, most-recent first
+      const entries = [...(data.history || [])].reverse();
+
+      // Build 14 future projected days (starting tomorrow)
+      const projMap = buildProjectionMap(data);
+      const futureRows = [];
+      for (let i = 1; i <= 14; i++) {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() + i);
+        const ds = dateToStr(d);
+        if (projMap[ds]) futureRows.push({ date: ds, type: projMap[ds] });
+      }
+
+      // Helper: build one list row's HTML
+      function rowHtml(dateStr, type, isProjected, isToday) {
+        const d = new Date(dateStr + 'T00:00:00');
+        const thisYear = new Date().getFullYear();
+        const yearSuffix = d.getFullYear() !== thisYear ? `, ${d.getFullYear()}` : '';
+        const dateMain = `${MONTHS[d.getMonth()]} ${d.getDate()}${yearSuffix}`;
+        const dayName  = WEEKDAYS[d.getDay()];
+
+        const isOff    = type === 'off';
+        const workout  = isOff ? null : WORKOUTS.find(w => w.id === type);
+        const iconName = isOff ? 'moon' : (workout ? workout.icon : 'dumbbell');
+        const color    = isOff ? 'amber' : 'purple';
+        const dispName = isOff ? 'Rest Day' : (workout ? workout.name : type);
+
+        const rowCls = [
+          'hlist-row',
+          isProjected ? 'is-projected' : '',
+          isToday     ? 'is-today'     : '',
+        ].filter(Boolean).join(' ');
+
+        return `
+          <div class="${rowCls}">
+            <i class="hlist-icon ${color}" data-lucide="${iconName}"></i>
+            <div class="hlist-date">
+              <div class="hlist-date-main">${dateMain}</div>
+              <div class="hlist-date-sub">${dayName}</div>
+            </div>
+            <div class="hlist-name ${color}">${dispName}</div>
+          </div>`;
+      }
+
+      let html = '';
+
+      if (entries.length) {
+        html += '<div class="hlist">';
+        for (const e of entries) {
+          html += rowHtml(e.date, e.type, false, e.date === today);
+        }
+        html += '</div>';
+      } else {
+        html += '<div class="hlist-empty">No workouts logged yet.</div>';
+      }
+
+      if (futureRows.length) {
+        html += '<div class="hlist-section-label">Coming Up</div>';
+        html += '<div class="hlist">';
+        for (const r of futureRows) {
+          html += rowHtml(r.date, r.type, true, false);
+        }
+        html += '</div>';
+      }
+
+      container.innerHTML = html;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    // Decide which history sub-view to render
+    function renderHistoryView(data) {
+      if (historySubTab === 'calendar') renderCalendar(data);
+      else renderHistoryList(data);
+    }
+
+    // ── Tab switching ───────────────────────────────────────────────────────
+    function switchMainTab(tab) {
+      historyViewActive = tab === 'history';
+      document.getElementById('view-today').hidden   = historyViewActive;
+      document.getElementById('view-history').hidden = !historyViewActive;
+      document.getElementById('nav-today-btn').classList.toggle('active', !historyViewActive);
+      document.getElementById('nav-history-btn').classList.toggle('active', historyViewActive);
+      if (historyViewActive && cachedData) renderHistoryView(cachedData);
+    }
+
+    function switchHistorySubTab(tab) {
+      historySubTab = tab;
+      document.getElementById('htab-calendar').classList.toggle('active', tab === 'calendar');
+      document.getElementById('htab-list').classList.toggle('active', tab === 'list');
+      document.getElementById('hview-calendar').hidden = tab !== 'calendar';
+      document.getElementById('hview-list').hidden     = tab !== 'list';
+      if (cachedData) renderHistoryView(cachedData);
+    }
+
+    // ── Nav event listeners ─────────────────────────────────────────────────
+    document.getElementById('nav-today-btn').onclick   = () => switchMainTab('today');
+    document.getElementById('nav-history-btn').onclick = () => switchMainTab('history');
+    document.getElementById('htab-calendar').onclick   = () => switchHistorySubTab('calendar');
+    document.getElementById('htab-list').onclick       = () => switchHistorySubTab('list');
+
+    // ── Main render ─────────────────────────────────────────────────────────
     async function render(preloadedData = null) {
       const data = preloadedData || await loadData();
+      cachedData = data; // cache so history renderers can access it on-demand
+
       const today = todayStr();
       const yesterday = getYesterdayStr();
       const nextInRotation = getSuggested(data);
@@ -987,6 +1547,9 @@
         row.appendChild(btn);
         list.appendChild(row);
       }
+
+      // If the history view is visible, keep it in sync with the new data
+      if (historyViewActive) renderHistoryView(data);
 
       // Replace all data-lucide placeholder elements with SVG icons
       if (typeof lucide !== 'undefined') lucide.createIcons();
