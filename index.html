@@ -123,29 +123,33 @@
       margin-bottom: 12px;
     }
 
+    /* Hero icon — on its own line, centered, above the workout name */
+    .hero-icon-wrap {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 14px;
+    }
+
+    .hero-icon-wrap i,
+    .hero-icon-wrap svg {
+      width: 48px;
+      height: 48px;
+      color: var(--accent);
+    }
+
+    /* Rest-day moon shown in amber */
+    .hero-icon-wrap.is-rest i,
+    .hero-icon-wrap.is-rest svg {
+      color: var(--amber);
+    }
+
     .suggestion-name {
       font-size: 1.5rem;
       font-weight: 800;
       color: var(--text-primary);
-      line-height: 1.15;
+      line-height: 1.2;
       margin-bottom: 8px;
       letter-spacing: -0.02em;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-    }
-
-    .suggestion-name .hero-icon {
-      display: block;
-      width: 48px;
-      height: 48px;
-      color: var(--accent);
-      flex-shrink: 0;
-      /* align-items:center uses geometric box centers, but the visual center of
-         large cap text sits below the box midpoint due to descender/baseline space.
-         Shift the icon down to optically align with the text's cap-height center. */
-      transform: translateY(8px);
     }
 
     .suggestion-subtitle {
@@ -224,44 +228,69 @@
       background: transparent;
     }
 
-    /* Undo button */
+    /* Undo button — ghost style, comfortable tap target */
     .undo-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
       background: transparent;
-      border: none;
-      color: var(--text-dim);
-      font-size: 0.78rem;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      font-size: 0.85rem;
       font-weight: 600;
       cursor: pointer;
-      padding: 8px 16px;
-      border-radius: 8px;
+      padding: 12px 24px;
+      min-height: 44px;
+      min-width: 180px;
+      border-radius: 12px;
+      transition: color 0.15s, background 0.15s, border-color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .undo-btn i,
+    .undo-btn svg {
+      width: 15px;
+      height: 15px;
+    }
+
+    .undo-btn:active {
+      background: var(--surface);
+      color: var(--text-primary);
+      border-color: var(--text-dim);
+    }
+
+    /* Log for yesterday — ghost button inside each workout row */
+    .log-yesterday-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 9px 13px;
+      min-height: 44px;
+      border-radius: 10px;
+      margin-top: 8px;
       transition: color 0.15s, background 0.15s;
       -webkit-tap-highlight-color: transparent;
       touch-action: manipulation;
     }
 
-    .undo-btn:active {
-      color: var(--text-secondary);
-      background: var(--surface);
-    }
-
-    /* Log for yesterday link inside each workout row */
-    .log-yesterday-link {
-      display: inline-block;
-      background: none;
-      border: none;
-      color: var(--text-dim);
-      font-size: 0.72rem;
-      font-weight: 500;
-      cursor: pointer;
-      padding: 3px 0 0;
-      margin-top: 1px;
-      -webkit-tap-highlight-color: transparent;
-      touch-action: manipulation;
-      text-align: left;
+    .log-yesterday-link i,
+    .log-yesterday-link svg {
+      width: 13px;
+      height: 13px;
+      flex-shrink: 0;
     }
 
     .log-yesterday-link:active {
-      color: var(--text-secondary);
+      background: var(--surface2);
+      color: var(--text-primary);
     }
 
     /* Workout list */
@@ -734,7 +763,10 @@
     <!-- ── Today view ─────────────────────────────────────────────────────── -->
     <div id="view-today">
       <div class="suggestion-card" id="suggestion-card">
-        <div class="suggestion-eyebrow">Next Up</div>
+        <div class="suggestion-eyebrow" id="suggestion-eyebrow">Next Up</div>
+        <div class="hero-icon-wrap" id="hero-icon-wrap">
+          <i data-lucide="dumbbell"></i>
+        </div>
         <div class="suggestion-name" id="suggestion-name"></div>
         <div class="suggestion-subtitle" id="suggestion-subtitle"></div>
         <div class="card-actions">
@@ -1415,48 +1447,56 @@
         undefined, { weekday: 'long', month: 'long', day: 'numeric' }
       );
 
-      // Suggestion card
+      // ── Hero card — three distinct states ────────────────────────────────
+      // 'default'  = nothing logged today → Done! + Skip Today visible, Undo hidden
+      // 'done'     = workout completed today → Undo visible, action buttons hidden
+      // 'skipped'  = rest day logged today  → Undo visible, action buttons hidden
+      const history = data.history || [];
+      const heroState = skippedToday ? 'skipped' : (actionTakenToday ? 'done' : 'default');
       const sugDays = data[heroWorkout.id] ? daysSince(data[heroWorkout.id]) : null;
 
-      // Hero name — icon inline to the left of the text, matching the list row pattern
-      const heroNameEl = document.getElementById('suggestion-name');
-      heroNameEl.innerHTML = '';
-      const heroIconEl = document.createElement('i');
-      heroIconEl.setAttribute('data-lucide', heroWorkout.icon);
-      heroIconEl.className = 'hero-icon';
-      heroNameEl.appendChild(heroIconEl);
-      heroNameEl.appendChild(document.createTextNode(heroWorkout.name));
+      // Eyebrow label
+      document.getElementById('suggestion-eyebrow').textContent =
+        heroState === 'done' ? 'Completed' : heroState === 'skipped' ? 'Day Off' : 'Next Up';
 
-      let subtitleText;
-      if (skippedToday)        subtitleText = 'Day off \u2014 same workout tomorrow';
-      else if (actionTakenToday) subtitleText = 'Completed today';
-      else                       subtitleText = lastDoneText(sugDays, false);
-      document.getElementById('suggestion-subtitle').textContent = subtitleText;
+      // Icon — rebuild the inner element so lucide picks up the change each render
+      const heroIconWrap = document.getElementById('hero-icon-wrap');
+      const heroIconName = heroState === 'skipped' ? 'moon' : heroWorkout.icon;
+      heroIconWrap.className = 'hero-icon-wrap' + (heroState === 'skipped' ? ' is-rest' : '');
+      heroIconWrap.innerHTML = `<i data-lucide="${heroIconName}"></i>`;
 
+      // Name
+      document.getElementById('suggestion-name').textContent =
+        heroState === 'skipped' ? 'Rest Day' : heroWorkout.name;
+
+      // Subtitle
+      document.getElementById('suggestion-subtitle').textContent =
+        heroState === 'done'    ? 'Completed today' :
+        heroState === 'skipped' ? 'Day off logged'  :
+                                   lastDoneText(sugDays, false);
+
+      // Buttons — mutually exclusive per state
       const mainBtn = document.getElementById('main-done-btn');
-      mainBtn.disabled = actionTakenToday;
-      mainBtn.textContent = (actionTakenToday && !skippedToday) ? 'Done Today \u2713' : 'Done!';
-      mainBtn.onclick = actionTakenToday ? null : markDone;
-
       const skipBtn = document.getElementById('skip-btn');
-      skipBtn.disabled = actionTakenToday;
-      skipBtn.textContent = skippedToday ? 'Skipped Today' : 'Skip Today';
-      skipBtn.onclick = actionTakenToday ? null : skipToday;
-
-      // Undo button — visible when the most recent history entry is from today or yesterday
-      const history = data.history || [];
-      const undoCandidate = history.length ? history[history.length - 1] : null;
       const undoBtn = document.getElementById('undo-btn');
-      if (undoCandidate && (undoCandidate.date === today || undoCandidate.date === yesterday)) {
-        const undoName = undoCandidate.type === 'off'
-          ? 'day off'
-          : (WORKOUTS.find(w => w.id === undoCandidate.type)?.name ?? undoCandidate.type);
-        const undoWhen = undoCandidate.date === today ? 'today' : 'yesterday';
-        undoBtn.textContent = `\u21a9 Undo ${undoName} (${undoWhen})`;
+
+      mainBtn.hidden = heroState !== 'default';
+      skipBtn.hidden = heroState !== 'default';
+
+      if (heroState === 'default') {
+        mainBtn.onclick = markDone;
+        skipBtn.onclick = skipToday;
+        undoBtn.hidden = true;
+      } else {
+        // Undo button with lucide icon (no iOS emoji arrow)
+        const undoLabel = heroState === 'skipped' ? 'Rest Day' : heroWorkout.name;
+        undoBtn.innerHTML = '';
+        const undoIcon = document.createElement('i');
+        undoIcon.setAttribute('data-lucide', 'undo-2');
+        undoBtn.appendChild(undoIcon);
+        undoBtn.appendChild(document.createTextNode(`Undo ${undoLabel}`));
         undoBtn.onclick = undoLastEntry;
         undoBtn.hidden = false;
-      } else {
-        undoBtn.hidden = true;
       }
 
       // Tomorrow row — one step ahead of whatever is currently next
@@ -1522,12 +1562,15 @@
         info.appendChild(nameEl);
         info.appendChild(lastEl);
 
-        // "Log for yesterday" link — hidden if this workout was already logged for yesterday
+        // "Log for yesterday" button — hidden if this workout was already logged for yesterday
         const alreadyLoggedYesterday = history.some(e => e.date === yesterday && e.type === w.id);
         if (!alreadyLoggedYesterday) {
           const yLink = document.createElement('button');
           yLink.className = 'log-yesterday-link';
-          yLink.textContent = '\u21a9 Log for yesterday';
+          const yIcon = document.createElement('i');
+          yIcon.setAttribute('data-lucide', 'undo-2');
+          yLink.appendChild(yIcon);
+          yLink.appendChild(document.createTextNode('Log for yesterday'));
           yLink.onclick = () => logYesterday(w.id);
           info.appendChild(yLink);
         }
