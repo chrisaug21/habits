@@ -1394,7 +1394,7 @@
     }
 
     // ── Other Activity helpers ───────────────────────────────────────────────
-    const OTHER_ACTIVITIES_KEY = 'wmw_other_activities';
+    const OTHER_ACTIVITIES_KEY = TEST_MODE ? 'wmw_test_other_activities' : 'wmw_other_activities';
 
     function loadOtherActivities() {
       try {
@@ -1953,7 +1953,8 @@
     if (TEST_MODE) {
       document.getElementById('test-banner').hidden = false;
       document.getElementById('test-reset-btn').onclick = () => {
-        localStorage.removeItem('wmw_test');
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(OTHER_ACTIVITIES_KEY);
         render();
       };
     }
