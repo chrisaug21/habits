@@ -1,7 +1,7 @@
 [build]
   # Inject Supabase credentials from Netlify environment variables into index.html at deploy time.
   # Set SUPABASE_URL and SUPABASE_KEY in: Netlify Dashboard → Site → Environment variables
-  command = "sed -i \"s|%%SUPABASE_URL%%|${SUPABASE_URL}|g; s|%%SUPABASE_KEY%%|${SUPABASE_KEY}|g\" index.html"
+  command = "{ [ -n \"${SUPABASE_URL}\" ] || { echo 'ERROR: SUPABASE_URL is not set'; exit 1; }; } && { [ -n \"${SUPABASE_KEY}\" ] || { echo 'ERROR: SUPABASE_KEY is not set'; exit 1; }; } && sed -i \"s|%%SUPABASE_URL%%|${SUPABASE_URL}|g; s|%%SUPABASE_KEY%%|${SUPABASE_KEY}|g\" index.html"
   publish = "."
 
 [build.environment]
