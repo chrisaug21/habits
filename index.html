@@ -1066,12 +1066,18 @@
       color: var(--text-primary);
     }
 
-    /* Other activity section inside backfill edit view */
+    /* Edit view: flex column so options / note section / actions have consistent gaps */
+    #backfill-edit-view {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Other activity / rest-day note section inside backfill edit view */
     #backfill-other-section {
       display: flex;
       flex-direction: column;
       gap: 10px;
-      margin-top: 2px;
     }
   </style>
 </head>
@@ -1244,7 +1250,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.0.31';
+    const VERSION = '1.0.32';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -1989,14 +1995,23 @@
           // ── Edit existing entry ──────────────────────────────────────────────
           const wasAdvanced = capturedExisting.advanced === true;
 
-          // Locate the entry in the (freshly loaded) history array
-          const idx = capturedExisting._sid != null
-            ? history.findIndex(e => e._sid === capturedExisting._sid)
-            : history.findIndex(e =>
-                e.date === dateStr &&
-                e.type === capturedExisting.type &&
-                !e._sid
-              );
+          // Locate the entry in the (freshly loaded) history array.
+          // For synced entries: match by _sid. For offline entries: search from
+          // the END (findLastIndex semantics) so the most-recent duplicate wins.
+          let idx;
+          if (capturedExisting._sid != null) {
+            idx = history.findIndex(e => e._sid === capturedExisting._sid);
+          } else {
+            idx = -1;
+            for (let i = history.length - 1; i >= 0; i--) {
+              if (history[i].date === dateStr &&
+                  history[i].type === capturedExisting.type &&
+                  !history[i]._sid) {
+                idx = i;
+                break;
+              }
+            }
+          }
 
           if (idx !== -1) {
             history[idx].type     = newType;
@@ -2015,18 +2030,20 @@
           data.history = history;
           await saveData(data);
 
-          // Update the Supabase history row directly (saveData only inserts, not updates)
+          // Update the Supabase history row directly (saveData only inserts, not updates).
+          // Errors are NOT swallowed — they propagate so the UI doesn't falsely report success.
           if (sb && !TEST_MODE && capturedExisting._sid != null) {
-            try {
-              const { error } = await sb.from('history').update({
-                type:     newType,
-                note:     note || null,
-                advanced: shouldAdvance,
-              }).eq('id', capturedExisting._sid);
-              if (error) console.warn('Supabase history update failed:', error);
-            } catch (err) {
-              console.warn('Supabase history update error:', err);
+            console.log(`[backfill] Updating history row id=${capturedExisting._sid}`, { newType, note, shouldAdvance });
+            const { error } = await sb.from('history').update({
+              type:     newType,
+              note:     note || null,
+              advanced: shouldAdvance,
+            }).eq('id', capturedExisting._sid);
+            if (error) {
+              console.error(`[backfill] Supabase UPDATE failed for id=${capturedExisting._sid}:`, error);
+              throw error;
             }
+            console.log(`[backfill] Supabase UPDATE succeeded for id=${capturedExisting._sid}`);
           }
         } else {
           // ── New backfill entry ───────────────────────────────────────────────
@@ -2048,6 +2065,7 @@
         if (newType === 'off'   && note) saveSkipReason(note);
 
         cachedData = data;
+        backfillSaving = false; // clear guard so the programmatic close proceeds
         closeBackfillModal();
 
         // Re-render whichever history sub-view is visible
