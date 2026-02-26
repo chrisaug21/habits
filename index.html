@@ -1244,10 +1244,16 @@
             note: e.note ?? null,
             sequence: data.history.indexOf(e),
           }));
-          const { data: inserted, error: insErr } = await sb.from('history').insert(rows).select('id');
+          const { data: inserted, error: insErr } = await sb.from('history').insert(rows).select('id, sequence');
           if (insErr) throw insErr;
-          // Store the Supabase-assigned IDs back so future saves know these rows exist
-          inserted.forEach((row, i) => { newEntries[i]._sid = row.id; });
+          // Match by sequence rather than array position — insert order is not
+          // guaranteed to be preserved in the returned rows.
+          const insertedBySeq = {};
+          inserted.forEach(row => { insertedBySeq[row.sequence] = row.id; });
+          newEntries.forEach(e => {
+            const seq = data.history.indexOf(e);
+            if (insertedBySeq[seq] !== undefined) e._sid = insertedBySeq[seq];
+          });
           localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         }
         lastSyncedAt = Date.now();
