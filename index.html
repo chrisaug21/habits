@@ -1133,23 +1133,25 @@
         const unsynced = (local.history || []).filter(e => !e._sid);
         if (unsynced.length) {
           // Check whether local state (rotation / actionDate) is ahead of Supabase
-          const { data: remoteState } = await sb.from('state')
+          const { data: remoteState, error: stateReadErr } = await sb.from('state')
             .select('rotation_index,action_date').eq('id', 1).maybeSingle();
-          if (remoteState) {
-            const localRotation  = local.rotationIndex ?? 0;
-            const remoteRotation = remoteState.rotation_index ?? 0;
-            const localAhead =
-              localRotation > remoteRotation ||
-              (localRotation === remoteRotation &&
-               (local.actionDate || '') > (remoteState.action_date || ''));
-            if (localAhead) {
-              const { error: upsertErr } = await sb.from('state').upsert({
-                id: 1,
-                rotation_index: local.rotationIndex ?? 0,
-                action_date:    local.actionDate    ?? null,
-              });
-              if (upsertErr) throw upsertErr;
-            }
+          if (stateReadErr) throw stateReadErr;
+          // Upsert local state when the remote row is missing (null = fresh DB)
+          // OR when local is ahead — rotationIndex is the primary tie-breaker.
+          const localRotation  = local.rotationIndex ?? 0;
+          const remoteRotation = remoteState ? (remoteState.rotation_index ?? 0) : -1;
+          const localAhead =
+            !remoteState ||
+            localRotation > remoteRotation ||
+            (localRotation === remoteRotation &&
+             (local.actionDate || '') > (remoteState.action_date || ''));
+          if (localAhead) {
+            const { error: upsertErr } = await sb.from('state').upsert({
+              id: 1,
+              rotation_index: local.rotationIndex ?? 0,
+              action_date:    local.actionDate    ?? null,
+            });
+            if (upsertErr) throw upsertErr;
           }
           // Insert the unsynced history entries
           const offlineRows = unsynced.map(e => ({
