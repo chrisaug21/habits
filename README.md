@@ -74,7 +74,7 @@ Data is stored in **Supabase** (primary) with **localStorage** (`wmw_v1`) as an 
 | `type` | `text` | Workout ID (`peloton`, `upper_push`, `upper_pull`, `lower`, `yoga`), `off` for a skipped day, or `other` for a free-form activity |
 | `date` | `text` (YYYY-MM-DD) | Date of the logged event |
 | `advanced` | `boolean` | `true` = rotation-advancing (Done! button, or backfill of a workout with no later entries); `false` = non-advancing (Skip, Other Activity, row Done, backfill rest/other or workout with later entries) |
-| `note` | `text` (nullable) | Free-form activity name; set when `type = 'other'`. Add with: `ALTER TABLE history ADD COLUMN note text;` |
+| `note` | `text` (nullable) | Free-form text associated with the entry: the activity name when `type = 'other'`, or an optional reason when `type = 'off'` (e.g. "Sick"). Null for standard rotation workouts. Add with: `ALTER TABLE history ADD COLUMN note text;` |
 | `sequence` | `integer` | Explicit insert order (the entry's index in the history array). Used for sorting instead of `created_at` because batch re-inserts share the same timestamp. Add with: `ALTER TABLE history ADD COLUMN sequence integer;` |
 | `created_at` | `timestamptz` | Set automatically by Supabase; not used for ordering |
 

@@ -1929,24 +1929,43 @@
       const otherInput = document.getElementById('backfill-other-input').value.trim();
       if (backfillSelectedType === 'other' && !otherInput) return;
 
+      // Capture all shared mutable state into locals BEFORE any await so that
+      // closeBackfillModal() (e.g. via an overlay tap during the network call)
+      // cannot race and reset the module-level variables to null mid-save.
+      const capturedDate     = backfillDate;
+      const capturedType     = backfillSelectedType;
+      const capturedExisting = backfillExisting;
+      const capturedNote     = capturedType === 'other'
+        ? String(otherInput).slice(0, MAX_ACTIVITY_LENGTH)
+        : null;
+
       isProcessing = true;
-      const wasEdit    = !!backfillExisting;
-      const capturedExisting = backfillExisting; // capture before closeBackfillModal clears it
+      const wasEdit = !!capturedExisting;
 
       try {
         const data    = await loadData();
         const history = data.history || [];
 
-        const newType = backfillSelectedType;
-        const note    = newType === 'other'
-          ? String(otherInput).slice(0, MAX_ACTIVITY_LENGTH)
-          : null;
-        const dateStr = backfillDate;
+        const newType = capturedType;
+        const note    = capturedNote;
+        const dateStr = capturedDate;
 
         // Rotation advancement: only for workouts, only when this is the most-recent entry
         const isRotationWorkout = !!WORKOUTS.find(w => w.id === newType);
         const hasLaterEntries   = history.some(e => e.date > dateStr);
         const shouldAdvance     = isRotationWorkout && !hasLaterEntries;
+
+        // Helper: recompute per-workout last-done dates from the full history.
+        // Runs after any mutation so data.peloton etc. are never stale.
+        function recomputeLastDone() {
+          for (const w of WORKOUTS) {
+            const maxDate = history
+              .filter(e => e.type === w.id)
+              .reduce((max, e) => (!max || e.date > max) ? e.date : max, null);
+            if (maxDate) data[w.id] = maxDate;
+            else delete data[w.id];
+          }
+        }
 
         if (capturedExisting) {
           // ── Edit existing entry ──────────────────────────────────────────────
@@ -1974,6 +1993,7 @@
           }
           // Never decrement, even if the entry changed from workout → rest/other
 
+          recomputeLastDone();
           data.history = history;
           await saveData(data);
 
@@ -1995,18 +2015,12 @@
           const newEntry = { type: newType, date: dateStr, advanced: shouldAdvance };
           if (note) newEntry.note = note;
 
-          // Keep per-workout last-done date current
-          if (isRotationWorkout) {
-            if (!data[newType] || dateStr > data[newType]) {
-              data[newType] = dateStr;
-            }
-          }
-
           if (shouldAdvance) {
             data.rotationIndex = (data.rotationIndex || 0) + 1;
           }
 
           history.push(newEntry);
+          recomputeLastDone();
           data.history = history;
           await saveData(data);
         }
