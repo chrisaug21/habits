@@ -932,6 +932,40 @@
       background: var(--surface2);
     }
 
+    /* ── Modal icon (moon in Skip Today sheet) ──────────────────────────────── */
+    .modal-icon {
+      display: flex;
+      justify-content: center;
+    }
+    .modal-icon i,
+    .modal-icon svg {
+      width: 32px;
+      height: 32px;
+      color: var(--accent);
+    }
+    .modal-icon.is-rest i,
+    .modal-icon.is-rest svg {
+      color: var(--amber);
+    }
+
+    /* ── History list note (skip reason under Rest Day) ─────────────────────── */
+    .hlist-name-wrap {
+      flex-shrink: 0;
+      max-width: 52%;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+    .hlist-name-wrap .hlist-name {
+      max-width: 100%;
+    }
+    .hlist-note {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      text-align: right;
+      margin-top: 2px;
+    }
+
     /* ── Version stamp ──────────────────────────────────────────────────────── */
     #version-stamp {
       text-align: center;
@@ -1012,6 +1046,23 @@
     </div>
   </div>
 
+  <!-- ── Skip Today Modal ──────────────────────────────────────────────── -->
+  <div class="modal-overlay" id="skip-modal" hidden>
+    <div class="modal-sheet">
+      <div class="modal-icon is-rest">
+        <i data-lucide="moon"></i>
+      </div>
+      <div class="modal-title">Rest Day</div>
+      <div class="modal-chips" id="skip-reason-chips"></div>
+      <input class="modal-input" id="skip-reason-input" type="text"
+             placeholder="Reason (optional)" maxlength="100" autocomplete="off">
+      <div class="modal-actions">
+        <button class="modal-cancel-btn" id="skip-cancel-btn">Cancel</button>
+        <button class="modal-confirm-btn" id="skip-confirm-btn">Skip Today</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Bottom Navigation ──────────────────────────────────────────────── -->
   <nav class="bottom-nav">
     <button class="nav-btn active" id="nav-today-btn">
@@ -1060,7 +1111,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.0.27';
+    const VERSION = '1.0.28';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -1256,17 +1307,54 @@
     }
 
     // "Skip Today" — logs an off day, rotation stays put
-    async function skipToday() {
+    const SKIP_DEFAULTS = ['Sick', 'Travel', 'Vacation', 'Social obligation'];
+
+    function openSkipModal() {
+      const modal    = document.getElementById('skip-modal');
+      const input    = document.getElementById('skip-reason-input');
+      const chipsEl  = document.getElementById('skip-reason-chips');
+
+      const saved = loadSkipReasons();
+      const chips = saved.length ? saved : SKIP_DEFAULTS;
+
+      chipsEl.innerHTML = '';
+      for (const r of chips) {
+        const chip = document.createElement('button');
+        chip.className = 'activity-chip';
+        chip.textContent = r;
+        chip.type = 'button';
+        chip.onclick = () => {
+          input.value = r;
+          setTimeout(() => input.focus(), 50);
+        };
+        chipsEl.appendChild(chip);
+      }
+
+      input.value = '';
+      modal.hidden = false;
+      setTimeout(() => input.focus(), 80);
+    }
+
+    function closeSkipModal() {
+      document.getElementById('skip-modal').hidden = true;
+    }
+
+    async function logSkip(reason) {
       if (isProcessing) return;
       isProcessing = true;
       setButtonsDisabled(true);
       try {
+        closeSkipModal();
         const data = await loadData();
         const today = todayStr();
 
         data.actionDate = today;
         data.history = data.history || [];
-        data.history.push({ type: 'off', date: today, advanced: false });
+        const entry = { type: 'off', date: today, advanced: false };
+        if (reason) entry.note = reason;
+        data.history.push(entry);
+
+        if (reason) saveSkipReason(reason);
 
         await saveData(data);
         render(data);
@@ -1410,6 +1498,7 @@
 
     // ── Other Activity helpers ───────────────────────────────────────────────
     const OTHER_ACTIVITIES_KEY = TEST_MODE ? 'wmw_test_other_activities' : 'wmw_other_activities';
+    const SKIP_REASONS_KEY = STORAGE_KEY + '_skip_reasons';
 
     function loadOtherActivities() {
       try {
@@ -1426,6 +1515,22 @@
       // Remove any existing entry that matches case-insensitively, then prepend
       const deduped = existing.filter(a => a.toLowerCase() !== nameLower);
       localStorage.setItem(OTHER_ACTIVITIES_KEY, JSON.stringify([name, ...deduped].slice(0, 10)));
+    }
+
+    function loadSkipReasons() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(SKIP_REASONS_KEY));
+        if (typeof parsed === 'string') return [parsed];
+        if (Array.isArray(parsed)) return parsed.filter(r => typeof r === 'string');
+        return [];
+      } catch { return []; }
+    }
+
+    function saveSkipReason(reason) {
+      const existing = loadSkipReasons();
+      const reasonLower = reason.toLowerCase();
+      const deduped = existing.filter(r => r.toLowerCase() !== reasonLower);
+      localStorage.setItem(SKIP_REASONS_KEY, JSON.stringify([reason, ...deduped].slice(0, 10)));
     }
 
     function openOtherActivityModal() {
@@ -1680,7 +1785,13 @@
               <div class="hlist-date-main">${dateMain}</div>
               <div class="hlist-date-sub">${dayName}</div>
             </div>
-            <div class="hlist-name ${color}">${escapeHtml(dispName)}</div>
+            ${isOff && note
+              ? `<div class="hlist-name-wrap">
+                   <div class="hlist-name ${color}">${escapeHtml(dispName)}</div>
+                   <div class="hlist-note">${escapeHtml(note)}</div>
+                 </div>`
+              : `<div class="hlist-name ${color}">${escapeHtml(dispName)}</div>`
+            }
           </div>`;
       }
 
@@ -1751,6 +1862,22 @@
       if (e.key === 'Enter') {
         const name = this.value.trim();
         if (name) logOtherActivity(name);
+      }
+    });
+
+    // ── Skip modal event listeners ──────────────────────────────────────────
+    document.getElementById('skip-modal').addEventListener('click', function (e) {
+      if (e.target === this) closeSkipModal();
+    });
+    document.getElementById('skip-cancel-btn').onclick = closeSkipModal;
+    document.getElementById('skip-confirm-btn').onclick = () => {
+      const reason = document.getElementById('skip-reason-input').value.trim() || null;
+      logSkip(reason);
+    };
+    document.getElementById('skip-reason-input').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        const reason = this.value.trim() || null;
+        logSkip(reason);
       }
     });
 
@@ -1846,7 +1973,7 @@
 
       if (heroState === 'default') {
         mainBtn.onclick    = markDone;
-        skipBtn.onclick    = skipToday;
+        skipBtn.onclick    = openSkipModal;
         logOtherBtn.onclick = openOtherActivityModal;
         undoBtn.hidden = true;
       } else {
@@ -1970,6 +2097,7 @@
       document.getElementById('test-reset-btn').onclick = () => {
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem(OTHER_ACTIVITIES_KEY);
+        localStorage.removeItem(SKIP_REASONS_KEY);
         render();
       };
       document.getElementById('test-exit-btn').onclick = toggleTestMode;
