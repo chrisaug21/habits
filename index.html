@@ -2049,13 +2049,14 @@
             history[idx].advanced = shouldAdvance;
             if (note) { history[idx].note = note; }
             else      { delete history[idx].note; }
-          }
 
-          // Advance rotation only if this entry wasn't already counted
-          if (shouldAdvance && !wasAdvanced) {
-            data.rotationIndex = (data.rotationIndex || 0) + 1;
+            // Advance rotation only when the entry was found and mutated,
+            // and only if it wasn't already counted
+            if (shouldAdvance && !wasAdvanced) {
+              data.rotationIndex = (data.rotationIndex || 0) + 1;
+            }
+            // Never decrement, even if the entry changed from workout → rest/other
           }
-          // Never decrement, even if the entry changed from workout → rest/other
 
           recomputeLastDone();
           data.history = history;
