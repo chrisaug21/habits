@@ -88,7 +88,7 @@ The local cache mirrors the Supabase data plus derived fields:
 | `peloton`, `upper_push`, `upper_pull`, `lower`, `yoga` | `string` (YYYY-MM-DD) | Date of last completion per workout type (derived from history) |
 | `rotationIndex` | `number` | Current position in the rotation |
 | `actionDate` | `string` (YYYY-MM-DD) | Locks the hero card for the day |
-| `history` | `array` | Every logged event as `{type, date, advanced, note?}` — `note` is only present for `type: 'other'` entries |
+| `history` | `array` | Every logged event as `{type, date, advanced, note?, _sid?}` — `note` is only present for `type: 'other'` or `type: 'off'` entries with a reason; `_sid` is the Supabase row ID, present only after the entry has been synced — entries written offline have no `_sid` and are pushed to Supabase on the next online load |
 | `wmw_other_activities` (separate key) | `string[]` | Up to 10 most-recently used other activity names, most-recent first, deduplicated case-insensitively |
 | `wmw_v1_skip_reasons` (separate key) | `string[]` | Up to 10 most-recently used skip reasons (e.g. "Sick", "Travel"), most-recent first, deduplicated case-insensitively; shown as chips in the Rest Day modal |
 
