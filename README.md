@@ -49,8 +49,9 @@ The rotation is position-based, not time-based — it always picks up where it l
   - **Calendar** (default): monthly grid with prev/next month navigation; each day shows a purple workout icon for completed workouts, an amber moon for rest/skip days, a teal zap icon for other activities, a dimmed projected icon for future days based on the rotation, or is empty for past days with no data; today is subtly highlighted
   - **List**: chronological log of all past entries (newest first), with workout icon, date, day of week, and name; other activities show the free-form name in teal with a zap icon; rest days show the reason as a muted subtitle if one was entered; a "Coming Up" section below shows the next 14 projected workouts (dimmed)
   - Both views are read-only
-- Offline-capable PWA, installable on iPhone home screen
+- Offline-capable PWA, installable on iPhone home screen; entries logged while offline are automatically synced to Supabase the next time the app loads with a connection
 - **Test mode** — hidden feature; triple-tap the version stamp (bottom of Today screen) or press Alt+Shift+T to toggle; shows an amber banner confirming no real data is affected; uses isolated localStorage keys (`wmw_test`, `wmw_test_other_activities`) and skips all Supabase calls
+- **Sync status** — the version stamp at the bottom of the Today screen shows `synced just now` / `synced Xm ago` / `offline` as a subtle debugging aid; updates after every successful or failed Supabase read/write; resets on every page load
 
 ## Storage
 
@@ -87,7 +88,7 @@ The local cache mirrors the Supabase data plus derived fields:
 | `peloton`, `upper_push`, `upper_pull`, `lower`, `yoga` | `string` (YYYY-MM-DD) | Date of last completion per workout type (derived from history) |
 | `rotationIndex` | `number` | Current position in the rotation |
 | `actionDate` | `string` (YYYY-MM-DD) | Locks the hero card for the day |
-| `history` | `array` | Every logged event as `{type, date, advanced, note?}` — `note` is only present for `type: 'other'` entries |
+| `history` | `array` | Every logged event as `{type, date, advanced, note?, _sid?}` — `note` is only present for `type: 'other'` or `type: 'off'` entries with a reason; `_sid` is the Supabase row ID, present only after the entry has been synced — entries written offline have no `_sid` and are pushed to Supabase on the next online load |
 | `wmw_other_activities` (separate key) | `string[]` | Up to 10 most-recently used other activity names, most-recent first, deduplicated case-insensitively |
 | `wmw_v1_skip_reasons` (separate key) | `string[]` | Up to 10 most-recently used skip reasons (e.g. "Sick", "Travel"), most-recent first, deduplicated case-insensitively; shown as chips in the Rest Day modal |
 
