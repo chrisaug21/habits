@@ -1250,7 +1250,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.0.32';
+    const VERSION = '1.0.33';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -1995,14 +1995,17 @@
           // ── Edit existing entry ──────────────────────────────────────────────
           const wasAdvanced = capturedExisting.advanced === true;
 
-          // Locate the entry in the (freshly loaded) history array.
-          // For synced entries: match by _sid. For offline entries: search from
-          // the END (findLastIndex semantics) so the most-recent duplicate wins.
-          let idx;
+          // Locate the entry in the freshly-loaded history array.
+          // Three-step priority so the lookup never fails silently:
+          //   1. Exact _sid match (normal path for synced entries)
+          //   2. Reverse search by date+type among still-unsynced rows
+          //   3. Reverse search by date+type ignoring _sid (catches entries
+          //      that were offline when opened but got synced by loadData())
+          let idx = -1;
           if (capturedExisting._sid != null) {
             idx = history.findIndex(e => e._sid === capturedExisting._sid);
-          } else {
-            idx = -1;
+          }
+          if (idx === -1) {
             for (let i = history.length - 1; i >= 0; i--) {
               if (history[i].date === dateStr &&
                   history[i].type === capturedExisting.type &&
@@ -2012,7 +2015,35 @@
               }
             }
           }
+          if (idx === -1) {
+            for (let i = history.length - 1; i >= 0; i--) {
+              if (history[i].date === dateStr &&
+                  history[i].type === capturedExisting.type) {
+                idx = i;
+                break;
+              }
+            }
+          }
 
+          // ── CR-2: Supabase UPDATE runs FIRST so localStorage is only mutated
+          //    after the remote write succeeds. If the update fails, throwing here
+          //    leaves localStorage untouched and prevents the "save then revert"
+          //    pattern caused by Supabase overwriting a premature local change.
+          if (sb && !TEST_MODE && capturedExisting._sid != null) {
+            console.log(`[backfill] Updating history row id=${capturedExisting._sid}`, { newType, note, shouldAdvance });
+            const { error } = await sb.from('history').update({
+              type:     newType,
+              note:     note || null,
+              advanced: shouldAdvance,
+            }).eq('id', capturedExisting._sid);
+            if (error) {
+              console.error(`[backfill] Supabase UPDATE failed for id=${capturedExisting._sid}:`, error);
+              throw error;
+            }
+            console.log(`[backfill] Supabase UPDATE succeeded for id=${capturedExisting._sid}`);
+          }
+
+          // Remote confirmed (or offline) — now safe to mutate local state
           if (idx !== -1) {
             history[idx].type     = newType;
             history[idx].advanced = shouldAdvance;
@@ -2029,22 +2060,6 @@
           recomputeLastDone();
           data.history = history;
           await saveData(data);
-
-          // Update the Supabase history row directly (saveData only inserts, not updates).
-          // Errors are NOT swallowed — they propagate so the UI doesn't falsely report success.
-          if (sb && !TEST_MODE && capturedExisting._sid != null) {
-            console.log(`[backfill] Updating history row id=${capturedExisting._sid}`, { newType, note, shouldAdvance });
-            const { error } = await sb.from('history').update({
-              type:     newType,
-              note:     note || null,
-              advanced: shouldAdvance,
-            }).eq('id', capturedExisting._sid);
-            if (error) {
-              console.error(`[backfill] Supabase UPDATE failed for id=${capturedExisting._sid}:`, error);
-              throw error;
-            }
-            console.log(`[backfill] Supabase UPDATE succeeded for id=${capturedExisting._sid}`);
-          }
         } else {
           // ── New backfill entry ───────────────────────────────────────────────
           const newEntry = { type: newType, date: dateStr, advanced: shouldAdvance };
