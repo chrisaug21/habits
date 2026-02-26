@@ -271,38 +271,6 @@
       border-color: var(--text-dim);
     }
 
-    /* Log for yesterday — ghost button inside each workout row */
-    .log-yesterday-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--text-secondary);
-      font-size: 0.75rem;
-      font-weight: 600;
-      cursor: pointer;
-      padding: 9px 13px;
-      min-height: 44px;
-      border-radius: 10px;
-      margin-top: 8px;
-      transition: color 0.15s, background 0.15s;
-      -webkit-tap-highlight-color: transparent;
-      touch-action: manipulation;
-    }
-
-    .log-yesterday-link i,
-    .log-yesterday-link svg {
-      width: 13px;
-      height: 13px;
-      flex-shrink: 0;
-    }
-
-    .log-yesterday-link:active {
-      background: var(--surface2);
-      color: var(--text-primary);
-    }
-
     /* Workout list */
     .list-header {
       font-size: 0.68rem;
@@ -975,6 +943,142 @@
       user-select: none;
       -webkit-user-select: none;
     }
+
+    /* ── Past day tap affordance in calendar ────────────────────────────────── */
+    .cal-day.is-past {
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .cal-day.is-past:active {
+      background: rgba(108, 99, 255, 0.1);
+    }
+
+    /* ── Backfill Modal ──────────────────────────────────────────────────────── */
+    #backfill-sheet {
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .backfill-date-label {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-align: center;
+    }
+
+    /* Scrollable list of 7 selectable options */
+    .backfill-options {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .backfill-option {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      padding: 14px 16px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: left;
+      transition: border-color 0.15s, background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .backfill-option i,
+    .backfill-option svg {
+      width: 18px;
+      height: 18px;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+
+    .backfill-option.selected {
+      border-color: var(--accent);
+      background: rgba(108, 99, 255, 0.1);
+    }
+
+    .backfill-option.selected i,
+    .backfill-option.selected svg {
+      color: var(--accent);
+    }
+
+    .backfill-option.is-rest.selected i,
+    .backfill-option.is-rest.selected svg {
+      color: var(--amber);
+    }
+
+    .backfill-option.is-rest.selected {
+      border-color: var(--amber);
+      background: rgba(245, 158, 11, 0.1);
+    }
+
+    .backfill-option.is-other.selected i,
+    .backfill-option.is-other.selected svg {
+      color: var(--teal);
+    }
+
+    .backfill-option.is-other.selected {
+      border-color: var(--teal);
+      background: rgba(45, 212, 191, 0.08);
+    }
+
+    /* Read-only entry display */
+    .backfill-readonly-entry {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 20px 18px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+    }
+
+    .backfill-readonly-icon i,
+    .backfill-readonly-icon svg {
+      width: 24px;
+      height: 24px;
+      color: var(--accent);
+    }
+
+    .backfill-readonly-icon.is-rest i,
+    .backfill-readonly-icon.is-rest svg {
+      color: var(--amber);
+    }
+
+    .backfill-readonly-icon.is-other i,
+    .backfill-readonly-icon.is-other svg {
+      color: var(--teal);
+    }
+
+    .backfill-readonly-name {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    /* Edit view: flex column so options / note section / actions have consistent gaps */
+    #backfill-edit-view {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Other activity / rest-day note section inside backfill edit view */
+    #backfill-other-section {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
   </style>
 </head>
 <body>
@@ -1063,6 +1167,41 @@
     </div>
   </div>
 
+  <!-- ── Backfill Modal ───────────────────────────────────────────────────── -->
+  <div class="modal-overlay" id="backfill-modal" hidden>
+    <div class="modal-sheet" id="backfill-sheet">
+      <div class="backfill-date-label" id="backfill-date-label"></div>
+
+      <!-- Read-only view (shown when entry already exists) -->
+      <div id="backfill-readonly" hidden>
+        <div class="backfill-readonly-entry">
+          <div class="backfill-readonly-icon" id="backfill-readonly-icon">
+            <i data-lucide="dumbbell"></i>
+          </div>
+          <div class="backfill-readonly-name" id="backfill-readonly-name"></div>
+        </div>
+        <div class="modal-actions" style="margin-top:4px">
+          <button class="modal-cancel-btn" id="backfill-ro-close-btn">Close</button>
+          <button class="modal-confirm-btn" id="backfill-edit-btn">Edit</button>
+        </div>
+      </div>
+
+      <!-- Edit / new-entry view -->
+      <div id="backfill-edit-view">
+        <div class="backfill-options" id="backfill-options"></div>
+        <div id="backfill-other-section" hidden>
+          <div class="modal-chips" id="backfill-other-chips"></div>
+          <input class="modal-input" id="backfill-other-input" type="text"
+                 placeholder="Activity name…" maxlength="100" autocomplete="off">
+        </div>
+        <div class="modal-actions">
+          <button class="modal-cancel-btn" id="backfill-cancel-btn">Cancel</button>
+          <button class="modal-confirm-btn" id="backfill-confirm-btn" disabled>Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Bottom Navigation ──────────────────────────────────────────────── -->
   <nav class="bottom-nav">
     <button class="nav-btn active" id="nav-today-btn">
@@ -1111,7 +1250,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.0.30';
+    const VERSION = '1.0.33';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -1343,7 +1482,7 @@
         const el = document.getElementById(id);
         if (el) el.disabled = disabled;
       });
-      document.querySelectorAll('.row-done-btn, .log-yesterday-link').forEach(el => {
+      document.querySelectorAll('.row-done-btn').forEach(el => {
         el.disabled = disabled;
       });
     }
@@ -1502,37 +1641,6 @@
       }
     }
 
-    // Log for yesterday — adds a history entry for yesterday without touching the rotation
-    async function logYesterday(type) {
-      if (isProcessing) return;
-      isProcessing = true;
-      setButtonsDisabled(true);
-      try {
-        const data = await loadData();
-        const yesterday = getYesterdayStr();
-
-        if (type !== 'off') {
-          // Only update the last-done date if yesterday is more recent than what's stored
-          const current = data[type];
-          if (!current || yesterday > current) {
-            data[type] = yesterday;
-          }
-        }
-
-        data.history = data.history || [];
-        data.history.push({ type, date: yesterday, advanced: false });
-
-        await saveData(data);
-        render(data);
-        const name = type === 'off'
-          ? 'Day off'
-          : (WORKOUTS.find(w => w.id === type)?.name ?? type);
-        showToast(`${name} \u2014 logged for yesterday`);
-      } finally {
-        isProcessing = false;
-      }
-    }
-
     // Row-level done — marks a specific workout without affecting the rotation
     async function markRowDone(id) {
       if (isProcessing) return;
@@ -1660,6 +1768,337 @@
     }
     // ────────────────────────────────────────────────────────────────────────
 
+    // ── Backfill Modal ───────────────────────────────────────────────────────
+    // Lets the user log or edit a workout/rest/other for any past day.
+
+    // All 7 selectable options shown in the modal
+    const BACKFILL_OPTIONS = [
+      ...WORKOUTS.map(w => ({ id: w.id, name: w.name, icon: w.icon, color: 'purple' })),
+      { id: 'off',   name: 'Rest Day',       icon: 'moon', color: 'amber' },
+      { id: 'other', name: 'Other Activity', icon: 'zap',  color: 'teal'  },
+    ];
+
+    const BF_WEEKDAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const BF_MONTHS   = ['January','February','March','April','May','June',
+                         'July','August','September','October','November','December'];
+
+    let backfillDate     = null;  // 'YYYY-MM-DD' being edited
+    let backfillExisting = null;  // existing history entry object, or null
+    let backfillSelectedType = null; // currently selected option id
+    let backfillSaving   = false; // true while confirmBackfill is awaiting
+
+    function openBackfillModal(dateStr) {
+      backfillDate = dateStr;
+
+      // Find the most-recent logged entry for this date
+      const history = cachedData ? (cachedData.history || []) : [];
+      backfillExisting = [...history].reverse().find(e => e.date === dateStr) || null;
+
+      // Build the date label: "Wednesday, February 19"
+      const d = new Date(dateStr + 'T00:00:00');
+      document.getElementById('backfill-date-label').textContent =
+        `${BF_WEEKDAYS[d.getDay()]}, ${BF_MONTHS[d.getMonth()]} ${d.getDate()}`;
+
+      if (backfillExisting) {
+        // Entry exists — open in read-only mode
+        _showBackfillReadonly(backfillExisting);
+      } else {
+        // No entry — open straight into edit/new mode
+        backfillSelectedType = null;
+        _showBackfillEdit(null);
+      }
+
+      document.getElementById('backfill-modal').hidden = false;
+    }
+
+    function closeBackfillModal() {
+      if (backfillSaving) return; // don't dismiss while a save is in flight
+      document.getElementById('backfill-modal').hidden = true;
+      backfillDate     = null;
+      backfillExisting = null;
+      backfillSelectedType = null;
+    }
+
+    function _showBackfillReadonly(entry) {
+      document.getElementById('backfill-readonly').hidden  = false;
+      document.getElementById('backfill-edit-view').hidden = true;
+
+      const isOff   = entry.type === 'off';
+      const isOther = entry.type === 'other';
+      const workout = (!isOff && !isOther) ? WORKOUTS.find(w => w.id === entry.type) : null;
+
+      const iconName   = isOff ? 'moon' : isOther ? 'zap' : (workout ? workout.icon : 'dumbbell');
+      const displayName = isOff   ? (entry.note || 'Rest Day') :
+                          isOther ? (entry.note || 'Other Activity') :
+                          (workout ? workout.name : entry.type);
+
+      const iconEl = document.getElementById('backfill-readonly-icon');
+      iconEl.className = 'backfill-readonly-icon' +
+        (isOff ? ' is-rest' : isOther ? ' is-other' : '');
+      iconEl.innerHTML = `<i data-lucide="${iconName}"></i>`;
+      document.getElementById('backfill-readonly-name').textContent = displayName;
+
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    function _showBackfillEdit(preselectedType) {
+      document.getElementById('backfill-readonly').hidden  = true;
+      document.getElementById('backfill-edit-view').hidden = false;
+
+      backfillSelectedType = preselectedType;
+      _renderBackfillOptions(preselectedType);
+
+      // Pre-fill the note input when editing an existing rest-day or other-activity entry
+      const otherInput = document.getElementById('backfill-other-input');
+      if ((preselectedType === 'other' || preselectedType === 'off') && backfillExisting?.note) {
+        otherInput.value = backfillExisting.note;
+      } else {
+        otherInput.value = '';
+      }
+
+      _updateBackfillOtherSection(preselectedType === 'other' || preselectedType === 'off', preselectedType);
+      _updateBackfillConfirmBtn();
+    }
+
+    function _renderBackfillOptions(selectedType) {
+      const container = document.getElementById('backfill-options');
+      container.innerHTML = '';
+
+      for (const opt of BACKFILL_OPTIONS) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'backfill-option' +
+          (opt.color === 'amber' ? ' is-rest'  : '') +
+          (opt.color === 'teal'  ? ' is-other' : '') +
+          (opt.id === selectedType ? ' selected' : '');
+        btn.dataset.type = opt.id;
+
+        const iconEl = document.createElement('i');
+        iconEl.setAttribute('data-lucide', opt.icon);
+        const nameEl = document.createElement('span');
+        nameEl.textContent = opt.name;
+        btn.appendChild(iconEl);
+        btn.appendChild(nameEl);
+
+        btn.onclick = () => _selectBackfillOption(opt.id);
+        container.appendChild(btn);
+      }
+
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    function _selectBackfillOption(type) {
+      backfillSelectedType = type;
+
+      // Toggle selected class on all option buttons
+      document.querySelectorAll('.backfill-option').forEach(btn => {
+        btn.classList.toggle('selected', btn.dataset.type === type);
+      });
+
+      _updateBackfillOtherSection(type === 'other' || type === 'off', type);
+      _updateBackfillConfirmBtn();
+    }
+
+    function _updateBackfillOtherSection(show, type) {
+      const section = document.getElementById('backfill-other-section');
+      const input   = document.getElementById('backfill-other-input');
+      section.hidden = !show;
+      if (show) {
+        // Placeholder and chips differ by type
+        if (type === 'off') {
+          input.placeholder = 'Reason (optional)';
+          const saved = loadSkipReasons();
+          const suggestions = saved.length ? saved : SKIP_DEFAULTS;
+          const chipsEl = document.getElementById('backfill-other-chips');
+          chipsEl.innerHTML = '';
+          for (const r of suggestions) {
+            const chip = document.createElement('button');
+            chip.className = 'activity-chip';
+            chip.textContent = r;
+            chip.type = 'button';
+            chip.onclick = () => {
+              input.value = r;
+              setTimeout(() => input.focus(), 50);
+            };
+            chipsEl.appendChild(chip);
+          }
+        } else {
+          input.placeholder = 'Activity name (optional)';
+          const chipsEl = document.getElementById('backfill-other-chips');
+          chipsEl.innerHTML = '';
+          for (const a of loadOtherActivities()) {
+            const chip = document.createElement('button');
+            chip.className = 'activity-chip';
+            chip.textContent = a;
+            chip.type = 'button';
+            chip.onclick = () => {
+              input.value = a;
+              setTimeout(() => input.focus(), 50);
+            };
+            chipsEl.appendChild(chip);
+          }
+        }
+        setTimeout(() => input.focus(), 80);
+      }
+    }
+
+    function _updateBackfillConfirmBtn() {
+      const btn = document.getElementById('backfill-confirm-btn');
+      btn.disabled = !backfillSelectedType;
+    }
+
+    async function confirmBackfill() {
+      if (!backfillDate || !backfillSelectedType || isProcessing) return;
+      const otherInput = document.getElementById('backfill-other-input').value.trim();
+
+      // Capture all shared mutable state into locals BEFORE any await so that
+      // closeBackfillModal() (e.g. via an overlay tap during the network call)
+      // cannot race and reset the module-level variables to null mid-save.
+      const capturedDate     = backfillDate;
+      const capturedType     = backfillSelectedType;
+      const capturedExisting = backfillExisting;
+      // Note is optional for both Rest Day and Other Activity; null if not entered
+      const capturedNote     = (capturedType === 'other' || capturedType === 'off') && otherInput
+        ? String(otherInput).slice(0, MAX_ACTIVITY_LENGTH)
+        : null;
+
+      isProcessing  = true;
+      backfillSaving = true;
+      const wasEdit = !!capturedExisting;
+
+      try {
+        const data    = await loadData();
+        const history = data.history || [];
+
+        const newType = capturedType;
+        const note    = capturedNote;
+        const dateStr = capturedDate;
+
+        // Rotation advancement: only for workouts, only when this is the most-recent entry
+        const isRotationWorkout = !!WORKOUTS.find(w => w.id === newType);
+        const hasLaterEntries   = history.some(e => e.date > dateStr);
+        const shouldAdvance     = isRotationWorkout && !hasLaterEntries;
+
+        // Helper: recompute per-workout last-done dates from the full history.
+        // Runs after any mutation so data.peloton etc. are never stale.
+        function recomputeLastDone() {
+          for (const w of WORKOUTS) {
+            const maxDate = history
+              .filter(e => e.type === w.id)
+              .reduce((max, e) => (!max || e.date > max) ? e.date : max, null);
+            if (maxDate) data[w.id] = maxDate;
+            else delete data[w.id];
+          }
+        }
+
+        if (capturedExisting) {
+          // ── Edit existing entry ──────────────────────────────────────────────
+          const wasAdvanced = capturedExisting.advanced === true;
+
+          // Locate the entry in the freshly-loaded history array.
+          // Three-step priority so the lookup never fails silently:
+          //   1. Exact _sid match (normal path for synced entries)
+          //   2. Reverse search by date+type among still-unsynced rows
+          //   3. Reverse search by date+type ignoring _sid (catches entries
+          //      that were offline when opened but got synced by loadData())
+          let idx = -1;
+          if (capturedExisting._sid != null) {
+            idx = history.findIndex(e => e._sid === capturedExisting._sid);
+          }
+          if (idx === -1) {
+            for (let i = history.length - 1; i >= 0; i--) {
+              if (history[i].date === dateStr &&
+                  history[i].type === capturedExisting.type &&
+                  !history[i]._sid) {
+                idx = i;
+                break;
+              }
+            }
+          }
+          if (idx === -1) {
+            for (let i = history.length - 1; i >= 0; i--) {
+              if (history[i].date === dateStr &&
+                  history[i].type === capturedExisting.type) {
+                idx = i;
+                break;
+              }
+            }
+          }
+
+          // ── CR-2: Supabase UPDATE runs FIRST so localStorage is only mutated
+          //    after the remote write succeeds. If the update fails, throwing here
+          //    leaves localStorage untouched and prevents the "save then revert"
+          //    pattern caused by Supabase overwriting a premature local change.
+          if (sb && !TEST_MODE && capturedExisting._sid != null) {
+            console.log(`[backfill] Updating history row id=${capturedExisting._sid}`, { newType, note, shouldAdvance });
+            const { error } = await sb.from('history').update({
+              type:     newType,
+              note:     note || null,
+              advanced: shouldAdvance,
+            }).eq('id', capturedExisting._sid);
+            if (error) {
+              console.error(`[backfill] Supabase UPDATE failed for id=${capturedExisting._sid}:`, error);
+              throw error;
+            }
+            console.log(`[backfill] Supabase UPDATE succeeded for id=${capturedExisting._sid}`);
+          }
+
+          // Remote confirmed (or offline) — now safe to mutate local state
+          if (idx !== -1) {
+            history[idx].type     = newType;
+            history[idx].advanced = shouldAdvance;
+            if (note) { history[idx].note = note; }
+            else      { delete history[idx].note; }
+          }
+
+          // Advance rotation only if this entry wasn't already counted
+          if (shouldAdvance && !wasAdvanced) {
+            data.rotationIndex = (data.rotationIndex || 0) + 1;
+          }
+          // Never decrement, even if the entry changed from workout → rest/other
+
+          recomputeLastDone();
+          data.history = history;
+          await saveData(data);
+        } else {
+          // ── New backfill entry ───────────────────────────────────────────────
+          const newEntry = { type: newType, date: dateStr, advanced: shouldAdvance };
+          if (note) newEntry.note = note;
+
+          if (shouldAdvance) {
+            data.rotationIndex = (data.rotationIndex || 0) + 1;
+          }
+
+          history.push(newEntry);
+          recomputeLastDone();
+          data.history = history;
+          await saveData(data);
+        }
+
+        // Keep suggestion chip lists up to date
+        if (newType === 'other' && note) saveOtherActivities(note);
+        if (newType === 'off'   && note) saveSkipReason(note);
+
+        cachedData = data;
+        backfillSaving = false; // clear guard so the programmatic close proceeds
+        closeBackfillModal();
+
+        // Re-render whichever history sub-view is visible
+        renderCalendar(data);
+        if (historyViewActive && historySubTab === 'list') renderHistoryList(data);
+
+        const displayName = newType === 'off'   ? 'Rest day' :
+                            newType === 'other'  ? (note || 'Other activity') :
+                            (WORKOUTS.find(w => w.id === newType)?.name ?? newType);
+        showToast(wasEdit ? `${displayName} updated` : `${displayName} logged`);
+
+      } finally {
+        isProcessing  = false;
+        backfillSaving = false;
+      }
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
     // ── History view state ──────────────────────────────────────────────────
     let cachedData = null;        // last-loaded data, used by history renders
     let historyViewActive = false;
@@ -1756,8 +2195,11 @@
         const histEntry = histMap[ds];
         const projId    = projMap[ds]; // set for un-logged days >= today
 
+        const isPast = ds < today;
+
         const classes = ['cal-day'];
-        if (isToday) classes.push('is-today');
+        if (isToday)  classes.push('is-today');
+        if (isPast)   classes.push('is-past');
 
         let iconHtml = '';
 
@@ -1782,11 +2224,23 @@
         }
         // Past days with no data: just the number, no icon
 
-        html += `<div class="${classes.join(' ')}">${iconHtml}<span class="cal-day-num">${day}</span></div>`;
+        const dateAttr = isPast ? ` data-date="${ds}" role="button" tabindex="0"` : '';
+        html += `<div class="${classes.join(' ')}"${dateAttr}>${iconHtml}<span class="cal-day-num">${day}</span></div>`;
       }
 
       html += '</div>';
       container.innerHTML = html;
+
+      // Past-day tap or keyboard activation → open backfill modal
+      container.querySelectorAll('.cal-day.is-past[data-date]').forEach(cell => {
+        cell.addEventListener('click', () => openBackfillModal(cell.dataset.date));
+        cell.addEventListener('keydown', e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openBackfillModal(cell.dataset.date);
+          }
+        });
+      });
 
       // Month navigation
       document.getElementById('cal-prev-btn').onclick = () => {
@@ -1951,6 +2405,30 @@
       }
     });
 
+    // ── Backfill modal event listeners ──────────────────────────────────────
+    document.getElementById('backfill-modal').addEventListener('click', function (e) {
+      if (e.target === this) closeBackfillModal();
+    });
+    document.getElementById('backfill-ro-close-btn').onclick = closeBackfillModal;
+    document.getElementById('backfill-edit-btn').onclick = () => {
+      _showBackfillEdit(backfillExisting ? backfillExisting.type : null);
+    };
+    document.getElementById('backfill-cancel-btn').onclick = () => {
+      if (backfillExisting) {
+        // Return to read-only view instead of closing
+        _showBackfillReadonly(backfillExisting);
+      } else {
+        closeBackfillModal();
+      }
+    };
+    document.getElementById('backfill-confirm-btn').onclick = confirmBackfill;
+    document.getElementById('backfill-other-input').addEventListener('input', _updateBackfillConfirmBtn);
+    document.getElementById('backfill-other-input').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !document.getElementById('backfill-confirm-btn').disabled) {
+        confirmBackfill();
+      }
+    });
+
     // ── Nav event listeners ─────────────────────────────────────────────────
     document.getElementById('nav-today-btn').onclick   = () => switchMainTab('today');
     document.getElementById('nav-history-btn').onclick = () => switchMainTab('history');
@@ -1963,7 +2441,6 @@
       cachedData = data; // cache so history renderers can access it on-demand
 
       const today = todayStr();
-      const yesterday = getYesterdayStr();
       const nextInRotation = getSuggested(data);
       const actionTakenToday = data.actionDate === today;
 
@@ -2123,19 +2600,6 @@
 
         info.appendChild(nameEl);
         info.appendChild(lastEl);
-
-        // "Log for yesterday" button — hidden if this workout was already logged for yesterday
-        const alreadyLoggedYesterday = history.some(e => e.date === yesterday && e.type === w.id);
-        if (!alreadyLoggedYesterday) {
-          const yLink = document.createElement('button');
-          yLink.className = 'log-yesterday-link';
-          const yIcon = document.createElement('i');
-          yIcon.setAttribute('data-lucide', 'undo-2');
-          yLink.appendChild(yIcon);
-          yLink.appendChild(document.createTextNode('Log for yesterday'));
-          yLink.onclick = () => logYesterday(w.id);
-          info.appendChild(yLink);
-        }
 
         const pill = document.createElement('span');
         pill.className = 'days-pill ' + pillClass(days, doneToday);

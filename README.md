@@ -43,12 +43,11 @@ The rotation is position-based, not time-based — it always picks up where it l
 - **Skip Today** — opens a "Rest Day" modal with an optional reason field and suggestion chips (defaults: Sick, Travel, Vacation, Social obligation); recent reasons are saved and shown as chips on future skips; logs an off day without advancing the rotation; reason appears as a subtitle in the history list
 - **Log Other Activity** — opens a modal to record a free-form activity (e.g. "Morning walk", "Swim"); does not advance the rotation; stores recent activities in `wmw_other_activities` for quick re-selection
 - **Undo** — reverses the most recent log entry (today's or yesterday's); rolls back the rotation if applicable
-- **Log for yesterday** — each workout row has a link to immediately backfill that workout for yesterday, without affecting the rotation
 - **All Workouts list** — shows all 5 workout types with days since last completed
 - **History view** — accessible via a bottom navigation bar (Today / History tabs)
-  - **Calendar** (default): monthly grid with prev/next month navigation; each day shows a purple workout icon for completed workouts, an amber moon for rest/skip days, a teal zap icon for other activities, a dimmed projected icon for future days based on the rotation, or is empty for past days with no data; today is subtly highlighted
+  - **Calendar** (default): monthly grid with prev/next month navigation; each day shows a purple workout icon for completed workouts, an amber moon for rest/skip days, a teal zap icon for other activities, a dimmed projected icon for future days based on the rotation, or is empty for past days with no data; today is subtly highlighted; all past days are tappable to log or edit an entry for that day
   - **List**: chronological log of all past entries (newest first), with workout icon, date, day of week, and name; other activities show the free-form name in teal with a zap icon; rest days show the reason as a muted subtitle if one was entered; a "Coming Up" section below shows the next 14 projected workouts (dimmed)
-  - Both views are read-only
+- **Backfill / edit past days** — tap any past day in the calendar to open the Backfill modal; if the day has an existing entry it opens read-only (with an Edit button to switch into edit mode); if the day has no entry it opens directly in edit mode; options are all 5 rotation workouts, Rest Day, and Other Activity (with the same chips/input as the main Log Other Activity flow); confirms insert a new history row or update an existing one; rotation is advanced by 1 only when logging a workout as the most-recent entry, and is never decremented
 - Offline-capable PWA, installable on iPhone home screen; entries logged while offline are automatically synced to Supabase the next time the app loads with a connection
 - **Test mode** — hidden feature; triple-tap the version stamp (bottom of Today screen) or press Alt+Shift+T to toggle; shows an amber banner confirming no real data is affected; uses isolated localStorage keys (`wmw_test`, `wmw_test_other_activities`) and skips all Supabase calls
 - **Sync status** — the version stamp at the bottom of the Today screen shows `synced just now` / `synced Xm ago` / `offline` as a subtle debugging aid; updates after every successful or failed Supabase read/write; resets on every page load
@@ -74,8 +73,8 @@ Data is stored in **Supabase** (primary) with **localStorage** (`wmw_v1`) as an 
 | `id` | auto | Primary key |
 | `type` | `text` | Workout ID (`peloton`, `upper_push`, `upper_pull`, `lower`, `yoga`), `off` for a skipped day, or `other` for a free-form activity |
 | `date` | `text` (YYYY-MM-DD) | Date of the logged event |
-| `advanced` | `boolean` | `true` = rotation-advancing (Done! button); `false` = non-advancing (Skip, Other Activity, row Done, Log for yesterday) |
-| `note` | `text` (nullable) | Free-form activity name; only set when `type = 'other'`. Add with: `ALTER TABLE history ADD COLUMN note text;` |
+| `advanced` | `boolean` | `true` = rotation-advancing (Done! button, or backfill of a workout with no later entries); `false` = non-advancing (Skip, Other Activity, row Done, backfill rest/other or workout with later entries) |
+| `note` | `text` (nullable) | Free-form text associated with the entry: the activity name when `type = 'other'`, or an optional reason when `type = 'off'` (e.g. "Sick"). Null for standard rotation workouts. Add with: `ALTER TABLE history ADD COLUMN note text;` |
 | `sequence` | `integer` | Explicit insert order (the entry's index in the history array). Used for sorting instead of `created_at` because batch re-inserts share the same timestamp. Add with: `ALTER TABLE history ADD COLUMN sequence integer;` |
 | `created_at` | `timestamptz` | Set automatically by Supabase; not used for ordering |
 
@@ -137,6 +136,5 @@ The service worker (`sw.js`) precaches the Supabase JS client from the CDN along
 
 ## Next Steps
 
-1. Improve backtracking — ability to edit or correct past entries beyond yesterday
-2. Multi-user support with logins and a public guest view
-3. Habit tracking beyond workouts (journaling, water intake, etc.)
+1. Multi-user support with logins and a public guest view
+2. Habit tracking beyond workouts (journaling, water intake, etc.)
