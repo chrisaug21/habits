@@ -49,8 +49,9 @@ The rotation is position-based, not time-based — it always picks up where it l
   - **Calendar** (default): monthly grid with prev/next month navigation; each day shows a purple workout icon for completed workouts, an amber moon for rest/skip days, a teal zap icon for other activities, a dimmed projected icon for future days based on the rotation, or is empty for past days with no data; today is subtly highlighted
   - **List**: chronological log of all past entries (newest first), with workout icon, date, day of week, and name; other activities show the free-form name in teal with a zap icon; rest days show the reason as a muted subtitle if one was entered; a "Coming Up" section below shows the next 14 projected workouts (dimmed)
   - Both views are read-only
-- Offline-capable PWA, installable on iPhone home screen
+- Offline-capable PWA, installable on iPhone home screen; entries logged while offline are automatically synced to Supabase the next time the app loads with a connection
 - **Test mode** — hidden feature; triple-tap the version stamp (bottom of Today screen) or press Alt+Shift+T to toggle; shows an amber banner confirming no real data is affected; uses isolated localStorage keys (`wmw_test`, `wmw_test_other_activities`) and skips all Supabase calls
+- **Sync status** — the version stamp at the bottom of the Today screen shows `synced just now` / `synced Xm ago` / `offline` as a subtle debugging aid; updates after every successful or failed Supabase read/write; resets on every page load
 
 ## Storage
 

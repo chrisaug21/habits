@@ -1111,7 +1111,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.0.29';
+    const VERSION = '1.0.30';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -1124,6 +1124,46 @@
         catch { return {}; }
       }
       try {
+        // ── Offline sync ────────────────────────────────────────────────────────
+        // Entries written while offline have no _sid — they were saved to
+        // localStorage only. Push them to Supabase before the normal read so
+        // they are not silently overwritten by stale remote state.
+        let local = {};
+        try { local = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch {}
+        const unsynced = (local.history || []).filter(e => !e._sid);
+        if (unsynced.length) {
+          // Check whether local state (rotation / actionDate) is ahead of Supabase
+          const { data: remoteState } = await sb.from('state')
+            .select('rotation_index,action_date').eq('id', 1).maybeSingle();
+          if (remoteState) {
+            const localAhead =
+              (local.rotationIndex ?? 0) > (remoteState.rotation_index ?? 0) ||
+              (local.actionDate || '') > (remoteState.action_date || '');
+            if (localAhead) {
+              await sb.from('state').upsert({
+                id: 1,
+                rotation_index: local.rotationIndex ?? 0,
+                action_date:    local.actionDate    ?? null,
+              });
+            }
+          }
+          // Insert the unsynced history entries
+          const offlineRows = unsynced.map(e => ({
+            type:     e.type,
+            date:     e.date,
+            advanced: e.advanced ?? true,
+            note:     e.note ?? null,
+            sequence: (local.history || []).indexOf(e),
+          }));
+          const { data: inserted, error: insErr } = await sb.from('history')
+            .insert(offlineRows).select('id');
+          if (!insErr && inserted) {
+            inserted.forEach((row, i) => { unsynced[i]._sid = row.id; });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(local));
+          }
+        }
+        // ────────────────────────────────────────────────────────────────────────
+
         const [stateRes, historyRes] = await Promise.all([
           sb.from('state').select('*').eq('id', 1).maybeSingle(),
           // Order by sequence (explicit insert order) rather than created_at so that
@@ -1150,10 +1190,15 @@
           }
         }
 
+        lastSyncedAt = Date.now();
+        syncOffline  = false;
+        updateSyncStamp();
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); // keep local cache fresh
         return data;
       } catch (err) {
         console.warn('Supabase read failed, falling back to localStorage:', err);
+        syncOffline = true;
+        updateSyncStamp();
         try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
         catch { return {}; }
       }
@@ -1197,8 +1242,13 @@
           inserted.forEach((row, i) => { newEntries[i]._sid = row.id; });
           localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         }
+        lastSyncedAt = Date.now();
+        syncOffline  = false;
+        updateSyncStamp();
       } catch (err) {
         console.warn('Supabase write failed (data saved locally):', err);
+        syncOffline = true;
+        updateSyncStamp();
       }
     }
 
@@ -1269,6 +1319,8 @@
     // (via try/finally). Any tap that arrives during a network round-trip hits
     // the guard and returns immediately — no duplicate mutations.
     let isProcessing = false;
+    let lastSyncedAt = null;  // Date.now() timestamp of last successful Supabase sync
+    let syncOffline  = false; // true if the last Supabase attempt failed
 
     function setButtonsDisabled(disabled) {
       ['main-done-btn', 'skip-btn', 'log-other-btn', 'undo-btn'].forEach(id => {
@@ -2106,8 +2158,20 @@
     }
     // ────────────────────────────────────────────────────────────────────────
 
-    // ── Version stamp ─────────────────────────────────────────────────────────
-    document.getElementById('version-stamp').textContent = 'v' + VERSION;
+    // ── Version stamp + sync status ───────────────────────────────────────────
+    function updateSyncStamp() {
+      const el = document.getElementById('version-stamp');
+      let status = '';
+      if (syncOffline) {
+        status = 'offline';
+      } else if (lastSyncedAt !== null) {
+        const secsAgo = Math.floor((Date.now() - lastSyncedAt) / 1000);
+        status = secsAgo < 60 ? 'synced just now' : `synced ${Math.floor(secsAgo / 60)}m ago`;
+      }
+      el.textContent = status ? `v${VERSION} · ${status}` : `v${VERSION}`;
+    }
+    updateSyncStamp();
+    setInterval(updateSyncStamp, 30_000);
 
     function toggleTestMode() {
       const url = new URL(window.location.href);
