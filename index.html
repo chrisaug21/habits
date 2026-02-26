@@ -2097,6 +2097,7 @@
       document.getElementById('test-reset-btn').onclick = () => {
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem(OTHER_ACTIVITIES_KEY);
+        localStorage.removeItem(SKIP_REASONS_KEY);
         render();
       };
       document.getElementById('test-exit-btn').onclick = toggleTestMode;
