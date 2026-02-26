@@ -1779,6 +1779,7 @@
     let backfillDate     = null;  // 'YYYY-MM-DD' being edited
     let backfillExisting = null;  // existing history entry object, or null
     let backfillSelectedType = null; // currently selected option id
+    let backfillSaving   = false; // true while confirmBackfill is awaiting
 
     function openBackfillModal(dateStr) {
       backfillDate = dateStr;
@@ -1805,6 +1806,7 @@
     }
 
     function closeBackfillModal() {
+      if (backfillSaving) return; // don't dismiss while a save is in flight
       document.getElementById('backfill-modal').hidden = true;
       backfillDate     = null;
       backfillExisting = null;
@@ -1820,7 +1822,7 @@
       const workout = (!isOff && !isOther) ? WORKOUTS.find(w => w.id === entry.type) : null;
 
       const iconName   = isOff ? 'moon' : isOther ? 'zap' : (workout ? workout.icon : 'dumbbell');
-      const displayName = isOff   ? 'Rest Day' :
+      const displayName = isOff   ? (entry.note || 'Rest Day') :
                           isOther ? (entry.note || 'Other Activity') :
                           (workout ? workout.name : entry.type);
 
@@ -1954,7 +1956,8 @@
         ? String(otherInput).slice(0, MAX_ACTIVITY_LENGTH)
         : null;
 
-      isProcessing = true;
+      isProcessing  = true;
+      backfillSaving = true;
       const wasEdit = !!capturedExisting;
 
       try {
@@ -2057,7 +2060,8 @@
         showToast(wasEdit ? `${displayName} updated` : `${displayName} logged`);
 
       } finally {
-        isProcessing = false;
+        isProcessing  = false;
+        backfillSaving = false;
       }
     }
     // ────────────────────────────────────────────────────────────────────────
@@ -2187,16 +2191,22 @@
         }
         // Past days with no data: just the number, no icon
 
-        const dateAttr = isPast ? ` data-date="${ds}"` : '';
+        const dateAttr = isPast ? ` data-date="${ds}" role="button" tabindex="0"` : '';
         html += `<div class="${classes.join(' ')}"${dateAttr}>${iconHtml}<span class="cal-day-num">${day}</span></div>`;
       }
 
       html += '</div>';
       container.innerHTML = html;
 
-      // Past-day tap → open backfill modal
+      // Past-day tap or keyboard activation → open backfill modal
       container.querySelectorAll('.cal-day.is-past[data-date]').forEach(cell => {
         cell.addEventListener('click', () => openBackfillModal(cell.dataset.date));
+        cell.addEventListener('keydown', e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openBackfillModal(cell.dataset.date);
+          }
+        });
       });
 
       // Month navigation
