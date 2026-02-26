@@ -1143,11 +1143,12 @@
               (localRotation === remoteRotation &&
                (local.actionDate || '') > (remoteState.action_date || ''));
             if (localAhead) {
-              await sb.from('state').upsert({
+              const { error: upsertErr } = await sb.from('state').upsert({
                 id: 1,
                 rotation_index: local.rotationIndex ?? 0,
                 action_date:    local.actionDate    ?? null,
               });
+              if (upsertErr) throw upsertErr;
             }
           }
           // Insert the unsynced history entries
@@ -1160,15 +1161,14 @@
           }));
           const { data: inserted, error: insErr } = await sb.from('history')
             .insert(offlineRows).select('id, sequence');
-          if (!insErr && inserted) {
-            // Match by sequence rather than array position — insert order is not
-            // guaranteed to be preserved in the returned rows.
-            inserted.forEach(row => {
-              const match = unsynced.find((_, i) => offlineRows[i].sequence === row.sequence);
-              if (match) match._sid = row.id;
-            });
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(local));
-          }
+          if (insErr) throw insErr;
+          // Match by sequence rather than array position — insert order is not
+          // guaranteed to be preserved in the returned rows.
+          inserted.forEach(row => {
+            const match = unsynced.find((_, i) => offlineRows[i].sequence === row.sequence);
+            if (match) match._sid = row.id;
+          });
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(local));
         }
         // ────────────────────────────────────────────────────────────────────────
 
