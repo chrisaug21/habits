@@ -1840,15 +1840,15 @@
       backfillSelectedType = preselectedType;
       _renderBackfillOptions(preselectedType);
 
-      // Pre-fill "other activity" input if editing an existing other entry
+      // Pre-fill the note input when editing an existing rest-day or other-activity entry
       const otherInput = document.getElementById('backfill-other-input');
-      if (preselectedType === 'other' && backfillExisting?.note) {
+      if ((preselectedType === 'other' || preselectedType === 'off') && backfillExisting?.note) {
         otherInput.value = backfillExisting.note;
       } else {
         otherInput.value = '';
       }
 
-      _updateBackfillOtherSection(preselectedType === 'other');
+      _updateBackfillOtherSection(preselectedType === 'other' || preselectedType === 'off', preselectedType);
       _updateBackfillConfirmBtn();
     }
 
@@ -1887,47 +1887,61 @@
         btn.classList.toggle('selected', btn.dataset.type === type);
       });
 
-      _updateBackfillOtherSection(type === 'other');
+      _updateBackfillOtherSection(type === 'other' || type === 'off', type);
       _updateBackfillConfirmBtn();
     }
 
-    function _updateBackfillOtherSection(show) {
+    function _updateBackfillOtherSection(show, type) {
       const section = document.getElementById('backfill-other-section');
+      const input   = document.getElementById('backfill-other-input');
       section.hidden = !show;
       if (show) {
-        // Repopulate chips from saved other-activity list
-        const chipsEl = document.getElementById('backfill-other-chips');
-        chipsEl.innerHTML = '';
-        for (const a of loadOtherActivities()) {
-          const chip = document.createElement('button');
-          chip.className = 'activity-chip';
-          chip.textContent = a;
-          chip.type = 'button';
-          chip.onclick = () => {
-            document.getElementById('backfill-other-input').value = a;
-            _updateBackfillConfirmBtn();
-            setTimeout(() => document.getElementById('backfill-other-input').focus(), 50);
-          };
-          chipsEl.appendChild(chip);
+        // Placeholder and chips differ by type
+        if (type === 'off') {
+          input.placeholder = 'Reason (optional)';
+          const saved = loadSkipReasons();
+          const suggestions = saved.length ? saved : SKIP_DEFAULTS;
+          const chipsEl = document.getElementById('backfill-other-chips');
+          chipsEl.innerHTML = '';
+          for (const r of suggestions) {
+            const chip = document.createElement('button');
+            chip.className = 'activity-chip';
+            chip.textContent = r;
+            chip.type = 'button';
+            chip.onclick = () => {
+              input.value = r;
+              setTimeout(() => input.focus(), 50);
+            };
+            chipsEl.appendChild(chip);
+          }
+        } else {
+          input.placeholder = 'Activity name (optional)';
+          const chipsEl = document.getElementById('backfill-other-chips');
+          chipsEl.innerHTML = '';
+          for (const a of loadOtherActivities()) {
+            const chip = document.createElement('button');
+            chip.className = 'activity-chip';
+            chip.textContent = a;
+            chip.type = 'button';
+            chip.onclick = () => {
+              input.value = a;
+              setTimeout(() => input.focus(), 50);
+            };
+            chipsEl.appendChild(chip);
+          }
         }
-        setTimeout(() => document.getElementById('backfill-other-input').focus(), 80);
+        setTimeout(() => input.focus(), 80);
       }
     }
 
     function _updateBackfillConfirmBtn() {
       const btn = document.getElementById('backfill-confirm-btn');
-      if (!backfillSelectedType) { btn.disabled = true; return; }
-      if (backfillSelectedType === 'other') {
-        btn.disabled = document.getElementById('backfill-other-input').value.trim() === '';
-      } else {
-        btn.disabled = false;
-      }
+      btn.disabled = !backfillSelectedType;
     }
 
     async function confirmBackfill() {
       if (!backfillDate || !backfillSelectedType || isProcessing) return;
       const otherInput = document.getElementById('backfill-other-input').value.trim();
-      if (backfillSelectedType === 'other' && !otherInput) return;
 
       // Capture all shared mutable state into locals BEFORE any await so that
       // closeBackfillModal() (e.g. via an overlay tap during the network call)
@@ -1935,7 +1949,8 @@
       const capturedDate     = backfillDate;
       const capturedType     = backfillSelectedType;
       const capturedExisting = backfillExisting;
-      const capturedNote     = capturedType === 'other'
+      // Note is optional for both Rest Day and Other Activity; null if not entered
+      const capturedNote     = (capturedType === 'other' || capturedType === 'off') && otherInput
         ? String(otherInput).slice(0, MAX_ACTIVITY_LENGTH)
         : null;
 
@@ -2025,8 +2040,9 @@
           await saveData(data);
         }
 
-        // Keep other-activity chip list up to date
+        // Keep suggestion chip lists up to date
         if (newType === 'other' && note) saveOtherActivities(note);
+        if (newType === 'off'   && note) saveSkipReason(note);
 
         cachedData = data;
         closeBackfillModal();
