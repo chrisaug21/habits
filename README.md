@@ -134,6 +134,10 @@ Requires `apple-touch-icon.png` (180×180 PNG, generated from `icon.svg`) for a 
 
 The service worker (`sw.js`) precaches the Supabase JS client from the CDN alongside the app's own files. This means the app loads correctly offline after the first visit — no network request to the CDN needed.
 
+## Known Issues
+
+- **Backfill entries overwriting each other** (issue #24 follow-up): when multiple backfill entries are logged for different past days in the same session, only the most recent one may appear in history. Diagnostic `console.log` statements have been added around the Supabase INSERT path (`[backfill]`, `[saveData]`, `[loadData]` prefixes) to capture sequence values and error details. Root cause is under investigation.
+
 ## Next Steps
 
 1. Multi-user support with logins and a public guest view
