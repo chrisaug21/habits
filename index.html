@@ -1250,7 +1250,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.0.35';
+    const VERSION = '1.0.36';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -1292,13 +1292,19 @@
             });
             if (upsertErr) throw upsertErr;
           }
-          // Insert the unsynced history entries
-          const offlineRows = unsynced.map(e => ({
+          // Insert the unsynced history entries.
+          // Query the current max sequence first so offline rows never collide
+          // with gaps left by undo deletions (same fix as in saveData).
+          const { data: maxSeqRow, error: maxSeqErr } = await sb.from('history')
+            .select('sequence').order('sequence', { ascending: false }).limit(1).maybeSingle();
+          if (maxSeqErr) throw maxSeqErr;
+          const offlineBase = (maxSeqRow?.sequence ?? -1) + 1;
+          const offlineRows = unsynced.map((e, i) => ({
             type:     e.type,
             date:     e.date,
             advanced: e.advanced ?? true,
             note:     e.note ?? null,
-            sequence: (local.history || []).indexOf(e),
+            sequence: offlineBase + i,
           }));
           console.log('[loadData] Offline sync — inserting unsynced rows:', offlineRows.map(r => ({ type: r.type, date: r.date, sequence: r.sequence })));
           const { data: inserted, error: insErr } = await sb.from('history')
@@ -1334,6 +1340,9 @@
         const data = {
           rotationIndex: state.rotation_index ?? 0,
           actionDate:    state.action_date   ?? null,
+          // Track the highest sequence value currently in Supabase so new inserts
+          // always use max + 1, even when undo has left gaps in the sequence column.
+          _maxSeq: historyRows.reduce((m, r) => Math.max(m, r.sequence ?? -1), -1),
           history: historyRows.map(r => ({ type: r.type, date: r.date, advanced: r.advanced, note: r.note ?? undefined, _sid: r.id })),
         };
 
@@ -1380,15 +1389,17 @@
         // Insert only new entries — those not yet synced (no _sid means never written to Supabase)
         const newEntries = (data.history || []).filter(e => !e._sid);
         if (newEntries.length) {
-          // sequence = the entry's position in the full history array, so ordering
-          // by sequence always reproduces insertion order even across batch inserts
-          // that share the same created_at timestamp.
-          const rows = newEntries.map(e => ({
+          // Base sequence = max existing Supabase sequence + 1, so new inserts
+          // never collide with gaps left by undo deletions. _maxSeq is set by
+          // loadData when reading from Supabase; fall back to synced-entry count
+          // for the rare case where data came from the localStorage fallback.
+          const baseSeq = (typeof data._maxSeq === 'number' ? data._maxSeq : data.history.filter(e => e._sid).length - 1) + 1;
+          const rows = newEntries.map((e, i) => ({
             type: e.type,
             date: e.date,
             advanced: e.advanced ?? true,
             note: e.note ?? null,
-            sequence: data.history.indexOf(e),
+            sequence: baseSeq + i,
           }));
           console.log('[saveData] Inserting rows into Supabase:', rows.map(r => ({ type: r.type, date: r.date, sequence: r.sequence })));
           const { data: inserted, error: insErr } = await sb.from('history').insert(rows).select('id, sequence');
@@ -1397,14 +1408,15 @@
             throw insErr;
           }
           console.log('[saveData] Supabase INSERT succeeded:', inserted);
-          // Match by sequence rather than array position — insert order is not
-          // guaranteed to be preserved in the returned rows.
+          // Match returned rows by sequence value — insert order is not guaranteed.
           const insertedBySeq = {};
           inserted.forEach(row => { insertedBySeq[row.sequence] = row.id; });
-          newEntries.forEach(e => {
-            const seq = data.history.indexOf(e);
+          newEntries.forEach((e, i) => {
+            const seq = baseSeq + i;
             if (insertedBySeq[seq] !== undefined) e._sid = insertedBySeq[seq];
           });
+          // Keep _maxSeq current so subsequent saves in the same session are correct.
+          data._maxSeq = baseSeq + newEntries.length - 1;
           localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         }
         lastSyncedAt = Date.now();
