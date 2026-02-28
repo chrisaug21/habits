@@ -1250,7 +1250,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.0.36';
+    const VERSION = '1.0.37';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -1337,12 +1337,17 @@
         const state = stateRes.data || {};
         const historyRows = historyRes.data || [];
 
+        // _maxSeq must be the true highest sequence in Supabase so new inserts
+        // always use max + 1. Take the max of (a) what Supabase just returned
+        // and (b) what localStorage already recorded — guards against read-after-
+        // write timing where a just-inserted row hasn't appeared in SELECT yet.
+        const supabaseMaxSeq = historyRows.reduce((m, r) => Math.max(m, r.sequence ?? -1), -1);
+        const localMaxSeq    = typeof local._maxSeq === 'number' ? local._maxSeq : -1;
+
         const data = {
           rotationIndex: state.rotation_index ?? 0,
           actionDate:    state.action_date   ?? null,
-          // Track the highest sequence value currently in Supabase so new inserts
-          // always use max + 1, even when undo has left gaps in the sequence column.
-          _maxSeq: historyRows.reduce((m, r) => Math.max(m, r.sequence ?? -1), -1),
+          _maxSeq: Math.max(supabaseMaxSeq, localMaxSeq),
           history: historyRows.map(r => ({ type: r.type, date: r.date, advanced: r.advanced, note: r.note ?? undefined, _sid: r.id })),
         };
 
@@ -1351,6 +1356,20 @@
           if (type !== 'off' && (!data[type] || date > data[type])) {
             data[type] = date;
           }
+        }
+
+        // Guard against read-after-write timing: if localStorage holds entries
+        // that were already synced (_sid set) but didn't appear in this SELECT
+        // result, re-append them so they aren't silently lost when we overwrite
+        // localStorage below. Entries absent from Supabase with no _sid are
+        // handled by the offline-sync path above, not here.
+        const supabaseSids = new Set(historyRows.map(r => r.id));
+        const missed = (local.history || []).filter(e => e._sid && !supabaseSids.has(e._sid));
+        if (missed.length) {
+          console.warn('[loadData] Supabase SELECT missed', missed.length,
+            'recently-synced entries — re-appending from localStorage:',
+            missed.map(e => ({ type: e.type, date: e.date, _sid: e._sid })));
+          data.history = [...data.history, ...missed];
         }
 
         lastSyncedAt = Date.now();
