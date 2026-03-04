@@ -1,8 +1,8 @@
 # What's My Workout?
 
-A single-file mobile-first PWA that follows a fixed workout rotation and tells you what's next.
+A mobile-first PWA that follows a fixed workout rotation and tells you what's next.
 
-**Current version: 1.0.39**
+**Current version: 1.0.40**
 
 Live at: https://habits.chrisaug.com
 
@@ -105,6 +105,18 @@ When test mode is active (`?test=true` in the URL), the app writes to separate k
 
 **Migration note:** when migrating localStorage to a database, check for both the production keys (`wmw_v1`, `wmw_other_activities`, `wmw_v1_skip_reasons`) and the test keys (`wmw_test`, `wmw_test_other_activities`, `wmw_test_skip_reasons`). The test keys can be safely discarded — they contain no real user data.
 
+## File structure
+
+| File | Purpose |
+|---|---|
+| `index.html` | App shell — HTML markup only |
+| `style.css` | All CSS styles |
+| `app.js` | All JavaScript — app logic, Supabase calls, service worker registration |
+| `sw.js` | Service worker — precaching and offline support |
+| `manifest.json` | PWA manifest |
+| `netlify.toml` | Build command (injects Supabase credentials) and scheduled keep-alive function |
+| `netlify/functions/keep-alive.js` | Daily Supabase ping to prevent free-tier pause |
+
 ## Deployment
 
 This is a static site deployed on Netlify. The Supabase credentials are **not** stored in the source code — they are injected at deploy time from Netlify environment variables.
@@ -120,11 +132,11 @@ Set these in **Netlify Dashboard → Your site → Site configuration → Enviro
 
 ### How it works
 
-`netlify.toml` defines a one-line build command that uses `sed` to replace the `%%SUPABASE_URL%%` and `%%SUPABASE_KEY%%` placeholder tokens in `index.html` with the real values before Netlify serves the site. The source file always contains the placeholder tokens — the real credentials only exist inside the deployed build.
+`netlify.toml` defines a one-line build command that uses `sed` to replace the `%%SUPABASE_URL%%` and `%%SUPABASE_KEY%%` placeholder tokens in `app.js` with the real values before Netlify serves the site. The source file always contains the placeholder tokens — the real credentials only exist inside the deployed build.
 
 ### Local development
 
-For local testing, temporarily replace the placeholder tokens in `index.html` with your actual credentials, but **do not commit that change**. Restore the placeholders before pushing.
+For local testing, temporarily replace the placeholder tokens in `app.js` with your actual credentials, but **do not commit that change**. Restore the placeholders before pushing.
 
 ### Keep-alive function
 
@@ -134,7 +146,7 @@ For local testing, temporarily replace the placeholder tokens in `index.html` wi
 
 Requires `apple-touch-icon.png` (180×180 PNG, generated from `icon.svg`) for a proper home screen icon on iOS. Until added, iOS uses a page screenshot as the icon.
 
-The service worker (`sw.js`) precaches the Supabase JS client from the CDN alongside the app's own files. This means the app loads correctly offline after the first visit — no network request to the CDN needed.
+The service worker (`sw.js`) precaches `index.html`, `style.css`, `app.js`, and the Supabase JS client from the CDN. This means the app loads correctly offline after the first visit — no network request to the CDN needed.
 
 ## Next Steps
 
