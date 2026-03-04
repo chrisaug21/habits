@@ -1250,7 +1250,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.0.37';
+    const VERSION = '1.0.38';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -2011,6 +2011,12 @@
         const data    = await loadData();
         const history = data.history || [];
 
+        // Re-look-up the entry from freshly-loaded history so _sid and advanced
+        // are never stale from when the modal was opened (fixes second-edit bug).
+        const liveExisting = capturedExisting
+          ? ([...history].reverse().find(e => e.date === capturedDate) || capturedExisting)
+          : null;
+
         const newType = capturedType;
         const note    = capturedNote;
         const dateStr = capturedDate;
@@ -2034,7 +2040,7 @@
 
         if (capturedExisting) {
           // ── Edit existing entry ──────────────────────────────────────────────
-          const wasAdvanced = capturedExisting.advanced === true;
+          const wasAdvanced = liveExisting.advanced === true;
 
           // Locate the entry in the freshly-loaded history array.
           // Three-step priority so the lookup never fails silently:
@@ -2043,8 +2049,8 @@
           //   3. Reverse search by date+type ignoring _sid (catches entries
           //      that were offline when opened but got synced by loadData())
           let idx = -1;
-          if (capturedExisting._sid != null) {
-            idx = history.findIndex(e => e._sid === capturedExisting._sid);
+          if (liveExisting._sid != null) {
+            idx = history.findIndex(e => e._sid === liveExisting._sid);
           }
           if (idx === -1) {
             for (let i = history.length - 1; i >= 0; i--) {
@@ -2070,18 +2076,18 @@
           //    after the remote write succeeds. If the update fails, throwing here
           //    leaves localStorage untouched and prevents the "save then revert"
           //    pattern caused by Supabase overwriting a premature local change.
-          if (sb && !TEST_MODE && capturedExisting._sid != null) {
-            console.log(`[backfill] Updating history row id=${capturedExisting._sid}`, { newType, note, shouldAdvance });
+          if (sb && !TEST_MODE && liveExisting._sid != null) {
+            console.log(`[backfill] Updating history row id=${liveExisting._sid}`, { newType, note, shouldAdvance });
             const { error } = await sb.from('history').update({
               type:     newType,
               note:     note || null,
               advanced: shouldAdvance,
-            }).eq('id', capturedExisting._sid);
+            }).eq('id', liveExisting._sid);
             if (error) {
-              console.error(`[backfill] Supabase UPDATE failed for id=${capturedExisting._sid}:`, error);
+              console.error(`[backfill] Supabase UPDATE failed for id=${liveExisting._sid}:`, error);
               throw error;
             }
-            console.log(`[backfill] Supabase UPDATE succeeded for id=${capturedExisting._sid}`);
+            console.log(`[backfill] Supabase UPDATE succeeded for id=${liveExisting._sid}`);
           }
 
           // Remote confirmed (or offline) — now safe to mutate local state
