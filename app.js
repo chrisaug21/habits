@@ -33,7 +33,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.0.43';
+    const VERSION = '1.0.44';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -940,7 +940,9 @@
     // ── History view state ──────────────────────────────────────────────────
     let cachedData = null;        // last-loaded data, used by history renders
     let historyViewActive = false;
+    let statsViewActive = false;
     let historySubTab = 'calendar'; // 'calendar' or 'list'
+    let statsRange = '30'; // '30' or 'all'
     let calViewDate = new Date(); // month currently shown in the calendar
 
     // Convert a Date object → 'YYYY-MM-DD' string (local time)
@@ -1188,14 +1190,175 @@
       else renderHistoryList(data);
     }
 
+    // ── Stats view ─────────────────────────────────────────────────────────
+    function renderStatsView(data) {
+      const container = document.getElementById('stats-content');
+      const history   = data.history || [];
+
+      // Only advancing (real workout) entries count for all stats.
+      const advancing = history.filter(e => e.advanced === true);
+
+      // ── Determine the filtered set for range-dependent stats ──────────────
+      // "Last 30 Days" includes today through 29 days ago (30 days inclusive).
+      const today = todayStr();
+      let rangeEntries;
+      if (statsRange === '30') {
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - 29);
+        const cutoffStr = cutoff.getFullYear() + '-' +
+          String(cutoff.getMonth() + 1).padStart(2, '0') + '-' +
+          String(cutoff.getDate()).padStart(2, '0');
+        rangeEntries = advancing.filter(e => e.date >= cutoffStr);
+      } else {
+        rangeEntries = advancing.slice();
+      }
+
+      // ── Empty state ───────────────────────────────────────────────────────
+      if (advancing.length === 0) {
+        container.innerHTML = '<div class="stats-empty">No workouts logged yet</div>';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+        return;
+      }
+
+      // ── 1. Total workouts ─────────────────────────────────────────────────
+      const totalWorkouts = rangeEntries.length;
+
+      // ── 2. Streaks ────────────────────────────────────────────────────────
+      // NOTE: Streaks are ALWAYS computed from the full history regardless of
+      // the selected range toggle. A streak that began 45 days ago must still
+      // show correctly when "Last 30 Days" is selected.
+      const advancingDates = new Set(advancing.map(e => e.date));
+
+      // Current streak: consecutive days ending today (or yesterday if nothing
+      // logged today) where an advancing workout was logged.
+      function computeCurrentStreak() {
+        const cursor = new Date();
+        // If nothing logged today, start from yesterday
+        if (!advancingDates.has(todayStr())) cursor.setDate(cursor.getDate() - 1);
+        let streak = 0;
+        while (true) {
+          const dateStr = cursor.getFullYear() + '-' +
+            String(cursor.getMonth() + 1).padStart(2, '0') + '-' +
+            String(cursor.getDate()).padStart(2, '0');
+          if (!advancingDates.has(dateStr)) break;
+          streak++;
+          cursor.setDate(cursor.getDate() - 1);
+        }
+        return streak;
+      }
+
+      // Longest streak: longest consecutive calendar-day run in all history.
+      function computeLongestStreak() {
+        if (advancingDates.size === 0) return 0;
+        const sorted = Array.from(advancingDates).sort();
+        let best = 1, run = 1;
+        for (let i = 1; i < sorted.length; i++) {
+          const prev = new Date(sorted[i - 1] + 'T00:00:00');
+          const curr = new Date(sorted[i]     + 'T00:00:00');
+          const diff = (curr - prev) / 86400000;
+          if (diff === 1) { run++; best = Math.max(best, run); }
+          else run = 1;
+        }
+        return best;
+      }
+
+      const currentStreak = computeCurrentStreak();
+      const longestStreak = computeLongestStreak();
+
+      // ── 3. Consistency % ──────────────────────────────────────────────────
+      const distinctDays = new Set(rangeEntries.map(e => e.date)).size;
+      let denominator;
+      if (statsRange === '30') {
+        denominator = 30;
+      } else {
+        // All Time: days from first-ever logged workout to today (inclusive)
+        const allDates = advancing.map(e => e.date).sort();
+        const first = new Date(allDates[0] + 'T00:00:00');
+        const todayDate = new Date(today + 'T00:00:00');
+        denominator = Math.round((todayDate - first) / 86400000) + 1;
+      }
+      const consistencyPct = Math.round((distinctDays / denominator) * 100);
+
+      // ── 4. Workouts by type ───────────────────────────────────────────────
+      const typeOrder = ['peloton', 'upper_push', 'upper_pull', 'lower', 'yoga'];
+      const typeCounts = {};
+      typeOrder.forEach(id => { typeCounts[id] = 0; });
+      rangeEntries.forEach(e => {
+        if (typeCounts[e.type] !== undefined) typeCounts[e.type]++;
+      });
+      const maxCount = Math.max(...Object.values(typeCounts), 1);
+
+      // ── Render ────────────────────────────────────────────────────────────
+      const html = `
+        <div class="stats-section">
+          <div class="stats-section-label">Total Workouts</div>
+          <div class="stats-card">
+            <div class="stats-big-number">${totalWorkouts}</div>
+            <div class="stats-big-label">${statsRange === '30' ? 'in the last 30 days' : 'all time'}</div>
+          </div>
+        </div>
+
+        <div class="stats-section">
+          <div class="stats-section-label">Streaks</div>
+          <div class="stats-pair">
+            <div class="stats-card">
+              <div class="stats-big-number">${currentStreak}</div>
+              <div class="stats-big-label">current streak</div>
+            </div>
+            <div class="stats-card">
+              <div class="stats-big-number">${longestStreak}</div>
+              <div class="stats-big-label">longest streak</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="stats-section">
+          <div class="stats-section-label">Consistency</div>
+          <div class="stats-card">
+            <div class="stats-big-number">${consistencyPct}%</div>
+            <div class="stats-big-label">${distinctDays} of ${denominator} days</div>
+          </div>
+        </div>
+
+        <div class="stats-section">
+          <div class="stats-section-label">Workouts by Type</div>
+          <div class="stats-card">
+            ${typeOrder.map(id => {
+              const w = WORKOUTS.find(x => x.id === id);
+              const count = typeCounts[id];
+              const pct   = maxCount > 0 ? Math.round((count / maxCount) * 100) : 0;
+              return `
+                <div class="stats-type-row">
+                  <i data-lucide="${w.icon}" class="stats-type-icon"></i>
+                  <div class="stats-type-info">
+                    <div class="stats-type-name">${w.name}</div>
+                    <div class="stats-bar-track">
+                      <div class="stats-bar-fill" style="width:${pct}%"></div>
+                    </div>
+                  </div>
+                  <div class="stats-type-count">${count}</div>
+                </div>`;
+            }).join('')}
+          </div>
+        </div>
+      `;
+
+      container.innerHTML = html;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
     // ── Tab switching ───────────────────────────────────────────────────────
     function switchMainTab(tab) {
       historyViewActive = tab === 'history';
-      document.getElementById('view-today').hidden   = historyViewActive;
-      document.getElementById('view-history').hidden = !historyViewActive;
-      document.getElementById('nav-today-btn').classList.toggle('active', !historyViewActive);
-      document.getElementById('nav-history-btn').classList.toggle('active', historyViewActive);
+      statsViewActive   = tab === 'stats';
+      document.getElementById('view-today').hidden   = tab !== 'today';
+      document.getElementById('view-history').hidden = tab !== 'history';
+      document.getElementById('view-stats').hidden   = tab !== 'stats';
+      document.getElementById('nav-today-btn').classList.toggle('active', tab === 'today');
+      document.getElementById('nav-history-btn').classList.toggle('active', tab === 'history');
+      document.getElementById('nav-stats-btn').classList.toggle('active', tab === 'stats');
       if (historyViewActive && cachedData) renderHistoryView(cachedData);
+      if (statsViewActive && cachedData) renderStatsView(cachedData);
     }
 
     function switchHistorySubTab(tab) {
@@ -1270,8 +1433,20 @@
     // ── Nav event listeners ─────────────────────────────────────────────────
     document.getElementById('nav-today-btn').onclick   = () => switchMainTab('today');
     document.getElementById('nav-history-btn').onclick = () => switchMainTab('history');
+    document.getElementById('nav-stats-btn').onclick   = () => switchMainTab('stats');
     document.getElementById('htab-calendar').onclick   = () => switchHistorySubTab('calendar');
     document.getElementById('htab-list').onclick       = () => switchHistorySubTab('list');
+
+    // ── Stats range toggle ─────────────────────────────────────────────────
+    document.getElementById('stats-btn-30').onclick = () => switchStatsRange('30');
+    document.getElementById('stats-btn-all').onclick = () => switchStatsRange('all');
+
+    function switchStatsRange(range) {
+      statsRange = range;
+      document.getElementById('stats-btn-30').classList.toggle('active', range === '30');
+      document.getElementById('stats-btn-all').classList.toggle('active', range === 'all');
+      if (cachedData) renderStatsView(cachedData);
+    }
 
     // ── Main render ─────────────────────────────────────────────────────────
     async function render(preloadedData = null) {
@@ -1457,8 +1632,9 @@
         list.appendChild(row);
       }
 
-      // If the history view is visible, keep it in sync with the new data
+      // If the history or stats view is visible, keep it in sync with the new data
       if (historyViewActive) renderHistoryView(data);
+      if (statsViewActive) renderStatsView(data);
 
       // Replace all data-lucide placeholder elements with SVG icons
       if (typeof lucide !== 'undefined') lucide.createIcons();

@@ -2,7 +2,7 @@
 
 A mobile-first PWA that follows a fixed workout rotation and tells you what's next.
 
-**Current version: 1.0.42**
+**Current version: 1.0.44**
 
 Live at: https://habits.chrisaug.com
 
@@ -46,7 +46,14 @@ The rotation is position-based, not time-based — it always picks up where it l
 - **Log Other Activity** — opens a modal to record a free-form activity (e.g. "Morning walk", "Swim"); does not advance the rotation; stores recent activities in `wmw_other_activities` for quick re-selection
 - **Undo** — reverses the most recent log entry (today's or yesterday's); rolls back the rotation if applicable
 - **All Workouts list** — shows all 5 workout types with days since last completed
-- **History view** — accessible via a bottom navigation bar (Today / History tabs)
+- **Stats view** — accessible via a third tab in the bottom navigation bar (Today / History / Stats)
+  - **Last 30 Days / All Time toggle** — defaults to Last 30 Days; toggle state resets on each open
+  - **Total Workouts** — count of rotation-advancing entries in the selected time range
+  - **Streaks** — current streak and longest streak (always computed from full history regardless of range toggle, so a streak that started 45+ days ago still shows correctly in Last 30 Days view); only advancing entries count — skips and rest days break the streak
+  - **Consistency %** — days with a workout / total days in range (Last 30 Days denominator = 30; All Time denominator = days from first-ever workout to today inclusive)
+  - **Workouts by Type** — horizontal progress bars for all 5 workout types; bars scale relative to the most-logged type; only advancing entries counted
+  - Empty state shown when no workouts have been logged yet
+- **History view** — accessible via a bottom navigation bar (Today / History / Stats tabs)
   - **Calendar** (default): monthly grid with prev/next month navigation; each day shows a purple workout icon for completed workouts, an amber moon for rest/skip days, a teal zap icon for other activities, a dimmed projected icon for future days based on the rotation, or is empty for past days with no data; today is subtly highlighted; all past days are tappable to log or edit an entry for that day
   - **List**: chronological log of all past entries (newest first), with workout icon, date, day of week, and name; other activities show the free-form name in teal with a zap icon; rest days show the reason as a muted subtitle if one was entered; a "Coming Up" section below shows the next 14 projected workouts (dimmed)
 - **Backfill / edit past days** — tap any past day in the calendar to open the Backfill modal; if the day has an existing entry it opens read-only (with an Edit button to switch into edit mode); if the day has no entry it opens directly in edit mode; options are all 5 rotation workouts, Rest Day, and Other Activity (with the same chips/input as the main Log Other Activity flow); confirms insert a new history row or update an existing one; rotation is advanced by 1 only when logging a workout as the most-recent entry, and is never decremented

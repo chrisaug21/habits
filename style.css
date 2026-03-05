@@ -1056,3 +1056,144 @@
       flex-direction: column;
       gap: 10px;
     }
+
+    /* ── Stats view ─────────────────────────────────────────────────────────── */
+    .stats-range-toggle {
+      display: flex;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 4px;
+      margin-bottom: 20px;
+    }
+
+    .stats-toggle-btn {
+      flex: 1;
+      padding: 10px;
+      background: none;
+      border: none;
+      border-radius: 10px;
+      color: var(--text-secondary);
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .stats-toggle-btn.active {
+      background: var(--surface2);
+      color: var(--accent);
+    }
+
+    .stats-section {
+      margin-bottom: 20px;
+    }
+
+    .stats-section-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 10px;
+      padding: 0 4px;
+    }
+
+    .stats-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 20px;
+    }
+
+    .stats-big-number {
+      font-size: 3rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+
+    .stats-big-label {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .stats-pair {
+      display: flex;
+      gap: 12px;
+    }
+
+    .stats-pair .stats-card {
+      flex: 1;
+    }
+
+    .stats-empty {
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      padding: 48px 0 24px;
+    }
+
+    /* Workout-type breakdown rows */
+    .stats-type-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .stats-type-row:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .stats-type-row:first-child {
+      padding-top: 0;
+    }
+
+    .stats-type-icon {
+      flex-shrink: 0;
+      width: 16px;
+      height: 16px;
+      color: var(--text-secondary);
+    }
+
+    .stats-type-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .stats-type-name {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 5px;
+    }
+
+    .stats-bar-track {
+      height: 8px;
+      border-radius: 4px;
+      background: var(--surface2);
+      overflow: hidden;
+    }
+
+    .stats-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: var(--accent);
+      transition: width 0.3s ease;
+    }
+
+    .stats-type-count {
+      flex-shrink: 0;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      min-width: 24px;
+      text-align: right;
+    }
