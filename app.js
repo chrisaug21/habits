@@ -33,7 +33,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.0.42';
+    const VERSION = '1.0.43';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -1329,6 +1329,7 @@
       document.getElementById('suggestion-name').textContent =
         heroState === 'skipped' ? 'Rest Day' :
         heroState === 'other'   ? (todayEntry?.note || 'Other Activity') :
+        heroState === 'done'    ? (WORKOUTS.find(w => w.id === todayEntry.type)?.name || heroWorkout.name) :
         heroWorkout.name;
 
       // Subtitle
@@ -1366,6 +1367,7 @@
         const undoLabel =
           heroState === 'skipped' ? 'Rest Day' :
           heroState === 'other'   ? (todayEntry?.note || 'Other Activity') :
+          heroState === 'done'    ? (WORKOUTS.find(w => w.id === todayEntry.type)?.name || heroWorkout.name) :
           heroWorkout.name;
         undoBtn.innerHTML = '';
         const undoIcon = document.createElement('i');
