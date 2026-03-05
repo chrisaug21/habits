@@ -1,4 +1,4 @@
-const CACHE = 'wmw-v41';
+const CACHE = 'wmw-v42';
 const PRECACHE = [
   '/',
   '/index.html',

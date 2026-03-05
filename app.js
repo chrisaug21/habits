@@ -33,7 +33,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.0.41';
+    const VERSION = '1.0.42';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -880,12 +880,14 @@
             if (note) { history[idx].note = note; }
             else      { delete history[idx].note; }
 
-            // Advance rotation only when the entry was found and mutated,
-            // and only if it wasn't already counted
+            // Sync rotation index to match the change in advancing status:
+            // forward when entry goes non-advancing → advancing; rollback
+            // when entry goes advancing → non-advancing
             if (shouldAdvance && !wasAdvanced) {
               data.rotationIndex = (data.rotationIndex || 0) + 1;
+            } else if (!shouldAdvance && wasAdvanced) {
+              data.rotationIndex = ((data.rotationIndex || 0) - 1 + ROTATION.length) % ROTATION.length;
             }
-            // Never decrement, even if the entry changed from workout → rest/other
           }
 
           recomputeLastDone();
