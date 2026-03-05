@@ -2,7 +2,7 @@
 
 A single-file mobile-first PWA that follows a fixed workout rotation and tells you what's next.
 
-**Current version: 1.0.39**
+**Current version: 1.0.40**
 
 Live at: https://habits.chrisaug.com
 

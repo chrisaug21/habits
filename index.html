@@ -1250,7 +1250,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.0.39';
+    const VERSION = '1.0.40';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -2504,7 +2504,7 @@
 
       // Hero card stays on the completed workout for the rest of the day.
       // Only flip to the next rotation item when a new day begins.
-      const heroWorkout = (actionTakenToday && !skippedToday && !otherToday && todayEntry)
+      const heroWorkout = (!skippedToday && !otherToday && todayEntry)
         ? (WORKOUTS.find(w => w.id === todayEntry.type) || nextInRotation)
         : nextInRotation;
 
