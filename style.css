@@ -1,0 +1,1058 @@
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Ensure the HTML `hidden` attribute always wins over any display: rule */
+    [hidden] { display: none !important; }
+
+    :root {
+      --bg: #0d0d14;
+      --surface: #13131e;
+      --surface2: #1a1a28;
+      --border: #222235;
+      --border-active: #4040a0;
+      --accent: #6c63ff;
+      --accent-dark: #4a42cc;
+      --text-primary: #e4e4f4;
+      --text-secondary: #6a6a90;
+      --text-dim: #3a3a58;
+      --red: #ff5555;
+      --orange: #ff9944;
+      --green: #3ecf8e;
+      --amber: #f59e0b;
+      --teal: #2dd4bf;
+      --red-bg: #2a0f0f;
+      --orange-bg: #2a1a0a;
+      --green-bg: #0a2018;
+    }
+
+    html {
+      background: var(--bg);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: env(safe-area-inset-top, 0) 0 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+      /* Extra bottom padding so content scrolls above the fixed bottom nav */
+      padding: 24px 16px calc(80px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* Header */
+    header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    header h1 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      letter-spacing: 0.04em;
+    }
+
+    /* Today's date */
+    .date-label {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      margin-top: 4px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    /* Suggestion card */
+    .suggestion-card {
+      background: var(--surface2);
+      border: 1px solid var(--border-active);
+      border-radius: 22px;
+      padding: 32px 24px 28px;
+      margin-bottom: 28px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .suggestion-card::before {
+      content: '';
+      position: absolute;
+      top: -40px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 200px;
+      height: 200px;
+      background: radial-gradient(circle, rgba(108, 99, 255, 0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .suggestion-eyebrow {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+
+    /* Hero icon — on its own line, centered, above the workout name */
+    .hero-icon-wrap {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 14px;
+    }
+
+    .hero-icon-wrap i,
+    .hero-icon-wrap svg {
+      width: 48px;
+      height: 48px;
+      color: var(--accent);
+    }
+
+    /* Rest-day moon shown in amber */
+    .hero-icon-wrap.is-rest i,
+    .hero-icon-wrap.is-rest svg {
+      color: var(--amber);
+    }
+
+    /* Other-activity zap shown in teal */
+    .hero-icon-wrap.is-other i,
+    .hero-icon-wrap.is-other svg {
+      color: var(--teal);
+    }
+
+    .suggestion-name {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      line-height: 1.2;
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+
+    .suggestion-subtitle {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-bottom: 28px;
+    }
+
+    .done-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 16px;
+      padding: 18px 48px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s, opacity 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      min-width: 180px;
+    }
+
+    .done-btn:active {
+      background: var(--accent-dark);
+      transform: scale(0.96);
+    }
+
+    .done-btn:disabled {
+      background: var(--surface);
+      color: var(--text-secondary);
+      cursor: default;
+      border: 1px solid var(--border);
+    }
+
+    .done-btn:disabled:active {
+      transform: none;
+    }
+
+    .card-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .skip-btn {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 11px 28px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      min-width: 180px;
+    }
+
+    .skip-btn:active {
+      background: var(--surface);
+    }
+
+    .skip-btn:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+
+    .skip-btn:disabled:active {
+      background: transparent;
+    }
+
+    /* Undo button — ghost style, comfortable tap target */
+    .undo-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 12px 24px;
+      min-height: 44px;
+      min-width: 180px;
+      border-radius: 12px;
+      transition: color 0.15s, background 0.15s, border-color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .undo-btn i,
+    .undo-btn svg {
+      width: 15px;
+      height: 15px;
+    }
+
+    .undo-btn:active {
+      background: var(--surface);
+      color: var(--text-primary);
+      border-color: var(--text-dim);
+    }
+
+    /* Workout list */
+    .list-header {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 10px;
+      padding: 0 4px;
+    }
+
+    .workout-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .workout-row {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px 16px 16px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: border-color 0.2s, opacity 0.2s;
+    }
+
+    .workout-row.is-suggested {
+      border-color: rgba(108, 99, 255, 0.4);
+    }
+
+    .workout-row.done-today {
+      opacity: 0.45;
+    }
+
+    .workout-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .workout-name {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 3px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .workout-name span {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Workout type icons */
+    .row-icon {
+      flex-shrink: 0;
+      width: 15px;
+      height: 15px;
+      color: var(--text-secondary);
+    }
+
+    .workout-last {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    /* Days pill */
+    .days-pill {
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 5px 11px;
+      border-radius: 20px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .days-pill.urgent   { background: var(--red-bg);    color: var(--red);    }
+    .days-pill.warning  { background: var(--orange-bg); color: var(--orange); }
+    .days-pill.ok       { background: var(--green-bg);  color: var(--green);  }
+    .days-pill.today    { background: var(--green-bg);  color: var(--green);  }
+
+    /* Row done button */
+    .row-done-btn {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 9px 14px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      min-width: 56px;
+    }
+
+    .row-done-btn:active {
+      background: var(--surface2);
+    }
+
+    .row-done-btn:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+
+    /* Tomorrow preview */
+    .tomorrow-preview {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px 20px 18px;
+      margin-bottom: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      text-align: center;
+    }
+
+    .tomorrow-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    .tomorrow-name {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .tomorrow-name .tomorrow-icon {
+      width: 16px;
+      height: 16px;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+
+    /* Toast — raised above the bottom nav bar */
+    .toast {
+      position: fixed;
+      bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--surface2);
+      border: 1px solid var(--border-active);
+      color: var(--text-primary);
+      padding: 13px 26px;
+      border-radius: 14px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      pointer-events: none;
+      opacity: 0;
+      transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s;
+      white-space: nowrap;
+      z-index: 100;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    /* ── Bottom Navigation ─────────────────────────────────────────────────── */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      z-index: 50;
+      /* Push visible content above the iPhone home bar */
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    .nav-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 10px 0;
+      min-height: 56px;
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      transition: color 0.15s;
+    }
+
+    .nav-btn.active {
+      color: var(--accent);
+    }
+
+    /* Target both the placeholder <i> and the SVG lucide generates */
+    .nav-btn i,
+    .nav-btn svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    /* ── History view ──────────────────────────────────────────────────────── */
+
+    /* Sub-tab row: Calendar / List toggle */
+    .history-tabs {
+      display: flex;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 4px;
+      margin-bottom: 20px;
+    }
+
+    .htab {
+      flex: 1;
+      padding: 10px;
+      background: none;
+      border: none;
+      border-radius: 10px;
+      color: var(--text-secondary);
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .htab.active {
+      background: var(--surface2);
+      color: var(--accent);
+    }
+
+    /* ── Calendar ──────────────────────────────────────────────────────────── */
+    .cal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .cal-month-label {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .cal-nav-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text-secondary);
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .cal-nav-btn:active {
+      background: var(--surface2);
+      color: var(--text-primary);
+    }
+
+    .cal-nav-btn i,
+    .cal-nav-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 3px;
+    }
+
+    .cal-dow {
+      text-align: center;
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      padding: 2px 0 8px;
+    }
+
+    .cal-day {
+      aspect-ratio: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      border-radius: 8px;
+    }
+
+    .cal-day.is-today {
+      background: rgba(108, 99, 255, 0.12);
+      outline: 1px solid rgba(108, 99, 255, 0.35);
+    }
+
+    /* Day number inside each cell */
+    .cal-day-num {
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      line-height: 1;
+    }
+
+    .cal-day.is-today .cal-day-num {
+      color: var(--text-primary);
+      font-weight: 700;
+    }
+
+    /* Cells with actual logged data get a slightly brighter number */
+    .cal-day.has-workout .cal-day-num,
+    .cal-day.has-rest .cal-day-num {
+      color: var(--text-secondary);
+    }
+
+    /* Small icon inside calendar cells */
+    .cal-icon,
+    .cal-day svg {
+      width: 13px;
+      height: 13px;
+    }
+
+    .cal-day.has-workout .cal-icon,
+    .cal-day.has-workout svg {
+      color: var(--accent);
+    }
+
+    .cal-day.has-rest .cal-icon,
+    .cal-day.has-rest svg {
+      color: var(--amber);
+    }
+
+    .cal-day.has-other .cal-day-num {
+      color: var(--text-secondary);
+    }
+
+    .cal-day.has-other .cal-icon,
+    .cal-day.has-other svg {
+      color: var(--teal);
+    }
+
+    /* Projected future days: dimmed icon */
+    .cal-day.is-projected .cal-icon,
+    .cal-day.is-projected svg {
+      color: var(--text-dim);
+      opacity: 0.7;
+    }
+
+    /* Today's un-logged workout: bright white, not dimmed */
+    .cal-day.is-today.is-projected .cal-icon,
+    .cal-day.is-today.is-projected svg {
+      color: var(--text-primary);
+      opacity: 1;
+    }
+
+    /* ── History List ──────────────────────────────────────────────────────── */
+    .hlist {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .hlist-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+
+    .hlist-row.is-today {
+      border-color: rgba(108, 99, 255, 0.4);
+      background: var(--surface2);
+    }
+
+    /* Projected rows are faded */
+    .hlist-row.is-projected {
+      opacity: 0.4;
+    }
+
+    .hlist-icon {
+      flex-shrink: 0;
+      width: 16px;
+      height: 16px;
+      color: var(--text-dim);
+    }
+
+    .hlist-icon.purple { color: var(--accent); }
+    .hlist-icon.amber  { color: var(--amber); }
+    .hlist-icon.teal   { color: var(--teal); }
+
+    .hlist-date {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .hlist-date-main {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.2;
+    }
+
+    .hlist-date-sub {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      margin-top: 1px;
+    }
+
+    .hlist-name {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-align: right;
+      flex-shrink: 0;
+      max-width: 52%;
+    }
+
+    .hlist-name.purple { color: var(--text-primary); }
+    .hlist-name.amber  { color: var(--amber); }
+    .hlist-name.teal   { color: var(--teal); }
+
+    .hlist-section-label {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      padding: 20px 4px 8px;
+    }
+
+    .hlist-empty {
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      padding: 48px 0 24px;
+    }
+
+    /* ── Test Mode Banner ─────────────────────────────────────────────────── */
+    .test-banner {
+      background: rgba(245, 158, 11, 0.12);
+      border-bottom: 2px solid var(--amber);
+      color: var(--amber);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 11px 16px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .test-reset-btn {
+      background: var(--amber);
+      color: #0d0d14;
+      border: none;
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 0.7rem;
+      font-weight: 800;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      transition: opacity 0.15s;
+    }
+
+    .test-reset-btn:active {
+      opacity: 0.7;
+    }
+
+    /* ── Other Activity Modal ──────────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      z-index: 200;
+      display: flex;
+      align-items: flex-end;
+    }
+
+    .modal-sheet {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: 1px solid var(--border-active);
+      border-radius: 24px 24px 0 0;
+      padding: 28px 20px calc(28px + env(safe-area-inset-bottom, 0px));
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .modal-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-align: center;
+    }
+
+    .modal-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .activity-chip {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 9px 16px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+
+    .activity-chip:active {
+      background: rgba(108, 99, 255, 0.15);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .modal-input {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-size: 0.95rem;
+      color: var(--text-primary);
+      width: 100%;
+      outline: none;
+      font-family: inherit;
+      transition: border-color 0.15s;
+      -webkit-appearance: none;
+    }
+
+    .modal-input:focus {
+      border-color: var(--accent);
+    }
+
+    .modal-input::placeholder {
+      color: var(--text-dim);
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .modal-confirm-btn {
+      flex: 1;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      padding: 16px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .modal-confirm-btn:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+
+    .modal-confirm-btn:active:not(:disabled) {
+      background: var(--accent-dark);
+    }
+
+    .modal-cancel-btn {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 20px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .modal-cancel-btn:active {
+      background: var(--surface2);
+    }
+
+    /* ── Modal icon (moon in Skip Today sheet) ──────────────────────────────── */
+    .modal-icon {
+      display: flex;
+      justify-content: center;
+    }
+    .modal-icon i,
+    .modal-icon svg {
+      width: 32px;
+      height: 32px;
+      color: var(--accent);
+    }
+    .modal-icon.is-rest i,
+    .modal-icon.is-rest svg {
+      color: var(--amber);
+    }
+
+    /* ── History list note (skip reason under Rest Day) ─────────────────────── */
+    .hlist-name-wrap {
+      flex-shrink: 0;
+      max-width: 52%;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+    .hlist-name-wrap .hlist-name {
+      max-width: 100%;
+    }
+    .hlist-note {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      text-align: right;
+      margin-top: 2px;
+    }
+
+    /* ── Version stamp ──────────────────────────────────────────────────────── */
+    #version-stamp {
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 24px;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* ── Past day tap affordance in calendar ────────────────────────────────── */
+    .cal-day.is-past {
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .cal-day.is-past:active {
+      background: rgba(108, 99, 255, 0.1);
+    }
+
+    /* ── Backfill Modal ──────────────────────────────────────────────────────── */
+    #backfill-sheet {
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .backfill-date-label {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-align: center;
+    }
+
+    /* Scrollable list of 7 selectable options */
+    .backfill-options {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .backfill-option {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      padding: 14px 16px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: left;
+      transition: border-color 0.15s, background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .backfill-option i,
+    .backfill-option svg {
+      width: 18px;
+      height: 18px;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+
+    .backfill-option.selected {
+      border-color: var(--accent);
+      background: rgba(108, 99, 255, 0.1);
+    }
+
+    .backfill-option.selected i,
+    .backfill-option.selected svg {
+      color: var(--accent);
+    }
+
+    .backfill-option.is-rest.selected i,
+    .backfill-option.is-rest.selected svg {
+      color: var(--amber);
+    }
+
+    .backfill-option.is-rest.selected {
+      border-color: var(--amber);
+      background: rgba(245, 158, 11, 0.1);
+    }
+
+    .backfill-option.is-other.selected i,
+    .backfill-option.is-other.selected svg {
+      color: var(--teal);
+    }
+
+    .backfill-option.is-other.selected {
+      border-color: var(--teal);
+      background: rgba(45, 212, 191, 0.08);
+    }
+
+    /* Read-only entry display */
+    .backfill-readonly-entry {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 20px 18px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+    }
+
+    .backfill-readonly-icon i,
+    .backfill-readonly-icon svg {
+      width: 24px;
+      height: 24px;
+      color: var(--accent);
+    }
+
+    .backfill-readonly-icon.is-rest i,
+    .backfill-readonly-icon.is-rest svg {
+      color: var(--amber);
+    }
+
+    .backfill-readonly-icon.is-other i,
+    .backfill-readonly-icon.is-other svg {
+      color: var(--teal);
+    }
+
+    .backfill-readonly-name {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    /* Edit view: flex column so options / note section / actions have consistent gaps */
+    #backfill-edit-view {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Other activity / rest-day note section inside backfill edit view */
+    #backfill-other-section {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }

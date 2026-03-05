@@ -1,7 +1,9 @@
-const CACHE = 'wmw-v39';
+const CACHE = 'wmw-v42';
 const PRECACHE = [
   '/',
   '/index.html',
+  '/style.css',
+  '/app.js',
   '/manifest.json',
   // Favicon & app icons
   '/favicon.ico',
