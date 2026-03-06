@@ -1196,7 +1196,10 @@
       const history   = data.history || [];
 
       // Only advancing (real workout) entries count for all stats.
-      const advancing = history.filter(e => e.advanced === true);
+      // Use !== false rather than === true so legacy rows where advanced is
+      // undefined/null are still counted — only explicit false (skips, rest
+      // days, other activities) are excluded.
+      const advancing = history.filter(e => e.advanced !== false);
 
       // ── Determine the filtered set for range-dependent stats ──────────────
       // "Last 30 Days" includes today through 29 days ago (30 days inclusive).
@@ -1358,7 +1361,14 @@
       document.getElementById('nav-history-btn').classList.toggle('active', tab === 'history');
       document.getElementById('nav-stats-btn').classList.toggle('active', tab === 'stats');
       if (historyViewActive && cachedData) renderHistoryView(cachedData);
-      if (statsViewActive && cachedData) renderStatsView(cachedData);
+      if (statsViewActive) {
+        // Always reset to Last 30 Days when entering the Stats tab so the
+        // toggle never carries over state from a previous visit.
+        statsRange = '30';
+        document.getElementById('stats-btn-30').classList.add('active');
+        document.getElementById('stats-btn-all').classList.remove('active');
+        if (cachedData) renderStatsView(cachedData);
+      }
     }
 
     function switchHistorySubTab(tab) {
