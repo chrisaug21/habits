@@ -33,11 +33,29 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.0.47';
+    const VERSION = '1.1.48';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
-    const STORAGE_KEY = TEST_MODE ? 'wmw_test' : 'wmw_v1';
+    const STORAGE_KEY = TEST_MODE ? 'habits_test' : 'habits_v1';
+    // ────────────────────────────────────────────────────────────────────────
+
+    // ── localStorage key migration (wmw_ → habits_) ──────────────────────────
+    // One-time migration: if habits_v1 doesn't exist yet but wmw_v1 does,
+    // copy the data over and delete the old key. Same for other_activities.
+    if (!TEST_MODE) {
+      const migrateKey = (oldKey, newKey) => {
+        if (localStorage.getItem(newKey) === null) {
+          const old = localStorage.getItem(oldKey);
+          if (old !== null) {
+            localStorage.setItem(newKey, old);
+            localStorage.removeItem(oldKey);
+          }
+        }
+      };
+      migrateKey('wmw_v1',              'habits_v1');
+      migrateKey('wmw_other_activities', 'habits_other_activities');
+    }
     // ────────────────────────────────────────────────────────────────────────
 
     async function loadData() {
@@ -497,8 +515,9 @@
     }
 
     // ── Other Activity helpers ───────────────────────────────────────────────
-    const OTHER_ACTIVITIES_KEY = TEST_MODE ? 'wmw_test_other_activities' : 'wmw_other_activities';
+    const OTHER_ACTIVITIES_KEY = TEST_MODE ? 'habits_test_other_activities' : 'habits_other_activities';
     const SKIP_REASONS_KEY = STORAGE_KEY + '_skip_reasons';
+    const JOURNAL_KEY = TEST_MODE ? 'habits_test_journal' : 'habits_journal';
 
     function loadOtherActivities() {
       try {
@@ -606,10 +625,11 @@
     const BF_MONTHS   = ['January','February','March','April','May','June',
                          'July','August','September','October','November','December'];
 
-    let backfillDate     = null;  // 'YYYY-MM-DD' being edited
-    let backfillExisting = null;  // existing history entry object, or null
-    let backfillSelectedType = null; // currently selected option id
-    let backfillSaving   = false; // true while confirmBackfill is awaiting
+    let backfillDate         = null;  // 'YYYY-MM-DD' being edited
+    let backfillExisting     = null;  // existing history entry object, or null
+    let backfillJournalEntry = null;  // journal entry for this date, or null
+    let backfillSelectedType = null;  // currently selected option id
+    let backfillSaving       = false; // true while confirmBackfill is awaiting
 
     function openBackfillModal(dateStr) {
       backfillDate = dateStr;
@@ -617,6 +637,10 @@
       // Find the most-recent logged entry for this date
       const history = cachedData ? (cachedData.history || []) : [];
       backfillExisting = [...history].reverse().find(e => e.date === dateStr) || null;
+
+      // Look up the journal entry for this date (used in the readonly view)
+      const journalEntry = (getJournalSync() || []).find(e => e.date === dateStr) || null;
+      backfillJournalEntry = journalEntry;
 
       // Build the date label: "Wednesday, February 19"
       const d = new Date(dateStr + 'T00:00:00');
@@ -663,6 +687,30 @@
       document.getElementById('backfill-readonly-name').textContent = displayName;
 
       if (typeof lucide !== 'undefined') lucide.createIcons();
+
+      // Show journal entry for this past day, if one exists
+      const journalSection = document.getElementById('backfill-journal-section');
+      const journalContent = document.getElementById('backfill-journal-content');
+      if (backfillJournalEntry) {
+        const j = backfillJournalEntry;
+        const fields = [
+          { label: 'Intention',  value: j.intention },
+          { label: 'Gratitude',  value: j.gratitude },
+          { label: 'One Thing',  value: j.one_thing },
+        ].filter(f => f.value);
+        if (fields.length) {
+          journalContent.innerHTML = fields.map(f => `
+            <div class="backfill-journal-field">
+              <div class="backfill-journal-label">${f.label}</div>
+              <div class="backfill-journal-value">${escapeHtml(f.value)}</div>
+            </div>`).join('');
+          journalSection.hidden = false;
+        } else {
+          journalSection.hidden = true;
+        }
+      } else {
+        journalSection.hidden = true;
+      }
     }
 
     function _showBackfillEdit(preselectedType) {
@@ -937,6 +985,144 @@
     }
     // ────────────────────────────────────────────────────────────────────────
 
+    // ── Journal state + helpers ─────────────────────────────────────────────
+    let cachedJournal = null;     // array of { date, intention, gratitude, one_thing }
+    let journalViewActive = false;
+    let journalEditing = false;   // true when showing the form over an existing entry
+    let _journalNudgeConfirmed = false; // true after user taps "Yes" on gratitude nudge
+
+    // Populate cachedJournal from localStorage only (sync, no network).
+    // Used by calendar rendering so dots appear without waiting for a Supabase call.
+    function getJournalSync() {
+      if (cachedJournal !== null) return cachedJournal;
+      try { cachedJournal = JSON.parse(localStorage.getItem(JOURNAL_KEY)) || []; }
+      catch { cachedJournal = []; }
+      return cachedJournal;
+    }
+
+    // Load journal from Supabase, cache to localStorage, update cachedJournal.
+    async function loadJournal() {
+      let local = [];
+      try { local = JSON.parse(localStorage.getItem(JOURNAL_KEY)) || []; } catch {}
+      if (!sb || TEST_MODE) {
+        cachedJournal = local;
+        return local;
+      }
+      try {
+        const { data, error } = await sb.from('journal').select('*').order('date', { ascending: false });
+        if (error) throw error;
+        const journal = (data || []).map(r => ({
+          date:       r.date,
+          intention:  r.intention  || '',
+          gratitude:  r.gratitude  || '',
+          one_thing:  r.one_thing  || '',
+        }));
+        localStorage.setItem(JOURNAL_KEY, JSON.stringify(journal));
+        cachedJournal = journal;
+        return journal;
+      } catch (err) {
+        console.warn('Journal load failed, using localStorage:', err);
+        cachedJournal = local;
+        return local;
+      }
+    }
+
+    // Save or update a journal entry ({ date, intention, gratitude, one_thing }).
+    async function saveJournalEntry(entry) {
+      const journal = cachedJournal ? [...cachedJournal] : [];
+      const idx = journal.findIndex(e => e.date === entry.date);
+      if (idx !== -1) { journal[idx] = entry; }
+      else { journal.unshift(entry); } // newest first
+      cachedJournal = journal;
+      localStorage.setItem(JOURNAL_KEY, JSON.stringify(journal));
+
+      if (!sb || TEST_MODE) return;
+      try {
+        const { error } = await sb.from('journal').upsert({
+          date:      entry.date,
+          intention: entry.intention || null,
+          gratitude: entry.gratitude || null,
+          one_thing: entry.one_thing || null,
+        }, { onConflict: 'date' });
+        if (error) throw error;
+      } catch (err) {
+        console.warn('Journal save to Supabase failed (saved locally):', err);
+      }
+    }
+
+    // Returns true if newGratitude is a substring (or superset) of any gratitude
+    // entry from the last 7 days (case-insensitive).
+    function checkGratitudeSimilarity(newGratitude) {
+      if (!newGratitude) return false;
+      const journal = cachedJournal || [];
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const cutoffStr = dateToStr(sevenDaysAgo);
+      const today = todayStr();
+      const needle = newGratitude.trim().toLowerCase();
+      return journal.some(e => {
+        if (!e.gratitude || e.date >= today || e.date < cutoffStr) return false;
+        const haystack = e.gratitude.trim().toLowerCase();
+        return needle.includes(haystack) || haystack.includes(needle);
+      });
+    }
+
+    // ── Journal render ──────────────────────────────────────────────────────
+    function renderJournalView() {
+      const journal = cachedJournal || [];
+      const today = todayStr();
+      const todayEntry = journal.find(e => e.date === today);
+      if (journalEditing || !todayEntry) {
+        _showJournalForm(todayEntry || null);
+      } else {
+        _showJournalReadonly(todayEntry);
+      }
+    }
+
+    function _showJournalForm(prefill) {
+      document.getElementById('journal-form').hidden     = false;
+      document.getElementById('journal-readonly').hidden = true;
+      document.getElementById('journal-intention').value  = prefill?.intention  || '';
+      document.getElementById('journal-gratitude').value  = prefill?.gratitude  || '';
+      document.getElementById('journal-one-thing').value  = prefill?.one_thing  || '';
+      document.getElementById('journal-nudge').hidden = true;
+      _journalNudgeConfirmed = false;
+    }
+
+    function _showJournalReadonly(entry) {
+      document.getElementById('journal-form').hidden     = true;
+      document.getElementById('journal-readonly').hidden = false;
+      document.getElementById('journal-ro-intention').textContent = entry.intention || '—';
+      document.getElementById('journal-ro-gratitude').textContent = entry.gratitude || '—';
+      document.getElementById('journal-ro-one-thing').textContent = entry.one_thing || '—';
+    }
+
+    async function saveJournal() {
+      const intention = document.getElementById('journal-intention').value.trim();
+      const gratitude = document.getElementById('journal-gratitude').value.trim();
+      const oneThing  = document.getElementById('journal-one-thing').value.trim();
+
+      // Gratitude similarity check — only run once per save attempt
+      if (gratitude && !_journalNudgeConfirmed && checkGratitudeSimilarity(gratitude)) {
+        document.getElementById('journal-nudge').hidden = false;
+        return; // wait for user response
+      }
+
+      const entry = { date: todayStr(), intention, gratitude, one_thing: oneThing };
+      document.getElementById('journal-save-btn').disabled = true;
+      try {
+        await saveJournalEntry(entry);
+      } finally {
+        document.getElementById('journal-save-btn').disabled = false;
+      }
+      journalEditing = false;
+      _journalNudgeConfirmed = false;
+      _showJournalReadonly(entry);
+      showToast('Journal saved \u2713');
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+
     // ── History view state ──────────────────────────────────────────────────
     let cachedData = null;        // last-loaded data, used by history renders
     let historyViewActive = false;
@@ -992,6 +1178,9 @@
       const histMap = buildHistoryMap(data);
       const projMap = buildProjectionMap(data);
       const today = todayStr();
+
+      // Build a set of dates that have a journal entry (for dot indicators)
+      const journalDateSet = new Set((getJournalSync() || []).map(e => e.date));
 
       const year  = calViewDate.getFullYear();
       const month = calViewDate.getMonth(); // 0-indexed
@@ -1065,7 +1254,8 @@
         // Past days with no data: just the number, no icon
 
         const dateAttr = isPast ? ` data-date="${ds}" role="button" tabindex="0"` : '';
-        html += `<div class="${classes.join(' ')}"${dateAttr}>${iconHtml}<span class="cal-day-num">${day}</span></div>`;
+        const journalDot = journalDateSet.has(ds) ? '<span class="cal-journal-dot"></span>' : '';
+        html += `<div class="${classes.join(' ')}"${dateAttr}>${iconHtml}<span class="cal-day-num">${day}</span>${journalDot}</div>`;
       }
 
       html += '</div>';
@@ -1459,12 +1649,15 @@
     function switchMainTab(tab) {
       historyViewActive = tab === 'history';
       statsViewActive   = tab === 'stats';
+      journalViewActive = tab === 'journal';
       document.getElementById('view-today').hidden   = tab !== 'today';
       document.getElementById('view-history').hidden = tab !== 'history';
       document.getElementById('view-stats').hidden   = tab !== 'stats';
+      document.getElementById('view-journal').hidden = tab !== 'journal';
       document.getElementById('nav-today-btn').classList.toggle('active', tab === 'today');
       document.getElementById('nav-history-btn').classList.toggle('active', tab === 'history');
       document.getElementById('nav-stats-btn').classList.toggle('active', tab === 'stats');
+      document.getElementById('nav-journal-btn').classList.toggle('active', tab === 'journal');
       if (historyViewActive) switchHistorySubTab('calendar');
       if (statsViewActive) {
         // Always reset to Last 30 Days when entering the Stats tab so the
@@ -1473,6 +1666,13 @@
         document.getElementById('stats-btn-30').classList.add('active');
         document.getElementById('stats-btn-all').classList.remove('active');
         if (cachedData) renderStatsView(cachedData);
+      }
+      if (journalViewActive) {
+        journalEditing = false;
+        // Show cached data immediately, then refresh from Supabase
+        getJournalSync();
+        renderJournalView();
+        loadJournal().then(() => renderJournalView());
       }
     }
 
@@ -1551,9 +1751,28 @@
     document.getElementById('nav-today-btn').onclick   = () => switchMainTab('today');
     document.getElementById('nav-history-btn').onclick = () => switchMainTab('history');
     document.getElementById('nav-stats-btn').onclick   = () => switchMainTab('stats');
+    document.getElementById('nav-journal-btn').onclick = () => switchMainTab('journal');
     document.getElementById('htab-calendar').onclick   = () => switchHistorySubTab('calendar');
     document.getElementById('htab-list').onclick       = () => switchHistorySubTab('list');
     document.getElementById('htab-schedule').onclick   = () => switchHistorySubTab('schedule');
+
+    // ── Journal event listeners ─────────────────────────────────────────────
+    document.getElementById('journal-save-btn').onclick = () => saveJournal();
+    document.getElementById('journal-edit-btn').onclick = () => {
+      journalEditing = true;
+      const journal = cachedJournal || [];
+      const todayEntry = journal.find(e => e.date === todayStr());
+      _showJournalForm(todayEntry || null);
+    };
+    document.getElementById('journal-nudge-yes').onclick = () => {
+      _journalNudgeConfirmed = true;
+      document.getElementById('journal-nudge').hidden = true;
+      saveJournal();
+    };
+    document.getElementById('journal-nudge-change').onclick = () => {
+      document.getElementById('journal-nudge').hidden = true;
+      document.getElementById('journal-gratitude').focus();
+    };
 
     // ── Stats range toggle ─────────────────────────────────────────────────
     document.getElementById('stats-btn-30').onclick = () => switchStatsRange('30');
@@ -1766,6 +1985,8 @@
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem(OTHER_ACTIVITIES_KEY);
         localStorage.removeItem(SKIP_REASONS_KEY);
+        localStorage.removeItem(JOURNAL_KEY);
+        cachedJournal = null;
         render();
       };
       document.getElementById('test-exit-btn').onclick = toggleTestMode;
