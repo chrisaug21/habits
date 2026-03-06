@@ -33,7 +33,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.0.45';
+    const VERSION = '1.0.46';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -1252,14 +1252,18 @@
       }
 
       // Longest streak: longest consecutive calendar-day run in all history.
+      // Uses Date.UTC to parse dates so DST clock changes never corrupt the
+      // 86400000 ms-per-day assumption (UTC has no DST transitions).
       function computeLongestStreak() {
         if (workoutDates.size === 0) return 0;
         const sorted = Array.from(workoutDates).sort();
+        function toUtcDay(dateStr) {
+          const [y, m, d] = dateStr.split('-').map(Number);
+          return Date.UTC(y, m - 1, d);
+        }
         let best = 1, run = 1;
         for (let i = 1; i < sorted.length; i++) {
-          const prev = new Date(sorted[i - 1] + 'T00:00:00');
-          const curr = new Date(sorted[i]     + 'T00:00:00');
-          const diff = (curr - prev) / 86400000;
+          const diff = (toUtcDay(sorted[i]) - toUtcDay(sorted[i - 1])) / 86400000;
           if (diff === 1) { run++; best = Math.max(best, run); }
           else run = 1;
         }
@@ -1308,6 +1312,16 @@
         return `${STAT_MONTHS[parseInt(m, 10) - 1]} ${parseInt(d, 10)}`;
       }
 
+      // ── Helper: escape user-supplied text before inserting into HTML ───────
+      function escapeHtml(str) {
+        return String(str ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
       // ── Other row + expandable list (only rendered when count > 0) ────────
       const otherPct = maxCount > 0 ? Math.round((otherCount / maxCount) * 100) : 0;
       const otherRowHtml = otherCount > 0 ? `
@@ -1326,7 +1340,7 @@
           ${otherEntries.map(e => `
             <div class="stats-other-entry">
               <span class="stats-other-date">${fmtDate(e.date)}</span>
-              <span class="stats-other-name">${e.note || 'Other activity'}</span>
+              <span class="stats-other-name">${escapeHtml(e.note) || 'Other activity'}</span>
             </div>
           `).join('')}
         </div>` : '';
