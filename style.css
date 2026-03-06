@@ -655,9 +655,14 @@
       background: var(--surface2);
     }
 
-    /* Projected rows are faded */
+    /* Projected rows are faded in the Log tab */
     .hlist-row.is-projected {
       opacity: 0.4;
+    }
+
+    /* But full opacity on the Schedule tab where they're the main content */
+    #hview-schedule .hlist-row.is-projected {
+      opacity: 1;
     }
 
     .hlist-icon {
