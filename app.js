@@ -33,7 +33,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.0.44';
+    const VERSION = '1.0.45';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -1195,11 +1195,12 @@
       const container = document.getElementById('stats-content');
       const history   = data.history || [];
 
-      // Only advancing (real workout) entries count for all stats.
-      // Use !== false rather than === true so legacy rows where advanced is
-      // undefined/null are still counted — only explicit false (skips, rest
-      // days, other activities) are excluded.
-      const advancing = history.filter(e => e.advanced !== false);
+      // Real workouts = everything except known non-workout types (skip/rest days).
+      // Using a type-based exclusion rather than the `advanced` flag means
+      // backtracked entries (advanced: false but a genuine workout), free-form
+      // "other" entries, and legacy rows without an advanced field all count.
+      const NON_WORKOUT_TYPES = new Set(['off']);
+      const realWorkouts = history.filter(e => !NON_WORKOUT_TYPES.has(e.type));
 
       // ── Determine the filtered set for range-dependent stats ──────────────
       // "Last 30 Days" includes today through 29 days ago (30 days inclusive).
@@ -1211,13 +1212,13 @@
         const cutoffStr = cutoff.getFullYear() + '-' +
           String(cutoff.getMonth() + 1).padStart(2, '0') + '-' +
           String(cutoff.getDate()).padStart(2, '0');
-        rangeEntries = advancing.filter(e => e.date >= cutoffStr);
+        rangeEntries = realWorkouts.filter(e => e.date >= cutoffStr);
       } else {
-        rangeEntries = advancing.slice();
+        rangeEntries = realWorkouts.slice();
       }
 
       // ── Empty state ───────────────────────────────────────────────────────
-      if (advancing.length === 0) {
+      if (realWorkouts.length === 0) {
         container.innerHTML = '<div class="stats-empty">No workouts logged yet</div>';
         if (typeof lucide !== 'undefined') lucide.createIcons();
         return;
@@ -1230,20 +1231,20 @@
       // NOTE: Streaks are ALWAYS computed from the full history regardless of
       // the selected range toggle. A streak that began 45 days ago must still
       // show correctly when "Last 30 Days" is selected.
-      const advancingDates = new Set(advancing.map(e => e.date));
+      const workoutDates = new Set(realWorkouts.map(e => e.date));
 
       // Current streak: consecutive days ending today (or yesterday if nothing
-      // logged today) where an advancing workout was logged.
+      // logged today) where a real workout was logged.
       function computeCurrentStreak() {
         const cursor = new Date();
         // If nothing logged today, start from yesterday
-        if (!advancingDates.has(todayStr())) cursor.setDate(cursor.getDate() - 1);
+        if (!workoutDates.has(todayStr())) cursor.setDate(cursor.getDate() - 1);
         let streak = 0;
         while (true) {
           const dateStr = cursor.getFullYear() + '-' +
             String(cursor.getMonth() + 1).padStart(2, '0') + '-' +
             String(cursor.getDate()).padStart(2, '0');
-          if (!advancingDates.has(dateStr)) break;
+          if (!workoutDates.has(dateStr)) break;
           streak++;
           cursor.setDate(cursor.getDate() - 1);
         }
@@ -1252,8 +1253,8 @@
 
       // Longest streak: longest consecutive calendar-day run in all history.
       function computeLongestStreak() {
-        if (advancingDates.size === 0) return 0;
-        const sorted = Array.from(advancingDates).sort();
+        if (workoutDates.size === 0) return 0;
+        const sorted = Array.from(workoutDates).sort();
         let best = 1, run = 1;
         for (let i = 1; i < sorted.length; i++) {
           const prev = new Date(sorted[i - 1] + 'T00:00:00');
@@ -1275,7 +1276,7 @@
         denominator = 30;
       } else {
         // All Time: days from first-ever logged workout to today (inclusive)
-        const allDates = advancing.map(e => e.date).sort();
+        const allDates = realWorkouts.map(e => e.date).sort();
         const first = new Date(allDates[0] + 'T00:00:00');
         const todayDate = new Date(today + 'T00:00:00');
         denominator = Math.round((todayDate - first) / 86400000) + 1;
@@ -1283,13 +1284,52 @@
       const consistencyPct = Math.round((distinctDays / denominator) * 100);
 
       // ── 4. Workouts by type ───────────────────────────────────────────────
+      const ROTATION_TYPE_IDS = new Set(['peloton', 'upper_push', 'upper_pull', 'lower', 'yoga']);
       const typeOrder = ['peloton', 'upper_push', 'upper_pull', 'lower', 'yoga'];
       const typeCounts = {};
       typeOrder.forEach(id => { typeCounts[id] = 0; });
       rangeEntries.forEach(e => {
         if (typeCounts[e.type] !== undefined) typeCounts[e.type]++;
       });
-      const maxCount = Math.max(...Object.values(typeCounts), 1);
+
+      // "Other" = real workout entries whose type isn't one of the 5 rotation types.
+      // These are free-form activities logged via Log Other Activity or backfill.
+      // The human-readable label is stored in e.note; fall back to 'Other activity'.
+      const otherEntries = rangeEntries.filter(e => !ROTATION_TYPE_IDS.has(e.type));
+      const otherCount   = otherEntries.length;
+
+      // Scale all bars (including Other) relative to the overall max.
+      const maxCount = Math.max(...Object.values(typeCounts), otherCount, 1);
+
+      // ── Helper: format YYYY-MM-DD → "Mar 5" for the expand list ──────────
+      const STAT_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      function fmtDate(dateStr) {
+        const [, m, d] = dateStr.split('-');
+        return `${STAT_MONTHS[parseInt(m, 10) - 1]} ${parseInt(d, 10)}`;
+      }
+
+      // ── Other row + expandable list (only rendered when count > 0) ────────
+      const otherPct = maxCount > 0 ? Math.round((otherCount / maxCount) * 100) : 0;
+      const otherRowHtml = otherCount > 0 ? `
+        <div class="stats-type-row stats-other-row" id="stats-other-row">
+          <i data-lucide="zap" class="stats-type-icon"></i>
+          <div class="stats-type-info">
+            <div class="stats-type-name">Other</div>
+            <div class="stats-bar-track">
+              <div class="stats-bar-fill" style="width:${otherPct}%"></div>
+            </div>
+          </div>
+          <div class="stats-type-count">${otherCount}</div>
+          <i data-lucide="chevron-down" class="stats-other-chevron"></i>
+        </div>
+        <div class="stats-other-list" id="stats-other-list" hidden>
+          ${otherEntries.map(e => `
+            <div class="stats-other-entry">
+              <span class="stats-other-date">${fmtDate(e.date)}</span>
+              <span class="stats-other-name">${e.note || 'Other activity'}</span>
+            </div>
+          `).join('')}
+        </div>` : '';
 
       // ── Render ────────────────────────────────────────────────────────────
       const html = `
@@ -1342,12 +1382,26 @@
                   <div class="stats-type-count">${count}</div>
                 </div>`;
             }).join('')}
+            ${otherRowHtml}
           </div>
         </div>
       `;
 
       container.innerHTML = html;
       if (typeof lucide !== 'undefined') lucide.createIcons();
+
+      // Attach expand/collapse handler for the Other row after innerHTML is set.
+      if (otherCount > 0) {
+        const otherRow  = document.getElementById('stats-other-row');
+        const otherList = document.getElementById('stats-other-list');
+        const chevron   = otherRow.querySelector('.stats-other-chevron');
+        otherRow.addEventListener('click', () => {
+          const nowExpanded = otherList.hidden;
+          otherList.hidden  = !nowExpanded;
+          chevron.setAttribute('data-lucide', nowExpanded ? 'chevron-up' : 'chevron-down');
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+        });
+      }
     }
 
     // ── Tab switching ───────────────────────────────────────────────────────

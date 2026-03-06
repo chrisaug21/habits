@@ -1197,3 +1197,61 @@
       min-width: 24px;
       text-align: right;
     }
+
+    /* Other row — tappable, chevron on the right */
+    .stats-other-row {
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .stats-other-row:active {
+      background: rgba(108, 99, 255, 0.06);
+      border-radius: 8px;
+    }
+
+    .stats-other-chevron {
+      flex-shrink: 0;
+      width: 15px;
+      height: 15px;
+      color: var(--text-dim);
+      margin-left: 4px;
+    }
+
+    /* Expandable list of other-activity entries */
+    .stats-other-list {
+      max-height: 200px;
+      overflow-y: auto;
+      border-top: 1px solid var(--border);
+      margin-top: 4px;
+      padding-top: 4px;
+    }
+
+    .stats-other-entry {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      padding: 7px 4px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .stats-other-entry:last-child {
+      border-bottom: none;
+    }
+
+    .stats-other-date {
+      flex-shrink: 0;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text-dim);
+      min-width: 36px;
+    }
+
+    .stats-other-name {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
