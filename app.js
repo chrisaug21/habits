@@ -2041,6 +2041,17 @@
 
     render();
 
+    // Load journal data from Supabase at startup so calendar dots and the
+    // Backfill modal journal section are populated even if the user never
+    // opens the Journal tab. getJournalSync() already provides an instant
+    // localStorage render; this call refreshes the cache from Supabase and
+    // re-renders the calendar if the Log view is already visible.
+    loadJournal().then(() => {
+      if (historyViewActive && historySubTab === 'calendar' && cachedData) {
+        renderCalendar(cachedData);
+      }
+    });
+
   }); // end DOMContentLoaded
 
   // Register service worker outside DOMContentLoaded so it starts as early as
