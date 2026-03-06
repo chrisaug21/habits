@@ -1465,7 +1465,7 @@
       document.getElementById('nav-today-btn').classList.toggle('active', tab === 'today');
       document.getElementById('nav-history-btn').classList.toggle('active', tab === 'history');
       document.getElementById('nav-stats-btn').classList.toggle('active', tab === 'stats');
-      if (historyViewActive && cachedData) renderHistoryView(cachedData);
+      if (historyViewActive) switchHistorySubTab('calendar');
       if (statsViewActive) {
         // Always reset to Last 30 Days when entering the Stats tab so the
         // toggle never carries over state from a previous visit.
