@@ -33,7 +33,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.0.46';
+    const VERSION = '1.0.47';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -1108,17 +1108,6 @@
       // so this is safe for both Supabase and localStorage data paths.
       const entries = [...(data.history || [])].sort((a, b) => b.date.localeCompare(a.date));
 
-      // Build 14 future projected days (starting tomorrow)
-      const projMap = buildProjectionMap(data);
-      const futureRows = [];
-      for (let i = 1; i <= 14; i++) {
-        const d = new Date();
-        d.setHours(0, 0, 0, 0);
-        d.setDate(d.getDate() + i);
-        const ds = dateToStr(d);
-        if (projMap[ds]) futureRows.push({ date: ds, type: projMap[ds] });
-      }
-
       // Helper: build one list row's HTML
       function rowHtml(dateStr, type, isProjected, isToday, note = null) {
         const d = new Date(dateStr + 'T00:00:00');
@@ -1171,13 +1160,60 @@
         html += '<div class="hlist-empty">No workouts logged yet.</div>';
       }
 
+      container.innerHTML = html;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    // ── Schedule renderer ───────────────────────────────────────────────────
+    function renderSchedule(data) {
+      const container = document.getElementById('hview-schedule');
+
+      const MONTHS   = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const WEEKDAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+      // Build 14 future projected days (starting tomorrow)
+      const projMap = buildProjectionMap(data);
+      const futureRows = [];
+      for (let i = 1; i <= 14; i++) {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() + i);
+        const ds = dateToStr(d);
+        if (projMap[ds]) futureRows.push({ date: ds, type: projMap[ds] });
+      }
+
+      function rowHtml(dateStr, type) {
+        const d = new Date(dateStr + 'T00:00:00');
+        const thisYear = new Date().getFullYear();
+        const yearSuffix = d.getFullYear() !== thisYear ? `, ${d.getFullYear()}` : '';
+        const dateMain = `${MONTHS[d.getMonth()]} ${d.getDate()}${yearSuffix}`;
+        const dayName  = WEEKDAYS[d.getDay()];
+
+        const workout  = WORKOUTS.find(w => w.id === type);
+        const iconName = workout ? workout.icon : 'dumbbell';
+        const dispName = workout ? workout.name : type;
+
+        return `
+          <div class="hlist-row is-projected">
+            <i class="hlist-icon purple" data-lucide="${iconName}"></i>
+            <div class="hlist-date">
+              <div class="hlist-date-main">${dateMain}</div>
+              <div class="hlist-date-sub">${dayName}</div>
+            </div>
+            <div class="hlist-name purple">${escapeHtml(dispName)}</div>
+          </div>`;
+      }
+
+      let html = '';
       if (futureRows.length) {
         html += '<div class="hlist-section-label">Coming Up</div>';
         html += '<div class="hlist">';
         for (const r of futureRows) {
-          html += rowHtml(r.date, r.type, true, false);
+          html += rowHtml(r.date, r.type);
         }
         html += '</div>';
+      } else {
+        html += '<div class="hlist-empty">No upcoming workouts.</div>';
       }
 
       container.innerHTML = html;
@@ -1187,6 +1223,7 @@
     // Decide which history sub-view to render
     function renderHistoryView(data) {
       if (historySubTab === 'calendar') renderCalendar(data);
+      else if (historySubTab === 'schedule') renderSchedule(data);
       else renderHistoryList(data);
     }
 
@@ -1443,8 +1480,10 @@
       historySubTab = tab;
       document.getElementById('htab-calendar').classList.toggle('active', tab === 'calendar');
       document.getElementById('htab-list').classList.toggle('active', tab === 'list');
+      document.getElementById('htab-schedule').classList.toggle('active', tab === 'schedule');
       document.getElementById('hview-calendar').hidden = tab !== 'calendar';
       document.getElementById('hview-list').hidden     = tab !== 'list';
+      document.getElementById('hview-schedule').hidden = tab !== 'schedule';
       if (cachedData) renderHistoryView(cachedData);
     }
 
@@ -1514,6 +1553,7 @@
     document.getElementById('nav-stats-btn').onclick   = () => switchMainTab('stats');
     document.getElementById('htab-calendar').onclick   = () => switchHistorySubTab('calendar');
     document.getElementById('htab-list').onclick       = () => switchHistorySubTab('list');
+    document.getElementById('htab-schedule').onclick   = () => switchHistorySubTab('schedule');
 
     // ── Stats range toggle ─────────────────────────────────────────────────
     document.getElementById('stats-btn-30').onclick = () => switchStatsRange('30');
