@@ -1,19 +1,17 @@
-# What's My Workout?
+# Habits
 
-A mobile-first PWA that follows a fixed workout rotation and tells you what's next.
+A mobile-first PWA for daily habits — workout tracking, journaling, and intention-setting.
 
-**Current version: 1.0.47**
+**Current version: 1.1.48**
 
 Live at: https://habits.chrisaug.com
 
 ## Vision
-What’s My Workout? started as a personal tool to answer one simple question: what should I do today? The goal was never to replace a gym app or a coach — just to remove the daily friction of deciding, and to build a streak worth protecting.
+Habits started as a personal workout tracker but has grown into a small daily habit dashboard. It answers three questions every morning: what should I do for exercise today, what’s my intention, and what am I grateful for?
 
-The longer-term vision expands that idea into a small daily habit dashboard for a close-knit group of friends and family. Alongside the workout rotation, the app will grow to track a handful of other healthy daily habits — things like journaling and hitting a water intake goal — visualized in a calendar view that shows your past consistency and keeps your future goals in sight.
+The calendar is the centerpiece: a simple, honest record of the days you showed up, paired with a forward-looking view of what’s coming. No gamification, no social pressure, no algorithms. Just your habits, your history, and a clear picture of whether you’re living the way you want to live.
 
-The calendar is the centerpiece: a simple, honest record of the days you showed up, paired with a forward-looking view of what’s coming. Not just where you’ve been, but where you’re headed — your next workout already planned, your weekly habit targets visible, your streaks worth protecting. No gamification, no social pressure, no algorithms. Just your habits, your history, and a clear picture of whether you’re living the way you want to live.
-
-Planned for a small user base — a handful of people with logins plus a public guest view — the app will stay intentionally simple. No integrations, no notifications, no noise. Just a few good habits, a honest look at the past, and a clear path forward.
+Planned for a small user base — a handful of people with logins plus a public guest view — the app will stay intentionally simple. No integrations, no notifications, no noise.
 
 ## Rotation
 
@@ -39,32 +37,46 @@ The rotation is position-based, not time-based — it always picks up where it l
 
 ## Features
 
+### Navigation
+Bottom nav: **Today · Log · Stats · Journal** (four tabs)
+
+### Today tab
 - **Hero card** — shows today's workout (Next Up), locks after Done, Skip Today, or Log Other Activity
 - **Tomorrow preview** — shows the next step in the rotation so you can plan ahead
 - **Done!** — logs the workout and advances the rotation
 - **Skip Today** — opens a "Rest Day" modal with an optional reason field and suggestion chips (defaults: Sick, Travel, Vacation, Social obligation); recent reasons are saved and shown as chips on future skips; logs an off day without advancing the rotation; reason appears as a subtitle in the history list
-- **Log Other Activity** — opens a modal to record a free-form activity (e.g. "Morning walk", "Swim"); does not advance the rotation; stores recent activities in `wmw_other_activities` for quick re-selection
+- **Log Other Activity** — opens a modal to record a free-form activity (e.g. "Morning walk", "Swim"); does not advance the rotation; stores recent activities in `habits_other_activities` for quick re-selection
 - **Undo** — reverses the most recent log entry (today's or yesterday's); rolls back the rotation if applicable
 - **All Workouts list** — shows all 5 workout types with days since last completed
-- **Stats view** — accessible via a third tab in the bottom navigation bar (Today / Log / Stats)
-  - **Last 30 Days / All Time toggle** — defaults to Last 30 Days; toggle state resets on each open
-  - **Total Workouts** — count of rotation-advancing entries in the selected time range
-  - **Streaks** — current streak and longest streak (always computed from full history regardless of range toggle, so a streak that started 45+ days ago still shows correctly in Last 30 Days view); only advancing entries count — skips and rest days break the streak
-  - **Consistency %** — days with a workout / total days in range (Last 30 Days denominator = 30; All Time denominator = days from first-ever workout to today inclusive)
-  - **Workouts by Type** — horizontal progress bars for all 5 workout types; bars scale relative to the most-logged type; only advancing entries counted
-  - Empty state shown when no workouts have been logged yet
-- **Log view** — accessible via a bottom navigation bar (Today / Log / Stats tabs)
-  - **Calendar** (default): monthly grid with prev/next month navigation; each day shows a purple workout icon for completed workouts, an amber moon for rest/skip days, a teal zap icon for other activities, a dimmed projected icon for future days based on the rotation, or is empty for past days with no data; today is subtly highlighted; all past days are tappable to log or edit an entry for that day
-  - **List**: chronological log of all past entries (newest first), with workout icon, date, day of week, and name; other activities show the free-form name in teal with a zap icon; rest days show the reason as a muted subtitle if one was entered
-  - **Schedule**: the next 14 projected workouts based on the current rotation, shown at full opacity
-- **Backfill / edit past days** — tap any past day in the calendar to open the Backfill modal; if the day has an existing entry it opens read-only (with an Edit button to switch into edit mode); if the day has no entry it opens directly in edit mode; options are all 5 rotation workouts, Rest Day, and Other Activity (with the same chips/input as the main Log Other Activity flow); confirms insert a new history row or update an existing one; rotation is advanced by 1 only when logging a workout as the most-recent entry, and is never decremented
+
+### Journal tab
+- **Today's entry form** — three prompts: "What's your intention for today?", "What are you grateful for?", "What's the one thing you'll get done today?"
+- **Write state** — shown when no entry exists for today; Save button writes to Supabase + localStorage
+- **Read-only state** — shown after saving; displays all three answers; Edit button reopens the form pre-filled
+- **Gratitude uniqueness nudge** — on Save, compares new gratitude against the last 7 days (case-insensitive substring match); if similar entry found, shows inline prompt "You mentioned something similar recently — still want to use it?" with Yes / Change it options; does not block saving
+- No history list — the Journal tab is intentionally write-focused; past journal entries are visible in the Calendar sub-tab
+
+### Log tab
+- **Calendar** (default): monthly grid with prev/next month navigation; each day shows a purple workout icon for completed workouts, an amber moon for rest/skip days, a teal zap icon for other activities, a dimmed projected icon for future days, or is empty for past days with no data; days with a journal entry show a small purple dot indicator; today is subtly highlighted; all past days are tappable
+- **List**: chronological log of all past entries (newest first), with workout icon, date, day of week, and name
+- **Schedule**: the next 14 projected workouts based on the current rotation
+- **Backfill / edit past days** — tap any past day in the calendar to open the Backfill modal; if the day has an existing workout entry it opens read-only (with an Edit button); if the day also has a journal entry, the journal answers are shown below the workout summary; if the day has no entry it opens directly in edit mode; options are all 5 rotation workouts, Rest Day, and Other Activity
+
+### Stats tab
+- **Last 30 Days / All Time toggle** — defaults to Last 30 Days; toggle state resets on each open
+- **Total Workouts** — count of rotation-advancing entries in the selected time range
+- **Streaks** — current streak and longest streak (always computed from full history regardless of range toggle)
+- **Consistency %** — days with a workout / total days in range
+- **Workouts by Type** — horizontal progress bars for all 5 workout types
+
+### Other
 - Offline-capable PWA, installable on iPhone home screen; entries logged while offline are automatically synced to Supabase the next time the app loads with a connection
-- **Test mode** — hidden feature; triple-tap the version stamp (bottom of Today screen) or press Alt+Shift+T to toggle; shows an amber banner confirming no real data is affected; uses isolated localStorage keys (`wmw_test`, `wmw_test_other_activities`) and skips all Supabase calls
-- **Sync status** — the version stamp at the bottom of the Today screen shows `synced just now` / `synced Xm ago` / `offline` as a subtle debugging aid; updates after every successful or failed Supabase read/write; resets on every page load
+- **Test mode** — hidden feature; triple-tap the version stamp (bottom of Today screen) or press Alt+Shift+T to toggle; shows an amber banner confirming no real data is affected; uses isolated localStorage keys (`habits_test`, `habits_test_other_activities`, `habits_test_journal`) and skips all Supabase calls
+- **Sync status** — the version stamp at the bottom of the Today screen shows `synced just now` / `synced Xm ago` / `offline`; updates after every successful or failed Supabase read/write
 
 ## Storage
 
-Data is stored in **Supabase** (primary) with **localStorage** (`wmw_v1`) as an offline fallback. On every load the app reads from Supabase and mirrors the result to localStorage; on every write it saves to localStorage first (instant) then syncs to Supabase.
+Data is stored in **Supabase** (primary) with **localStorage** as an offline fallback. On every load the app reads from Supabase and mirrors the result to localStorage; on every write it saves to localStorage first (instant) then syncs to Supabase.
 
 ### Supabase tables
 
@@ -76,42 +88,43 @@ Data is stored in **Supabase** (primary) with **localStorage** (`wmw_v1`) as an 
 | `rotation_index` | `int` | Current position in the 12-step rotation |
 | `action_date` | `text` (YYYY-MM-DD) | Date the card was last actioned — locks the hero card for the day |
 
-**`history`** — one row per logged event
+**`history`** — one row per logged workout event
 
 | Column | Type | Description |
 |---|---|---|
 | `id` | auto | Primary key |
 | `type` | `text` | Workout ID (`peloton`, `upper_push`, `upper_pull`, `lower`, `yoga`), `off` for a skipped day, or `other` for a free-form activity |
 | `date` | `text` (YYYY-MM-DD) | Date of the logged event |
-| `advanced` | `boolean` | `true` = rotation-advancing (Done! button, or backfill of a workout with no later entries); `false` = non-advancing (Skip, Other Activity, row Done, backfill rest/other or workout with later entries) |
-| `note` | `text` (nullable) | Free-form text associated with the entry: the activity name when `type = 'other'`, or an optional reason when `type = 'off'` (e.g. "Sick"). Null for standard rotation workouts. Add with: `ALTER TABLE history ADD COLUMN note text;` |
-| `sequence` | `integer` | Explicit insert order (the entry's index in the history array). Used for sorting instead of `created_at` because batch re-inserts share the same timestamp. Add with: `ALTER TABLE history ADD COLUMN sequence integer;` |
+| `advanced` | `boolean` | `true` = rotation-advancing; `false` = non-advancing |
+| `note` | `text` (nullable) | Activity name when `type = 'other'`, or optional reason when `type = 'off'` |
+| `sequence` | `integer` | Explicit insert order; used for sorting instead of `created_at` |
 | `created_at` | `timestamptz` | Set automatically by Supabase; not used for ordering |
 
-### localStorage cache (`wmw_v1`)
+**`journal`** — one row per day (date is unique)
 
-The local cache mirrors the Supabase data plus derived fields:
-
-| Field | Type | Description |
+| Column | Type | Description |
 |---|---|---|
-| `peloton`, `upper_push`, `upper_pull`, `lower`, `yoga` | `string` (YYYY-MM-DD) | Date of last completion per workout type (derived from history) |
-| `rotationIndex` | `number` | Current position in the rotation |
-| `actionDate` | `string` (YYYY-MM-DD) | Locks the hero card for the day |
-| `history` | `array` | Every logged event as `{type, date, advanced, note?, _sid?}` — `note` is only present for `type: 'other'` or `type: 'off'` entries with a reason; `_sid` is the Supabase row ID, present only after the entry has been synced — entries written offline have no `_sid` and are pushed to Supabase on the next online load |
-| `wmw_other_activities` (separate key) | `string[]` | Up to 10 most-recently used other activity names, most-recent first, deduplicated case-insensitively |
-| `wmw_v1_skip_reasons` (separate key) | `string[]` | Up to 10 most-recently used skip reasons (e.g. "Sick", "Travel"), most-recent first, deduplicated case-insensitively; shown as chips in the Rest Day modal |
+| `id` | auto | Primary key |
+| `date` | `text` (YYYY-MM-DD) | The journal date — unique, one entry per day |
+| `intention` | `text` (nullable) | Response to "What's your intention for today?" |
+| `gratitude` | `text` (nullable) | Response to "What are you grateful for?" |
+| `one_thing` | `text` (nullable) | Response to "What's the one thing you'll get done today?" |
+| `created_at` | `timestamptz` | Set automatically by Supabase |
 
-### Test-mode localStorage keys (`wmw_test`, `wmw_test_other_activities`, `wmw_test_skip_reasons`)
+### localStorage keys
 
-When test mode is active (`?test=true` in the URL), the app writes to separate keys so real data is never touched. All Supabase calls are skipped; localStorage is the sole store.
+| Key | Type | Description |
+|---|---|---|
+| `habits_v1` | JSON object | Full workout state: `rotationIndex`, `actionDate`, `history[]`, last-completion dates per workout type, `_maxSeq` |
+| `habits_other_activities` | `string[]` | Up to 10 most-recently used other activity names |
+| `habits_v1_skip_reasons` | `string[]` | Up to 10 most-recently used skip reasons |
+| `habits_journal` | `array` | Journal entries as `[{ date, intention, gratitude, one_thing }]`, newest first |
 
-| Key | Type | Shape | Description |
-|---|---|---|---|
-| `wmw_test` | JSON object | Identical to `wmw_v1` | Isolated copy of the full app state used during test mode. Same fields: `rotationIndex`, `actionDate`, `history`, and last-completion dates per workout type. Wiped by the Reset button in the test banner. |
-| `wmw_test_other_activities` | `string[]` | Same as `wmw_other_activities` | Up to 10 most-recently used other activity names recorded during a test session, most-recent first, deduplicated case-insensitively. Wiped alongside `wmw_test` on Reset. |
-| `wmw_test_skip_reasons` | `string[]` | Same as `wmw_v1_skip_reasons` | Up to 10 most-recently used skip reasons recorded during a test session. Wiped alongside `wmw_test` on Reset. |
+**localStorage migration:** On first load after this release, the app automatically migrates `wmw_v1` → `habits_v1` and `wmw_other_activities` → `habits_other_activities`, then deletes the old keys.
 
-**Migration note:** when migrating localStorage to a database, check for both the production keys (`wmw_v1`, `wmw_other_activities`, `wmw_v1_skip_reasons`) and the test keys (`wmw_test`, `wmw_test_other_activities`, `wmw_test_skip_reasons`). The test keys can be safely discarded — they contain no real user data.
+### Test-mode localStorage keys
+
+When test mode is active (`?test=true` in the URL), the app writes to isolated keys (`habits_test`, `habits_test_other_activities`, `habits_test_journal`) and skips all Supabase calls. All test data is wiped by the Reset button in the test banner.
 
 ## File structure
 
@@ -159,4 +172,5 @@ The service worker (`sw.js`) precaches `index.html`, `style.css`, `app.js`, and 
 ## Next Steps
 
 1. Multi-user support with logins and a public guest view
-2. Habit tracking beyond workouts (journaling, water intake, etc.)
+2. Weight tracking
+3. Journal streaks and stats

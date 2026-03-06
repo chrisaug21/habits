@@ -1,7 +1,7 @@
 {
-  "name": "What's My Workout?",
-  "short_name": "My Workout",
-  "description": "Track your workouts and see what's most overdue.",
+  "name": "Habits",
+  "short_name": "Habits",
+  "description": "Your daily habits tracker — workouts, intentions, and gratitude.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0d0d14",

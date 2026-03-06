@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>What's My Workout?</title>
+  <title>Habits</title>
 
   <!-- PWA -->
   <link rel="manifest" href="/manifest.json">
@@ -11,7 +11,7 @@
   <!-- iOS standalone mode -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="My Workout">
+  <meta name="apple-mobile-web-app-title" content="Habits">
   <link rel="icon" href="/favicon.ico" sizes="48x48">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
@@ -32,7 +32,7 @@
 
   <div class="container">
     <header>
-      <h1>What's My Workout?</h1>
+      <h1>Habits</h1>
       <div class="date-label" id="date-label"></div>
     </header>
 
@@ -84,6 +84,65 @@
       </div>
       <div id="stats-content"></div>
     </div>
+
+    <!-- ── Journal view ───────────────────────────────────────────────────── -->
+    <div id="view-journal" hidden>
+
+      <!-- Write state (no entry today, or editing) -->
+      <div id="journal-form">
+        <div class="journal-section-label">Today's Journal</div>
+
+        <div class="journal-field">
+          <label class="journal-field-label">What's your intention for today?</label>
+          <textarea class="journal-textarea" id="journal-intention"
+                    placeholder="Enter your intention…" rows="3"></textarea>
+        </div>
+
+        <div class="journal-field">
+          <label class="journal-field-label">What are you grateful for?</label>
+          <textarea class="journal-textarea" id="journal-gratitude"
+                    placeholder="Enter what you're grateful for…" rows="3"></textarea>
+        </div>
+
+        <div class="journal-field">
+          <label class="journal-field-label">What's the one thing you'll get done today?</label>
+          <textarea class="journal-textarea" id="journal-one-thing"
+                    placeholder="Enter your one thing…" rows="3"></textarea>
+        </div>
+
+        <!-- Gratitude nudge (shown when a similar entry is found in the last 7 days) -->
+        <div class="journal-nudge" id="journal-nudge" hidden>
+          <div class="journal-nudge-text">You mentioned something similar recently — still want to use it?</div>
+          <div class="journal-nudge-actions">
+            <button class="journal-nudge-yes" id="journal-nudge-yes">Yes</button>
+            <button class="journal-nudge-change" id="journal-nudge-change">Change it</button>
+          </div>
+        </div>
+
+        <button class="journal-save-btn" id="journal-save-btn">Save</button>
+      </div>
+
+      <!-- Read-only state (entry already saved for today) -->
+      <div id="journal-readonly" hidden>
+        <div class="journal-section-label">Today's Journal</div>
+        <div class="journal-ro-entry">
+          <div class="journal-ro-field">
+            <div class="journal-ro-label">Intention</div>
+            <div class="journal-ro-value" id="journal-ro-intention"></div>
+          </div>
+          <div class="journal-ro-field">
+            <div class="journal-ro-label">Gratitude</div>
+            <div class="journal-ro-value" id="journal-ro-gratitude"></div>
+          </div>
+          <div class="journal-ro-field">
+            <div class="journal-ro-label">One Thing</div>
+            <div class="journal-ro-value" id="journal-ro-one-thing"></div>
+          </div>
+        </div>
+        <button class="journal-edit-btn" id="journal-edit-btn">Edit</button>
+      </div>
+
+    </div>
   </div>
 
   <div class="toast" id="toast"></div>
@@ -132,6 +191,10 @@
           </div>
           <div class="backfill-readonly-name" id="backfill-readonly-name"></div>
         </div>
+        <!-- Journal entry for this past day (shown if one exists) -->
+        <div id="backfill-journal-section" hidden>
+          <div id="backfill-journal-content"></div>
+        </div>
         <div class="modal-actions" style="margin-top:4px">
           <button class="modal-cancel-btn" id="backfill-ro-close-btn">Close</button>
           <button class="modal-confirm-btn" id="backfill-edit-btn">Edit</button>
@@ -167,6 +230,10 @@
     <button class="nav-btn" id="nav-stats-btn">
       <i data-lucide="bar-chart-2"></i>
       <span>Stats</span>
+    </button>
+    <button class="nav-btn" id="nav-journal-btn">
+      <i data-lucide="pencil"></i>
+      <span>Journal</span>
     </button>
   </nav>
 
