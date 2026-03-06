@@ -1,4 +1,4 @@
-# Claude Instructions — What's My Workout?
+# Claude Instructions — Habits
 
 ## Who I'm working with
 I am a non-technical PM learning to vibe code. Explain everything in plain language — no jargon. When a technical term is unavoidable, explain it in one sentence.
@@ -115,10 +115,6 @@ Use it to simplify recently changed code without changing behavior.
 Use claude-md-management to keep this file accurate when workflows, stack, or conventions change.
 Do not rewrite this file unnecessarily.
 
-## Commits and deploys
-- Remind me to commit after any significant change
-- Before every `git commit` and `git push`, bump the service worker cache version in `sw.js` (wmw-v1 → wmw-v2 → wmw-v3, etc.) so that deployed users always get fresh content immediately after a deploy
-- Always update `README.md` to reflect the current state of the app before committing
 
 ## Branches and Pull Requests
 - Branch names must follow the format `ca/<issue-number>-<short-description>` (e.g. `ca/42-test-mode`)
@@ -133,7 +129,8 @@ Do not rewrite this file unnecessarily.
 - Include service worker bump in message if sw.js was changed
 
 ## Platform priorities
-This is a mobile-first PWA for iPhone. In every UI or UX decision, optimize for one-handed phone use — large tap targets, minimal typing, fast load, works offline.
+This is a mobile-first PWA for iPhone. In every UI or UX decision, optimize for one-handed 
+phone use — large tap targets, minimal typing, fast load.
 
 ## UI and product standards
 This app should feel simple, fast, and calm.
@@ -148,11 +145,19 @@ For UI decisions:
 
 When proposing UI changes, explain the user benefit in plain English.
 
-## Data / localStorage
-We will migrate to a database later. Keep the localStorage structure clean and migration-friendly:
-- Use clear, descriptive key names
-- Store data as structured objects (not raw strings)
-- Document the schema in README.md so it's easy to replicate in a database later
+## Data / Supabase
+Supabase is the primary and authoritative data store. All reads and writes go to Supabase first.
+
+localStorage is used as a lightweight cache only — it mirrors Supabase data and is not a fallback 
+source of truth. A future ticket (#79) will remove localStorage entirely.
+
+Current tables: `state`, `history`, `journal`
+Credentials are injected at deploy time via Netlify env vars — never hardcoded in source.
+
+When adding new data features:
+- Create a new Supabase table with RLS enabled and an "allow all" policy (until auth ships)
+- Mirror the table structure in README.md
+- Do not add new localStorage keys unless explicitly asked
 
 ## Architecture guardrails
 Because this is a simple personal app:
@@ -202,5 +207,16 @@ When reporting back, distinguish clearly between:
 - what was tested
 - what still needs verification
 
-## After completing work
-Summarize what changed and flag anything that is still pending, broken, or needs a follow-up decision.
+## Before every git push — pre-push checklist
+Complete all five steps in order before every `git push`:
+
+1. Bump `VERSION` constant in `app.js` (increment BUILD; increment MINOR if 
+   a complete new feature shipped; see version numbering rules below)
+2. Bump the service worker cache version in `sw.js` to match 
+   (e.g. VERSION 1.1.48 → CACHE 'habits-v48')
+3. Run `/revise-claude-md` — review proposed diff and approve any updates
+4. Update `README.md` if the schema, features, or deployment steps changed
+5. Summarize what changed and flag anything pending, broken, or needing 
+   a follow-up decision
+
+Do not push until all five steps are complete.
