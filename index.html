@@ -73,6 +73,15 @@
       <div id="hview-calendar"></div>
       <div id="hview-list" hidden></div>
     </div>
+
+    <!-- ── Stats view ─────────────────────────────────────────────────────── -->
+    <div id="view-stats" hidden>
+      <div class="stats-range-toggle">
+        <button class="stats-toggle-btn active" id="stats-btn-30">Last 30 Days</button>
+        <button class="stats-toggle-btn" id="stats-btn-all">All Time</button>
+      </div>
+      <div id="stats-content"></div>
+    </div>
   </div>
 
   <div class="toast" id="toast"></div>
@@ -152,6 +161,10 @@
     <button class="nav-btn" id="nav-history-btn">
       <i data-lucide="calendar"></i>
       <span>History</span>
+    </button>
+    <button class="nav-btn" id="nav-stats-btn">
+      <i data-lucide="bar-chart-2"></i>
+      <span>Stats</span>
     </button>
   </nav>
 

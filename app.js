@@ -33,7 +33,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.0.43';
+    const VERSION = '1.0.46';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -940,7 +940,9 @@
     // ── History view state ──────────────────────────────────────────────────
     let cachedData = null;        // last-loaded data, used by history renders
     let historyViewActive = false;
+    let statsViewActive = false;
     let historySubTab = 'calendar'; // 'calendar' or 'list'
+    let statsRange = '30'; // '30' or 'all'
     let calViewDate = new Date(); // month currently shown in the calendar
 
     // Convert a Date object → 'YYYY-MM-DD' string (local time)
@@ -1188,14 +1190,253 @@
       else renderHistoryList(data);
     }
 
+    // ── Stats view ─────────────────────────────────────────────────────────
+    function renderStatsView(data) {
+      const container = document.getElementById('stats-content');
+      const history   = data.history || [];
+
+      // Real workouts = everything except known non-workout types (skip/rest days).
+      // Using a type-based exclusion rather than the `advanced` flag means
+      // backtracked entries (advanced: false but a genuine workout), free-form
+      // "other" entries, and legacy rows without an advanced field all count.
+      const NON_WORKOUT_TYPES = new Set(['off']);
+      const realWorkouts = history.filter(e => !NON_WORKOUT_TYPES.has(e.type));
+
+      // ── Determine the filtered set for range-dependent stats ──────────────
+      // "Last 30 Days" includes today through 29 days ago (30 days inclusive).
+      const today = todayStr();
+      let rangeEntries;
+      if (statsRange === '30') {
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - 29);
+        const cutoffStr = cutoff.getFullYear() + '-' +
+          String(cutoff.getMonth() + 1).padStart(2, '0') + '-' +
+          String(cutoff.getDate()).padStart(2, '0');
+        rangeEntries = realWorkouts.filter(e => e.date >= cutoffStr);
+      } else {
+        rangeEntries = realWorkouts.slice();
+      }
+
+      // ── Empty state ───────────────────────────────────────────────────────
+      if (realWorkouts.length === 0) {
+        container.innerHTML = '<div class="stats-empty">No workouts logged yet</div>';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+        return;
+      }
+
+      // ── 1. Total workouts ─────────────────────────────────────────────────
+      const totalWorkouts = rangeEntries.length;
+
+      // ── 2. Streaks ────────────────────────────────────────────────────────
+      // NOTE: Streaks are ALWAYS computed from the full history regardless of
+      // the selected range toggle. A streak that began 45 days ago must still
+      // show correctly when "Last 30 Days" is selected.
+      const workoutDates = new Set(realWorkouts.map(e => e.date));
+
+      // Current streak: consecutive days ending today (or yesterday if nothing
+      // logged today) where a real workout was logged.
+      function computeCurrentStreak() {
+        const cursor = new Date();
+        // If nothing logged today, start from yesterday
+        if (!workoutDates.has(todayStr())) cursor.setDate(cursor.getDate() - 1);
+        let streak = 0;
+        while (true) {
+          const dateStr = cursor.getFullYear() + '-' +
+            String(cursor.getMonth() + 1).padStart(2, '0') + '-' +
+            String(cursor.getDate()).padStart(2, '0');
+          if (!workoutDates.has(dateStr)) break;
+          streak++;
+          cursor.setDate(cursor.getDate() - 1);
+        }
+        return streak;
+      }
+
+      // Longest streak: longest consecutive calendar-day run in all history.
+      // Uses Date.UTC to parse dates so DST clock changes never corrupt the
+      // 86400000 ms-per-day assumption (UTC has no DST transitions).
+      function computeLongestStreak() {
+        if (workoutDates.size === 0) return 0;
+        const sorted = Array.from(workoutDates).sort();
+        function toUtcDay(dateStr) {
+          const [y, m, d] = dateStr.split('-').map(Number);
+          return Date.UTC(y, m - 1, d);
+        }
+        let best = 1, run = 1;
+        for (let i = 1; i < sorted.length; i++) {
+          const diff = (toUtcDay(sorted[i]) - toUtcDay(sorted[i - 1])) / 86400000;
+          if (diff === 1) { run++; best = Math.max(best, run); }
+          else run = 1;
+        }
+        return best;
+      }
+
+      const currentStreak = computeCurrentStreak();
+      const longestStreak = computeLongestStreak();
+
+      // ── 3. Consistency % ──────────────────────────────────────────────────
+      const distinctDays = new Set(rangeEntries.map(e => e.date)).size;
+      let denominator;
+      if (statsRange === '30') {
+        denominator = 30;
+      } else {
+        // All Time: days from first-ever logged workout to today (inclusive)
+        const allDates = realWorkouts.map(e => e.date).sort();
+        const first = new Date(allDates[0] + 'T00:00:00');
+        const todayDate = new Date(today + 'T00:00:00');
+        denominator = Math.round((todayDate - first) / 86400000) + 1;
+      }
+      const consistencyPct = Math.round((distinctDays / denominator) * 100);
+
+      // ── 4. Workouts by type ───────────────────────────────────────────────
+      const ROTATION_TYPE_IDS = new Set(['peloton', 'upper_push', 'upper_pull', 'lower', 'yoga']);
+      const typeOrder = ['peloton', 'upper_push', 'upper_pull', 'lower', 'yoga'];
+      const typeCounts = {};
+      typeOrder.forEach(id => { typeCounts[id] = 0; });
+      rangeEntries.forEach(e => {
+        if (typeCounts[e.type] !== undefined) typeCounts[e.type]++;
+      });
+
+      // "Other" = real workout entries whose type isn't one of the 5 rotation types.
+      // These are free-form activities logged via Log Other Activity or backfill.
+      // The human-readable label is stored in e.note; fall back to 'Other activity'.
+      const otherEntries = rangeEntries.filter(e => !ROTATION_TYPE_IDS.has(e.type));
+      const otherCount   = otherEntries.length;
+
+      // Scale all bars (including Other) relative to the overall max.
+      const maxCount = Math.max(...Object.values(typeCounts), otherCount, 1);
+
+      // ── Helper: format YYYY-MM-DD → "Mar 5" for the expand list ──────────
+      const STAT_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      function fmtDate(dateStr) {
+        const [, m, d] = dateStr.split('-');
+        return `${STAT_MONTHS[parseInt(m, 10) - 1]} ${parseInt(d, 10)}`;
+      }
+
+      // ── Helper: escape user-supplied text before inserting into HTML ───────
+      function escapeHtml(str) {
+        return String(str ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      // ── Other row + expandable list (only rendered when count > 0) ────────
+      const otherPct = maxCount > 0 ? Math.round((otherCount / maxCount) * 100) : 0;
+      const otherRowHtml = otherCount > 0 ? `
+        <div class="stats-type-row stats-other-row" id="stats-other-row">
+          <i data-lucide="zap" class="stats-type-icon"></i>
+          <div class="stats-type-info">
+            <div class="stats-type-name">Other</div>
+            <div class="stats-bar-track">
+              <div class="stats-bar-fill" style="width:${otherPct}%"></div>
+            </div>
+          </div>
+          <div class="stats-type-count">${otherCount}</div>
+          <i data-lucide="chevron-down" class="stats-other-chevron"></i>
+        </div>
+        <div class="stats-other-list" id="stats-other-list" hidden>
+          ${otherEntries.map(e => `
+            <div class="stats-other-entry">
+              <span class="stats-other-date">${fmtDate(e.date)}</span>
+              <span class="stats-other-name">${escapeHtml(e.note) || 'Other activity'}</span>
+            </div>
+          `).join('')}
+        </div>` : '';
+
+      // ── Render ────────────────────────────────────────────────────────────
+      const html = `
+        <div class="stats-section">
+          <div class="stats-section-label">Total Workouts</div>
+          <div class="stats-card">
+            <div class="stats-big-number">${totalWorkouts}</div>
+            <div class="stats-big-label">${statsRange === '30' ? 'in the last 30 days' : 'all time'}</div>
+          </div>
+        </div>
+
+        <div class="stats-section">
+          <div class="stats-section-label">Streaks</div>
+          <div class="stats-pair">
+            <div class="stats-card">
+              <div class="stats-big-number">${currentStreak}</div>
+              <div class="stats-big-label">current streak</div>
+            </div>
+            <div class="stats-card">
+              <div class="stats-big-number">${longestStreak}</div>
+              <div class="stats-big-label">longest streak</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="stats-section">
+          <div class="stats-section-label">Consistency</div>
+          <div class="stats-card">
+            <div class="stats-big-number">${consistencyPct}%</div>
+            <div class="stats-big-label">${distinctDays} of ${denominator} days</div>
+          </div>
+        </div>
+
+        <div class="stats-section">
+          <div class="stats-section-label">Workouts by Type</div>
+          <div class="stats-card">
+            ${typeOrder.map(id => {
+              const w = WORKOUTS.find(x => x.id === id);
+              const count = typeCounts[id];
+              const pct   = maxCount > 0 ? Math.round((count / maxCount) * 100) : 0;
+              return `
+                <div class="stats-type-row">
+                  <i data-lucide="${w.icon}" class="stats-type-icon"></i>
+                  <div class="stats-type-info">
+                    <div class="stats-type-name">${w.name}</div>
+                    <div class="stats-bar-track">
+                      <div class="stats-bar-fill" style="width:${pct}%"></div>
+                    </div>
+                  </div>
+                  <div class="stats-type-count">${count}</div>
+                </div>`;
+            }).join('')}
+            ${otherRowHtml}
+          </div>
+        </div>
+      `;
+
+      container.innerHTML = html;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+
+      // Attach expand/collapse handler for the Other row after innerHTML is set.
+      if (otherCount > 0) {
+        const otherRow  = document.getElementById('stats-other-row');
+        const otherList = document.getElementById('stats-other-list');
+        const chevron   = otherRow.querySelector('.stats-other-chevron');
+        otherRow.addEventListener('click', () => {
+          const nowExpanded = otherList.hidden;
+          otherList.hidden  = !nowExpanded;
+          chevron.setAttribute('data-lucide', nowExpanded ? 'chevron-up' : 'chevron-down');
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+        });
+      }
+    }
+
     // ── Tab switching ───────────────────────────────────────────────────────
     function switchMainTab(tab) {
       historyViewActive = tab === 'history';
-      document.getElementById('view-today').hidden   = historyViewActive;
-      document.getElementById('view-history').hidden = !historyViewActive;
-      document.getElementById('nav-today-btn').classList.toggle('active', !historyViewActive);
-      document.getElementById('nav-history-btn').classList.toggle('active', historyViewActive);
+      statsViewActive   = tab === 'stats';
+      document.getElementById('view-today').hidden   = tab !== 'today';
+      document.getElementById('view-history').hidden = tab !== 'history';
+      document.getElementById('view-stats').hidden   = tab !== 'stats';
+      document.getElementById('nav-today-btn').classList.toggle('active', tab === 'today');
+      document.getElementById('nav-history-btn').classList.toggle('active', tab === 'history');
+      document.getElementById('nav-stats-btn').classList.toggle('active', tab === 'stats');
       if (historyViewActive && cachedData) renderHistoryView(cachedData);
+      if (statsViewActive) {
+        // Always reset to Last 30 Days when entering the Stats tab so the
+        // toggle never carries over state from a previous visit.
+        statsRange = '30';
+        document.getElementById('stats-btn-30').classList.add('active');
+        document.getElementById('stats-btn-all').classList.remove('active');
+        if (cachedData) renderStatsView(cachedData);
+      }
     }
 
     function switchHistorySubTab(tab) {
@@ -1270,8 +1511,20 @@
     // ── Nav event listeners ─────────────────────────────────────────────────
     document.getElementById('nav-today-btn').onclick   = () => switchMainTab('today');
     document.getElementById('nav-history-btn').onclick = () => switchMainTab('history');
+    document.getElementById('nav-stats-btn').onclick   = () => switchMainTab('stats');
     document.getElementById('htab-calendar').onclick   = () => switchHistorySubTab('calendar');
     document.getElementById('htab-list').onclick       = () => switchHistorySubTab('list');
+
+    // ── Stats range toggle ─────────────────────────────────────────────────
+    document.getElementById('stats-btn-30').onclick = () => switchStatsRange('30');
+    document.getElementById('stats-btn-all').onclick = () => switchStatsRange('all');
+
+    function switchStatsRange(range) {
+      statsRange = range;
+      document.getElementById('stats-btn-30').classList.toggle('active', range === '30');
+      document.getElementById('stats-btn-all').classList.toggle('active', range === 'all');
+      if (cachedData) renderStatsView(cachedData);
+    }
 
     // ── Main render ─────────────────────────────────────────────────────────
     async function render(preloadedData = null) {
@@ -1457,8 +1710,9 @@
         list.appendChild(row);
       }
 
-      // If the history view is visible, keep it in sync with the new data
+      // If the history or stats view is visible, keep it in sync with the new data
       if (historyViewActive) renderHistoryView(data);
+      if (statsViewActive) renderStatsView(data);
 
       // Replace all data-lucide placeholder elements with SVG icons
       if (typeof lucide !== 'undefined') lucide.createIcons();
