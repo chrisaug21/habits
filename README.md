@@ -2,7 +2,7 @@
 
 A mobile-first PWA for daily habits — workout tracking, journaling, and intention-setting.
 
-**Current version: 1.1.48**
+**Current version: 1.2.49**
 
 Live at: https://habits.chrisaug.com
 
@@ -38,26 +38,31 @@ The rotation is position-based, not time-based — it always picks up where it l
 ## Features
 
 ### Navigation
-Bottom nav: **Today · Log · Stats · Journal** (four tabs)
+Bottom nav: **Today · Log · Stats** (three tabs)
 
 ### Today tab
-- **Hero card** — shows today's workout (Next Up), locks after Done, Skip Today, or Log Other Activity
-- **Tomorrow preview** — shows the next step in the rotation so you can plan ahead
-- **Done!** — logs the workout and advances the rotation
-- **Skip Today** — opens a "Rest Day" modal with an optional reason field and suggestion chips (defaults: Sick, Travel, Vacation, Social obligation); recent reasons are saved and shown as chips on future skips; logs an off day without advancing the rotation; reason appears as a subtitle in the history list
-- **Log Other Activity** — opens a modal to record a free-form activity (e.g. "Morning walk", "Swim"); does not advance the rotation; stores recent activities in `habits_other_activities` for quick re-selection
-- **Undo** — reverses the most recent log entry (today's or yesterday's); rolls back the rotation if applicable
-- **All Workouts list** — shows all 5 workout types with days since last completed
+The Today tab is a daily habit dashboard with three cards. All entry happens via modals — the tab itself is read-only with action buttons.
 
-### Journal tab
-- **Today's entry form** — three prompts: "What's your intention for today?", "What are you grateful for?", "What's the one thing you'll get done today?"
-- **Write state** — shown when no entry exists for today; Save button writes to Supabase + localStorage
-- **Read-only state** — shown after saving; displays all three answers; Edit button reopens the form pre-filled
-- **Gratitude uniqueness nudge** — on Save, compares new gratitude against the last 7 days (case-insensitive substring match); if similar entry found, shows inline prompt "You mentioned something similar recently — still want to use it?" with Yes / Change it options; does not block saving
-- No history list — the Journal tab is intentionally write-focused; past journal entries are visible in the Calendar sub-tab
+**Workout card**
+- Shows today's suggested workout (Next Up) with rotation, Done!, and Undo logic unchanged
+- **Done!** — logs the workout and advances the rotation
+- **Log other activity** — opens a modal to record a free-form activity or rest day
+- **Undo** — reverses the most recent log entry; rolls back the rotation if applicable
+- **Tomorrow preview** — shows the next step in the rotation below the card
+
+**Journal card**
+- Incomplete state: "Journal" button opens the journal modal
+- Complete state: shows a truncated preview of today's entries + Done ✓ badge + Edit button
+- Journal modal — three prompts: "What's your intention for today?", "What are you grateful for?", "What's the one thing you'll get done today?"; Save writes to Supabase + localStorage
+- **Gratitude uniqueness nudge** — on Save, compares new gratitude against the last 7 days; if similar entry found, shows "You mentioned something similar recently — still want to use it?" with Yes / Change it options
+
+**Weight card**
+- Incomplete state: "Log Weight" button opens the weight modal
+- Complete state: shows logged weight in lbs + Done ✓ badge + Edit button
+- Weight modal — large number input (lbs, step 0.1); upserts to the Supabase `weight` table
 
 ### Log tab
-- **Calendar** (default): monthly grid with prev/next month navigation; each day shows a purple workout icon for completed workouts, an amber moon for rest/skip days, a teal zap icon for other activities, a dimmed projected icon for future days, or is empty for past days with no data; days with a journal entry show a small purple dot indicator; today is subtly highlighted; all past days are tappable
+- **Calendar** (default): monthly grid with prev/next month navigation; each day shows a purple workout icon for completed workouts, an amber moon for rest/skip days, a teal zap icon for other activities, a dimmed projected icon for future days, or is empty for past days with no data; days with a journal entry show a small **green dot**; days with weight logged show a small **coral dot**; today is subtly highlighted; all past days are tappable
 - **List**: chronological log of all past entries (newest first), with workout icon, date, day of week, and name
 - **Schedule**: the next 14 projected workouts based on the current rotation
 - **Backfill / edit past days** — tap any past day in the calendar to open the Backfill modal; if the day has an existing workout entry it opens read-only (with an Edit button); if the day also has a journal entry, the journal answers are shown below the workout summary; if the day has no entry it opens directly in edit mode; options are all 5 rotation workouts, Rest Day, and Other Activity
@@ -111,6 +116,27 @@ Data is stored in **Supabase** (primary) with **localStorage** as an offline fal
 | `one_thing` | `text` (nullable) | Response to "What's the one thing you'll get done today?" |
 | `created_at` | `timestamptz` | Set automatically by Supabase |
 
+**`weight`** — one row per day (date is unique)
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | auto | Primary key |
+| `date` | `date` | The weight date — unique, one entry per day |
+| `value_lbs` | `numeric(5,1)` | Weight in lbs |
+| `created_at` | `timestamptz` | Set automatically by Supabase |
+
+Migration SQL (run manually in Supabase SQL editor):
+```sql
+create table if not exists weight (
+  id         bigint generated always as identity primary key,
+  date       date           not null unique,
+  value_lbs  numeric(5,1)   not null,
+  created_at timestamptz    not null default now()
+);
+alter table weight enable row level security;
+create policy "allow all" on weight for all using (true) with check (true);
+```
+
 ### localStorage keys
 
 | Key | Type | Description |
@@ -119,12 +145,13 @@ Data is stored in **Supabase** (primary) with **localStorage** as an offline fal
 | `habits_other_activities` | `string[]` | Up to 10 most-recently used other activity names |
 | `habits_v1_skip_reasons` | `string[]` | Up to 10 most-recently used skip reasons |
 | `habits_journal` | `array` | Journal entries as `[{ date, intention, gratitude, one_thing }]`, newest first |
+| `habits_weight` | `array` | Weight entries as `[{ date, value_lbs }]`, newest first |
 
 **localStorage migration:** On first load after this release, the app automatically migrates `wmw_v1` → `habits_v1` and `wmw_other_activities` → `habits_other_activities`, then deletes the old keys.
 
 ### Test-mode localStorage keys
 
-When test mode is active (`?test=true` in the URL), the app writes to isolated keys (`habits_test`, `habits_test_other_activities`, `habits_test_journal`) and skips all Supabase calls. All test data is wiped by the Reset button in the test banner.
+When test mode is active (`?test=true` in the URL), the app writes to isolated keys (`habits_test`, `habits_test_other_activities`, `habits_test_journal`, `habits_test_weight`) and skips all Supabase calls. All test data is wiped by the Reset button in the test banner.
 
 ## File structure
 
@@ -172,5 +199,5 @@ The service worker (`sw.js`) precaches `index.html`, `style.css`, `app.js`, and 
 ## Next Steps
 
 1. Multi-user support with logins and a public guest view
-2. Weight tracking
+2. 7-day average weight in the Weight card (#73)
 3. Journal streaks and stats

@@ -47,8 +47,7 @@
         <div class="suggestion-subtitle" id="suggestion-subtitle"></div>
         <div class="card-actions">
           <button class="done-btn" id="main-done-btn">Done!</button>
-          <button class="skip-btn" id="skip-btn">Skip Today</button>
-          <button class="skip-btn" id="log-other-btn">Log Other Activity</button>
+          <button class="skip-btn" id="log-other-btn">Log other activity</button>
           <button class="undo-btn" id="undo-btn" hidden></button>
         </div>
       </div>
@@ -58,8 +57,17 @@
         <span class="tomorrow-name" id="tomorrow-name"></span>
       </div>
 
-      <div class="list-header">All Workouts</div>
-      <div class="workout-list" id="workout-list"></div>
+      <!-- Journal card -->
+      <div class="today-card" id="journal-card">
+        <div class="today-card-label">Journal</div>
+        <div id="journal-card-content"></div>
+      </div>
+
+      <!-- Weight card -->
+      <div class="today-card" id="weight-card">
+        <div class="today-card-label">Weight</div>
+        <div id="weight-card-content"></div>
+      </div>
 
       <div id="version-stamp"></div>
     </div>
@@ -85,13 +93,30 @@
       <div id="stats-content"></div>
     </div>
 
-    <!-- ── Journal view ───────────────────────────────────────────────────── -->
-    <div id="view-journal" hidden>
+  </div>
 
-      <!-- Write state (no entry today, or editing) -->
+  <!-- ── Weight Modal ───────────────────────────────────────────────────── -->
+  <div class="modal-overlay" id="weight-modal" hidden>
+    <div class="modal-sheet">
+      <div class="modal-title">Log Weight</div>
+      <div class="weight-input-row">
+        <input class="weight-input" id="weight-input" type="number"
+               inputmode="decimal" placeholder="0.0" min="50" max="999" step="0.1">
+        <span class="weight-unit">lbs</span>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-cancel-btn" id="weight-cancel-btn">Cancel</button>
+        <button class="modal-confirm-btn" id="weight-save-btn" disabled>Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Journal Modal ──────────────────────────────────────────────────── -->
+  <div class="modal-overlay" id="journal-modal" hidden>
+    <div class="modal-sheet">
+      <div class="modal-title">Today's Journal</div>
+
       <div id="journal-form">
-        <div class="journal-section-label">Today's Journal</div>
-
         <div class="journal-field">
           <label class="journal-field-label">What's your intention for today?</label>
           <textarea class="journal-textarea" id="journal-intention"
@@ -119,29 +144,11 @@
           </div>
         </div>
 
-        <button class="journal-save-btn" id="journal-save-btn">Save</button>
-      </div>
-
-      <!-- Read-only state (entry already saved for today) -->
-      <div id="journal-readonly" hidden>
-        <div class="journal-section-label">Today's Journal</div>
-        <div class="journal-ro-entry">
-          <div class="journal-ro-field">
-            <div class="journal-ro-label">Intention</div>
-            <div class="journal-ro-value" id="journal-ro-intention"></div>
-          </div>
-          <div class="journal-ro-field">
-            <div class="journal-ro-label">Gratitude</div>
-            <div class="journal-ro-value" id="journal-ro-gratitude"></div>
-          </div>
-          <div class="journal-ro-field">
-            <div class="journal-ro-label">One Thing</div>
-            <div class="journal-ro-value" id="journal-ro-one-thing"></div>
-          </div>
+        <div class="modal-actions">
+          <button class="modal-cancel-btn" id="journal-cancel-btn">Cancel</button>
+          <button class="modal-confirm-btn" id="journal-save-btn">Save</button>
         </div>
-        <button class="journal-edit-btn" id="journal-edit-btn">Edit</button>
       </div>
-
     </div>
   </div>
 
@@ -230,10 +237,6 @@
     <button class="nav-btn" id="nav-stats-btn">
       <i data-lucide="bar-chart-2"></i>
       <span>Stats</span>
-    </button>
-    <button class="nav-btn" id="nav-journal-btn">
-      <i data-lucide="pencil"></i>
-      <span>Journal</span>
     </button>
   </nav>
 
