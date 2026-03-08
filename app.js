@@ -33,7 +33,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.1.48';
+    const VERSION = '1.2.50';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -320,7 +320,7 @@
     let syncOffline  = false; // true if the last Supabase attempt failed
 
     function setButtonsDisabled(disabled) {
-      ['main-done-btn', 'skip-btn', 'log-other-btn', 'undo-btn'].forEach(id => {
+      ['main-done-btn', 'log-other-btn', 'undo-btn'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = disabled;
       });
@@ -493,6 +493,7 @@
         const today = todayStr();
 
         data[id] = today;
+        data.actionDate = today; // lock the hero card for the day
         data.history = data.history || [];
         data.history.push({ type: id, date: today, advanced: false });
 
@@ -502,6 +503,56 @@
       } finally {
         isProcessing = false;
       }
+    }
+
+    function openLogActivityModal() {
+      const opts = document.getElementById('log-activity-options');
+      opts.innerHTML = '';
+
+      // Workout types — exclude the currently scheduled workout (logged via Done! only)
+      const suggestedId = cachedData ? getSuggested(cachedData).id : null;
+      for (const w of WORKOUTS) {
+        if (w.id === suggestedId) continue;
+        const btn = document.createElement('button');
+        btn.className = 'log-activity-option';
+        btn.type = 'button';
+        const icon = document.createElement('i');
+        icon.setAttribute('data-lucide', w.icon);
+        btn.appendChild(icon);
+        btn.appendChild(document.createTextNode(w.name));
+        btn.onclick = () => { closeLogActivityModal(); markRowDone(w.id); };
+        opts.appendChild(btn);
+      }
+
+      // Rest Day
+      const restBtn = document.createElement('button');
+      restBtn.className = 'log-activity-option';
+      restBtn.type = 'button';
+      const moonIcon = document.createElement('i');
+      moonIcon.setAttribute('data-lucide', 'moon');
+      restBtn.appendChild(moonIcon);
+      restBtn.appendChild(document.createTextNode('Rest Day'));
+      restBtn.onclick = () => { closeLogActivityModal(); openSkipModal(); };
+      opts.appendChild(restBtn);
+
+      // Freeform other activity
+      const otherBtn = document.createElement('button');
+      otherBtn.className = 'log-activity-option log-activity-option--other';
+      otherBtn.type = 'button';
+      const zapIcon = document.createElement('i');
+      zapIcon.setAttribute('data-lucide', 'zap');
+      otherBtn.appendChild(zapIcon);
+      otherBtn.appendChild(document.createTextNode('Other activity\u2026'));
+      otherBtn.onclick = () => { closeLogActivityModal(); openOtherActivityModal(); };
+      opts.appendChild(otherBtn);
+
+      document.getElementById('log-activity-modal').hidden = false;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+      setTimeout(() => opts.querySelector('.log-activity-option')?.focus(), 80);
+    }
+
+    function closeLogActivityModal() {
+      document.getElementById('log-activity-modal').hidden = true;
     }
 
     // ── HTML escape helper (prevents XSS when injecting user text into innerHTML)
@@ -518,6 +569,7 @@
     const OTHER_ACTIVITIES_KEY = TEST_MODE ? 'habits_test_other_activities' : 'habits_other_activities';
     const SKIP_REASONS_KEY = STORAGE_KEY + '_skip_reasons';
     const JOURNAL_KEY = TEST_MODE ? 'habits_test_journal' : 'habits_journal';
+    const WEIGHT_KEY  = TEST_MODE ? 'habits_test_weight'  : 'habits_weight';
 
     function loadOtherActivities() {
       try {
@@ -986,10 +1038,9 @@
     // ────────────────────────────────────────────────────────────────────────
 
     // ── Journal state + helpers ─────────────────────────────────────────────
-    let cachedJournal = null;     // array of { date, intention, gratitude, one_thing }
-    let journalViewActive = false;
-    let journalEditing = false;   // true when showing the form over an existing entry
+    let cachedJournal = null;          // array of { date, intention, gratitude, one_thing }
     let _journalNudgeConfirmed = false; // true after user taps "Yes" on gratitude nudge
+    let cachedWeight  = null;          // array of { date, value_lbs }
 
     // Populate cachedJournal from localStorage only (sync, no network).
     // Used by calendar rendering so dots appear without waiting for a Supabase call.
@@ -1067,40 +1118,133 @@
       });
     }
 
-    // ── Journal render ──────────────────────────────────────────────────────
-    function renderJournalView() {
-      const journal = cachedJournal || [];
-      const today = todayStr();
-      const todayEntry = journal.find(e => e.date === today);
-      if (journalEditing || !todayEntry) {
-        _showJournalForm(todayEntry || null);
-      } else {
-        _showJournalReadonly(todayEntry);
-      }
+    // ── Journal modal + card ────────────────────────────────────────────────
+    function openJournalModal() {
+      const journal = getJournalSync() || [];
+      const todayEntry = journal.find(e => e.date === todayStr());
+      _showJournalForm(todayEntry || null);
+      document.getElementById('journal-modal').hidden = false;
+      setTimeout(() => document.getElementById('journal-intention').focus(), 80);
+    }
+
+    function closeJournalModal() {
+      document.getElementById('journal-modal').hidden = true;
     }
 
     function _showJournalForm(prefill) {
-      document.getElementById('journal-form').hidden     = false;
-      document.getElementById('journal-readonly').hidden = true;
-      document.getElementById('journal-intention').value  = prefill?.intention  || '';
-      document.getElementById('journal-gratitude').value  = prefill?.gratitude  || '';
-      document.getElementById('journal-one-thing').value  = prefill?.one_thing  || '';
+      document.getElementById('journal-intention').value = prefill?.intention || '';
+      document.getElementById('journal-gratitude').value = prefill?.gratitude || '';
+      document.getElementById('journal-one-thing').value = prefill?.one_thing || '';
       document.getElementById('journal-nudge').hidden = true;
       _journalNudgeConfirmed = false;
     }
 
-    function _showJournalReadonly(entry) {
-      document.getElementById('journal-form').hidden     = true;
-      document.getElementById('journal-readonly').hidden = false;
-      document.getElementById('journal-ro-intention').textContent = entry.intention || '—';
-      document.getElementById('journal-ro-gratitude').textContent = entry.gratitude || '—';
-      document.getElementById('journal-ro-one-thing').textContent = entry.one_thing || '—';
+    function renderJournalCard() {
+      const journal = getJournalSync() || [];
+      const entry = journal.find(e => e.date === todayStr());
+      const content = document.getElementById('journal-card-content');
+      content.innerHTML = '';
+
+      if (entry) {
+        // Done badge
+        const badge = document.createElement('div');
+        badge.className = 'card-done-badge';
+        badge.textContent = 'Done \u2713';
+        content.appendChild(badge);
+
+        // One row per filled field
+        const fields = [
+          { label: 'Intention', value: entry.intention },
+          { label: 'Gratitude', value: entry.gratitude },
+          { label: 'One thing', value: entry.one_thing },
+        ];
+
+        const COLLAPSE_LINES = 3; // lines per field before "Show more" kicks in
+        let anyCollapsed = false;
+
+        fields.forEach(({ label, value }) => {
+          if (!value) return;
+          const fieldEl = document.createElement('div');
+          fieldEl.className = 'journal-card-field';
+
+          const labelEl = document.createElement('div');
+          labelEl.className = 'journal-card-label';
+          labelEl.textContent = label + ':';
+
+          const valueEl = document.createElement('div');
+          valueEl.className = 'journal-card-value';
+          valueEl.textContent = value; // textContent — no XSS
+
+          // Collapse long fields; toggle revealed on click
+          const lineHeight = 1.45; // em, matches CSS
+          const fontSize   = 14;   // px approx
+          const maxPx = COLLAPSE_LINES * lineHeight * fontSize;
+
+          fieldEl.appendChild(labelEl);
+          fieldEl.appendChild(valueEl);
+          content.appendChild(fieldEl);
+
+          // Measure after paint to decide if toggle is needed
+          requestAnimationFrame(() => {
+            if (valueEl.scrollHeight > maxPx + 4) {
+              anyCollapsed = true;
+              valueEl.classList.add('journal-card-value--collapsed');
+              if (!content.querySelector('.journal-card-toggle')) {
+                const toggle = document.createElement('button');
+                toggle.className = 'journal-card-toggle';
+                toggle.textContent = 'Show more';
+                toggle.onclick = () => {
+                  const collapsed = content.querySelectorAll('.journal-card-value--collapsed');
+                  const expanded  = content.querySelectorAll('.journal-card-value--expanded');
+                  if (collapsed.length > 0) {
+                    collapsed.forEach(el => {
+                      el.classList.remove('journal-card-value--collapsed');
+                      el.classList.add('journal-card-value--expanded');
+                    });
+                    toggle.textContent = 'Show less';
+                  } else {
+                    expanded.forEach(el => {
+                      el.classList.remove('journal-card-value--expanded');
+                      el.classList.add('journal-card-value--collapsed');
+                    });
+                    toggle.textContent = 'Show more';
+                  }
+                };
+                // Insert before Edit button so order is: fields → Show more → Edit
+                const editBtnEl = content.querySelector('.card-edit-btn');
+                if (editBtnEl) {
+                  content.insertBefore(toggle, editBtnEl);
+                } else {
+                  content.appendChild(toggle);
+                }
+              }
+            }
+          });
+        });
+
+        // Edit button
+        const editBtn = document.createElement('button');
+        editBtn.className = 'card-edit-btn';
+        editBtn.textContent = 'Edit';
+        editBtn.onclick = openJournalModal;
+        content.appendChild(editBtn);
+
+      } else {
+        const openBtn = document.createElement('button');
+        openBtn.className = 'card-action-btn';
+        openBtn.textContent = 'Journal';
+        openBtn.onclick = openJournalModal;
+        content.appendChild(openBtn);
+      }
     }
 
     async function saveJournal() {
       const intention = document.getElementById('journal-intention').value.trim();
       const gratitude = document.getElementById('journal-gratitude').value.trim();
       const oneThing  = document.getElementById('journal-one-thing').value.trim();
+
+      // Block saving if all fields are empty
+      if (!intention && !gratitude && !oneThing) return;
 
       // Gratitude similarity check — only run once per save attempt
       if (gratitude && !_journalNudgeConfirmed && checkGratitudeSimilarity(gratitude)) {
@@ -1115,13 +1259,101 @@
       } finally {
         document.getElementById('journal-save-btn').disabled = false;
       }
-      journalEditing = false;
       _journalNudgeConfirmed = false;
-      _showJournalReadonly(entry);
+      closeJournalModal();
+      renderJournalCard();
       showToast('Journal saved \u2713');
     }
 
     // ────────────────────────────────────────────────────────────────────────
+
+    // ── Weight modal + card ─────────────────────────────────────────────────
+    function getWeightSync() {
+      if (cachedWeight !== null) return cachedWeight;
+      try { cachedWeight = JSON.parse(localStorage.getItem(WEIGHT_KEY)) || []; }
+      catch { cachedWeight = []; }
+      return cachedWeight;
+    }
+
+    async function loadWeight() {
+      let local = [];
+      try { local = JSON.parse(localStorage.getItem(WEIGHT_KEY)) || []; } catch {}
+      if (!sb || TEST_MODE) { cachedWeight = local; return local; }
+      try {
+        const { data, error } = await sb.from('weight').select('date, value_lbs').order('date', { ascending: false });
+        if (error) throw error;
+        const rows = (data || []).map(r => ({ date: r.date, value_lbs: parseFloat(r.value_lbs) }));
+        localStorage.setItem(WEIGHT_KEY, JSON.stringify(rows));
+        cachedWeight = rows;
+        return rows;
+      } catch (err) {
+        console.warn('Weight load failed, using localStorage:', err);
+        cachedWeight = local;
+        return local;
+      }
+    }
+
+    async function saveWeightEntry(date, valueLbs) {
+      const rows = cachedWeight ? [...cachedWeight] : [];
+      const idx = rows.findIndex(r => r.date === date);
+      const entry = { date, value_lbs: valueLbs };
+      if (idx !== -1) { rows[idx] = entry; } else { rows.unshift(entry); }
+      cachedWeight = rows;
+      localStorage.setItem(WEIGHT_KEY, JSON.stringify(rows));
+
+      if (!sb || TEST_MODE) return;
+      try {
+        const { error } = await sb.from('weight').upsert({ date, value_lbs: valueLbs }, { onConflict: 'date' });
+        if (error) throw error;
+      } catch (err) {
+        console.warn('Weight save to Supabase failed (saved locally):', err);
+      }
+    }
+
+    function openWeightModal() {
+      // Pre-fill if weight already logged today
+      const today = todayStr();
+      const existing = (getWeightSync() || []).find(r => r.date === today);
+      const input = document.getElementById('weight-input');
+      input.value = existing ? existing.value_lbs : '';
+      document.getElementById('weight-save-btn').disabled = !existing;
+      document.getElementById('weight-modal').hidden = false;
+      input.focus();
+    }
+
+    function closeWeightModal() {
+      document.getElementById('weight-modal').hidden = true;
+    }
+
+    async function saveWeight() {
+      const val = parseFloat(document.getElementById('weight-input').value);
+      if (!val || val < 50 || val > 999) return;
+      document.getElementById('weight-save-btn').disabled = true;
+      try {
+        await saveWeightEntry(todayStr(), val);
+      } finally {
+        document.getElementById('weight-save-btn').disabled = false;
+      }
+      closeWeightModal();
+      renderWeightCard();
+      showToast('Weight logged \u2713');
+    }
+
+    function renderWeightCard() {
+      const today = todayStr();
+      const entry = (getWeightSync() || []).find(r => r.date === today);
+      const content = document.getElementById('weight-card-content');
+      if (entry) {
+        content.innerHTML =
+          `<div class="weight-logged-value">${entry.value_lbs} lbs</div>` +
+          `<div class="card-done-badge">Done ✓</div>` +
+          `<button class="card-edit-btn" id="weight-edit-card-btn">Edit</button>`;
+        document.getElementById('weight-edit-card-btn').onclick = openWeightModal;
+      } else {
+        content.innerHTML = `<button class="card-action-btn" id="weight-open-btn">Log Weight</button>`;
+        document.getElementById('weight-open-btn').onclick = openWeightModal;
+      }
+    }
 
     // ── History view state ──────────────────────────────────────────────────
     let cachedData = null;        // last-loaded data, used by history renders
@@ -1179,8 +1411,9 @@
       const projMap = buildProjectionMap(data);
       const today = todayStr();
 
-      // Build a set of dates that have a journal entry (for dot indicators)
+      // Build date sets for journal and weight dot indicators
       const journalDateSet = new Set((getJournalSync() || []).map(e => e.date));
+      const weightDateSet  = new Set((getWeightSync()  || []).map(r => r.date));
 
       const year  = calViewDate.getFullYear();
       const month = calViewDate.getMonth(); // 0-indexed
@@ -1255,7 +1488,8 @@
 
         const dateAttr = isPast ? ` data-date="${ds}" role="button" tabindex="0"` : '';
         const journalDot = journalDateSet.has(ds) ? '<span class="cal-journal-dot"></span>' : '';
-        html += `<div class="${classes.join(' ')}"${dateAttr}>${iconHtml}<span class="cal-day-num">${day}</span>${journalDot}</div>`;
+        const weightDot  = weightDateSet.has(ds)  ? '<span class="cal-weight-dot"></span>'  : '';
+        html += `<div class="${classes.join(' ')}"${dateAttr}>${iconHtml}<span class="cal-day-num">${day}</span>${journalDot}${weightDot}</div>`;
       }
 
       html += '</div>';
@@ -1649,15 +1883,12 @@
     function switchMainTab(tab) {
       historyViewActive = tab === 'history';
       statsViewActive   = tab === 'stats';
-      journalViewActive = tab === 'journal';
       document.getElementById('view-today').hidden   = tab !== 'today';
       document.getElementById('view-history').hidden = tab !== 'history';
       document.getElementById('view-stats').hidden   = tab !== 'stats';
-      document.getElementById('view-journal').hidden = tab !== 'journal';
       document.getElementById('nav-today-btn').classList.toggle('active', tab === 'today');
       document.getElementById('nav-history-btn').classList.toggle('active', tab === 'history');
       document.getElementById('nav-stats-btn').classList.toggle('active', tab === 'stats');
-      document.getElementById('nav-journal-btn').classList.toggle('active', tab === 'journal');
       if (historyViewActive) switchHistorySubTab('calendar');
       if (statsViewActive) {
         // Always reset to Last 30 Days when entering the Stats tab so the
@@ -1666,13 +1897,6 @@
         document.getElementById('stats-btn-30').classList.add('active');
         document.getElementById('stats-btn-all').classList.remove('active');
         if (cachedData) renderStatsView(cachedData);
-      }
-      if (journalViewActive) {
-        journalEditing = false;
-        // Show cached data immediately, then refresh from Supabase
-        getJournalSync();
-        renderJournalView();
-        loadJournal().then(() => renderJournalView());
       }
     }
 
@@ -1751,19 +1975,34 @@
     document.getElementById('nav-today-btn').onclick   = () => switchMainTab('today');
     document.getElementById('nav-history-btn').onclick = () => switchMainTab('history');
     document.getElementById('nav-stats-btn').onclick   = () => switchMainTab('stats');
-    document.getElementById('nav-journal-btn').onclick = () => switchMainTab('journal');
     document.getElementById('htab-calendar').onclick   = () => switchHistorySubTab('calendar');
     document.getElementById('htab-list').onclick       = () => switchHistorySubTab('list');
     document.getElementById('htab-schedule').onclick   = () => switchHistorySubTab('schedule');
 
     // ── Journal event listeners ─────────────────────────────────────────────
-    document.getElementById('journal-save-btn').onclick = () => saveJournal();
-    document.getElementById('journal-edit-btn').onclick = () => {
-      journalEditing = true;
-      const journal = cachedJournal || [];
-      const todayEntry = journal.find(e => e.date === todayStr());
-      _showJournalForm(todayEntry || null);
-    };
+    // ── Log activity chooser listeners ─────────────────────────────────────
+    document.getElementById('log-activity-cancel-btn').onclick = () => closeLogActivityModal();
+    document.getElementById('log-activity-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('log-activity-modal')) closeLogActivityModal();
+    });
+
+    // ── Weight event listeners ──────────────────────────────────────────────
+    document.getElementById('weight-save-btn').onclick   = () => saveWeight();
+    document.getElementById('weight-cancel-btn').onclick = () => closeWeightModal();
+    document.getElementById('weight-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('weight-modal')) closeWeightModal();
+    });
+    document.getElementById('weight-input').addEventListener('input', () => {
+      const val = parseFloat(document.getElementById('weight-input').value);
+      document.getElementById('weight-save-btn').disabled = !(val >= 50 && val <= 999);
+    });
+
+    // ── Journal event listeners ─────────────────────────────────────────────
+    document.getElementById('journal-save-btn').onclick   = () => saveJournal();
+    document.getElementById('journal-cancel-btn').onclick = () => closeJournalModal();
+    document.getElementById('journal-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('journal-modal')) closeJournalModal();
+    });
     document.getElementById('journal-nudge-yes').onclick = () => {
       _journalNudgeConfirmed = true;
       document.getElementById('journal-nudge').hidden = true;
@@ -1853,7 +2092,6 @@
 
       // Buttons — mutually exclusive per state
       const mainBtn      = document.getElementById('main-done-btn');
-      const skipBtn      = document.getElementById('skip-btn');
       const logOtherBtn  = document.getElementById('log-other-btn');
       const undoBtn      = document.getElementById('undo-btn');
 
@@ -1861,18 +2099,15 @@
       // every action and is never explicitly reversed — render() is the natural
       // place to restore interactive state after a round-trip completes.
       mainBtn.disabled     = false;
-      skipBtn.disabled     = false;
       logOtherBtn.disabled = false;
       undoBtn.disabled     = false;
 
       mainBtn.hidden     = heroState !== 'default';
-      skipBtn.hidden     = heroState !== 'default';
       logOtherBtn.hidden = heroState !== 'default';
 
       if (heroState === 'default') {
-        mainBtn.onclick    = markDone;
-        skipBtn.onclick    = openSkipModal;
-        logOtherBtn.onclick = openOtherActivityModal;
+        mainBtn.onclick     = markDone;
+        logOtherBtn.onclick = openLogActivityModal;
         undoBtn.hidden = true;
       } else {
         // Undo button with lucide icon (no iOS emoji arrow)
@@ -1890,12 +2125,15 @@
         undoBtn.hidden = false;
       }
 
-      // Tomorrow row — one step ahead of whatever is currently next
-      // If action was taken today, rotation already advanced so nextInRotation IS tomorrow.
-      // If today hasn't been actioned yet, rotation still points to today, so add 1.
+      // Tomorrow preview — reads rotation_index directly, same source as the calendar.
+      // Advancing action (Done!): rotationIndex already incremented, so ROTATION[idx] IS tomorrow.
+      // Non-advancing action (skip/other/chooser): rotationIndex unchanged, so ROTATION[idx]
+      //   is still today's scheduled workout, which is also tomorrow's (rotation didn't move).
+      // No action yet today: rotationIndex points to today, so tomorrow is idx + 1.
+      const rotIdx = data.rotationIndex || 0;
       const tomorrowWorkout = actionTakenToday
-        ? nextInRotation
-        : WORKOUTS.find(w => w.id === ROTATION[((data.rotationIndex || 0) + 1) % ROTATION.length]);
+        ? WORKOUTS.find(w => w.id === ROTATION[rotIdx % ROTATION.length])
+        : WORKOUTS.find(w => w.id === ROTATION[(rotIdx + 1) % ROTATION.length]);
       const tomorrowNameEl = document.getElementById('tomorrow-name');
       tomorrowNameEl.innerHTML = '';
       const tomorrowIconEl = document.createElement('i');
@@ -1904,70 +2142,9 @@
       tomorrowNameEl.appendChild(tomorrowIconEl);
       tomorrowNameEl.appendChild(document.createTextNode(tomorrowWorkout.name));
 
-      // Workout list — suggested first, then by most recently done
-      const sorted = [...WORKOUTS].sort((a, b) => {
-        if (a.id === nextInRotation.id) return -1;
-        if (b.id === nextInRotation.id) return 1;
-        const doneA = data[a.id] === today;
-        const doneB = data[b.id] === today;
-        const daysA = data[a.id] ? daysSince(data[a.id]) : null;
-        const daysB = data[b.id] ? daysSince(data[b.id]) : null;
-        const scoreA = doneA ? -1 : (daysA === null ? Infinity : daysA);
-        const scoreB = doneB ? -1 : (daysB === null ? Infinity : daysB);
-        return scoreB - scoreA;
-      });
-
-      const list = document.getElementById('workout-list');
-      list.innerHTML = '';
-
-      for (const w of sorted) {
-        const last = data[w.id];
-        const days = last ? daysSince(last) : null;
-        const doneToday = last === today;
-        const isSuggested = w.id === nextInRotation.id;
-
-        const row = document.createElement('div');
-        row.className = [
-          'workout-row',
-          isSuggested ? 'is-suggested' : '',
-          doneToday   ? 'done-today'   : '',
-        ].filter(Boolean).join(' ');
-
-        const info = document.createElement('div');
-        info.className = 'workout-info';
-
-        const nameEl = document.createElement('div');
-        nameEl.className = 'workout-name';
-        const rowIconEl = document.createElement('i');
-        rowIconEl.setAttribute('data-lucide', w.icon);
-        rowIconEl.className = 'row-icon';
-        const nameSpan = document.createElement('span');
-        nameSpan.textContent = w.name;
-        nameEl.appendChild(rowIconEl);
-        nameEl.appendChild(nameSpan);
-
-        const lastEl = document.createElement('div');
-        lastEl.className = 'workout-last';
-        lastEl.textContent = lastDoneText(days, doneToday);
-
-        info.appendChild(nameEl);
-        info.appendChild(lastEl);
-
-        const pill = document.createElement('span');
-        pill.className = 'days-pill ' + pillClass(days, doneToday);
-        pill.textContent = pillText(days, doneToday);
-
-        const btn = document.createElement('button');
-        btn.className = 'row-done-btn';
-        btn.textContent = doneToday ? '\u2713' : 'Done';
-        btn.disabled = doneToday;
-        if (!doneToday) btn.onclick = () => markRowDone(w.id);
-
-        row.appendChild(info);
-        row.appendChild(pill);
-        row.appendChild(btn);
-        list.appendChild(row);
-      }
+      // Update Today tab cards
+      renderJournalCard();
+      renderWeightCard();
 
       // If the history or stats view is visible, keep it in sync with the new data
       if (historyViewActive) renderHistoryView(data);
@@ -1986,7 +2163,9 @@
         localStorage.removeItem(OTHER_ACTIVITIES_KEY);
         localStorage.removeItem(SKIP_REASONS_KEY);
         localStorage.removeItem(JOURNAL_KEY);
+        localStorage.removeItem(WEIGHT_KEY);
         cachedJournal = null;
+        cachedWeight  = null;
         render();
       };
       document.getElementById('test-exit-btn').onclick = toggleTestMode;
@@ -2047,6 +2226,14 @@
     // localStorage render; this call refreshes the cache from Supabase and
     // re-renders the calendar if the Log view is already visible.
     loadJournal().then(() => {
+      renderJournalCard();
+      if (historyViewActive && historySubTab === 'calendar' && cachedData) {
+        renderCalendar(cachedData);
+      }
+    });
+
+    loadWeight().then(() => {
+      renderWeightCard();
       if (historyViewActive && historySubTab === 'calendar' && cachedData) {
         renderCalendar(cachedData);
       }

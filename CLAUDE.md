@@ -159,6 +159,31 @@ When adding new data features:
 - Mirror the table structure in README.md
 - Do not add new localStorage keys unless explicitly asked
 
+## Codebase-specific patterns
+
+### Today tab cards
+Any new card that reflects daily state must call its `renderXCard()` from two places:
+- Inside `render()` (called after every data operation)
+- In a startup `loadX().then(() => { renderXCard(); if (historyViewActive && historySubTab === 'calendar' && cachedData) renderCalendar(cachedData); })` alongside `loadJournal()` at the bottom of DOMContentLoaded
+
+### Hero card buttons
+When adding or removing buttons in the hero card, update the `setButtonsDisabled` array near the top of app.js (search `setButtonsDisabled`) — it controls which buttons are disabled during network round-trips.
+
+### Removing a nav tab
+Requires 5 changes: (1) HTML button, (2) `switchMainTab` variable assignment, (3) `switchMainTab` hidden toggle, (4) `switchMainTab` classList toggle, and (5) the nav event listener. Also remove any `if (xViewActive)` block from `switchMainTab`.
+
+### Modal conversion pattern
+To convert a full-page view into a bottom-sheet modal: change outer div to `class="modal-overlay" id="x-modal" hidden`, wrap content in `<div class="modal-sheet">`, add `<div class="modal-title">`, replace save button with `modal-cancel-btn` + `modal-confirm-btn` pair. Add `max-height: 88vh; overflow-y: auto` on the sheet if content is tall (e.g. multiple textareas).
+
+### XSS safety
+`escapeHtml(str)` exists in app.js (search `escapeHtml`). Use it whenever writing user-entered text into innerHTML. Prefer `textContent` for simple string values — it's safer and doesn't need escaping.
+
+### Hero card locking
+The hero card locks for the day when `data.actionDate === todayStr()`. Any log action that should lock it must set `data.actionDate = today` before calling `saveData()`. Currently: `markDone`, `logSkip`, `logOtherActivity`, `markRowDone`.
+
+### Modal → log action order
+Always call `closeXModal()` BEFORE calling an async log function (`markRowDone`, `logSkip`, `logOtherActivity`). The `isProcessing` guard and `setButtonsDisabled` run at the start of every log function — if the modal is still open, its buttons stay frozen.
+
 ## Architecture guardrails
 Because this is a simple personal app:
 
