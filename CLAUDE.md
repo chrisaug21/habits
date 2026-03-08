@@ -175,6 +175,15 @@ Requires 4 changes: (1) HTML button, (2) `switchMainTab` variable assignment, (3
 ### Modal conversion pattern
 To convert a full-page view into a bottom-sheet modal: change outer div to `class="modal-overlay" id="x-modal" hidden`, wrap content in `<div class="modal-sheet">`, add `<div class="modal-title">`, replace save button with `modal-cancel-btn` + `modal-confirm-btn` pair. Add `max-height: 88vh; overflow-y: auto` on the sheet if content is tall (e.g. multiple textareas).
 
+### XSS safety
+`escapeHtml(str)` exists in app.js (search `escapeHtml`). Use it whenever writing user-entered text into innerHTML. Prefer `textContent` for simple string values — it's safer and doesn't need escaping.
+
+### Hero card locking
+The hero card locks for the day when `data.actionDate === todayStr()`. Any log action that should lock it must set `data.actionDate = today` before calling `saveData()`. Currently: `markDone`, `logSkip`, `logOtherActivity`, `markRowDone`.
+
+### Modal → log action order
+Always call `closeXModal()` BEFORE calling an async log function (`markRowDone`, `logSkip`, `logOtherActivity`). The `isProcessing` guard and `setButtonsDisabled` run at the start of every log function — if the modal is still open, its buttons stay frozen.
+
 ## Architecture guardrails
 Because this is a simple personal app:
 

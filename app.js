@@ -33,7 +33,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.2.49';
+    const VERSION = '1.2.50';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -493,6 +493,7 @@
         const today = todayStr();
 
         data[id] = today;
+        data.actionDate = today; // lock the hero card for the day
         data.history = data.history || [];
         data.history.push({ type: id, date: today, advanced: false });
 
@@ -502,6 +503,53 @@
       } finally {
         isProcessing = false;
       }
+    }
+
+    function openLogActivityModal() {
+      const opts = document.getElementById('log-activity-options');
+      opts.innerHTML = '';
+
+      // 5 workout types
+      for (const w of WORKOUTS) {
+        const btn = document.createElement('button');
+        btn.className = 'log-activity-option';
+        btn.type = 'button';
+        const icon = document.createElement('i');
+        icon.setAttribute('data-lucide', w.icon);
+        btn.appendChild(icon);
+        btn.appendChild(document.createTextNode(w.name));
+        btn.onclick = () => { closeLogActivityModal(); markRowDone(w.id); };
+        opts.appendChild(btn);
+      }
+
+      // Rest Day
+      const restBtn = document.createElement('button');
+      restBtn.className = 'log-activity-option';
+      restBtn.type = 'button';
+      const moonIcon = document.createElement('i');
+      moonIcon.setAttribute('data-lucide', 'moon');
+      restBtn.appendChild(moonIcon);
+      restBtn.appendChild(document.createTextNode('Rest Day'));
+      restBtn.onclick = () => { closeLogActivityModal(); openSkipModal(); };
+      opts.appendChild(restBtn);
+
+      // Freeform other activity
+      const otherBtn = document.createElement('button');
+      otherBtn.className = 'log-activity-option log-activity-option--other';
+      otherBtn.type = 'button';
+      const zapIcon = document.createElement('i');
+      zapIcon.setAttribute('data-lucide', 'zap');
+      otherBtn.appendChild(zapIcon);
+      otherBtn.appendChild(document.createTextNode('Other activity\u2026'));
+      otherBtn.onclick = () => { closeLogActivityModal(); openOtherActivityModal(); };
+      opts.appendChild(otherBtn);
+
+      document.getElementById('log-activity-modal').hidden = false;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    function closeLogActivityModal() {
+      document.getElementById('log-activity-modal').hidden = true;
     }
 
     // ── HTML escape helper (prevents XSS when injecting user text into innerHTML)
@@ -1091,18 +1139,92 @@
       const journal = getJournalSync() || [];
       const entry = journal.find(e => e.date === todayStr());
       const content = document.getElementById('journal-card-content');
+      content.innerHTML = '';
+
       if (entry) {
-        const preview = [entry.intention, entry.gratitude, entry.one_thing]
-          .filter(Boolean).join(' · ');
-        const truncated = preview.length > 80 ? preview.slice(0, 80) + '…' : preview;
-        content.innerHTML =
-          `<div class="card-complete-text">${truncated}</div>` +
-          `<div class="card-done-badge">Done ✓</div>` +
-          `<button class="card-edit-btn" id="journal-edit-card-btn">Edit</button>`;
-        document.getElementById('journal-edit-card-btn').onclick = openJournalModal;
+        // Done badge
+        const badge = document.createElement('div');
+        badge.className = 'card-done-badge';
+        badge.textContent = 'Done \u2713';
+        content.appendChild(badge);
+
+        // One row per filled field
+        const fields = [
+          { label: 'Intention', value: entry.intention },
+          { label: 'Gratitude', value: entry.gratitude },
+          { label: 'One thing', value: entry.one_thing },
+        ];
+
+        const COLLAPSE_LINES = 3; // lines per field before "Show more" kicks in
+        let anyCollapsed = false;
+
+        fields.forEach(({ label, value }) => {
+          if (!value) return;
+          const fieldEl = document.createElement('div');
+          fieldEl.className = 'journal-card-field';
+
+          const labelEl = document.createElement('div');
+          labelEl.className = 'journal-card-label';
+          labelEl.textContent = label + ':';
+
+          const valueEl = document.createElement('div');
+          valueEl.className = 'journal-card-value';
+          valueEl.textContent = value; // textContent — no XSS
+
+          // Collapse long fields; toggle revealed on click
+          const lineHeight = 1.45; // em, matches CSS
+          const fontSize   = 14;   // px approx
+          const maxPx = COLLAPSE_LINES * lineHeight * fontSize;
+
+          fieldEl.appendChild(labelEl);
+          fieldEl.appendChild(valueEl);
+          content.appendChild(fieldEl);
+
+          // Measure after paint to decide if toggle is needed
+          requestAnimationFrame(() => {
+            if (valueEl.scrollHeight > maxPx + 4) {
+              anyCollapsed = true;
+              valueEl.classList.add('journal-card-value--collapsed');
+              if (!content.querySelector('.journal-card-toggle')) {
+                const toggle = document.createElement('button');
+                toggle.className = 'journal-card-toggle';
+                toggle.textContent = 'Show more';
+                toggle.onclick = () => {
+                  const collapsed = content.querySelectorAll('.journal-card-value--collapsed');
+                  const expanded  = content.querySelectorAll('.journal-card-value--expanded');
+                  if (collapsed.length > 0) {
+                    collapsed.forEach(el => {
+                      el.classList.remove('journal-card-value--collapsed');
+                      el.classList.add('journal-card-value--expanded');
+                    });
+                    toggle.textContent = 'Show less';
+                  } else {
+                    expanded.forEach(el => {
+                      el.classList.remove('journal-card-value--expanded');
+                      el.classList.add('journal-card-value--collapsed');
+                    });
+                    toggle.textContent = 'Show more';
+                  }
+                };
+                content.appendChild(toggle);
+              }
+            }
+          });
+        });
+
+        // Edit button
+        const editBtn = document.createElement('button');
+        editBtn.className = 'card-edit-btn';
+        editBtn.textContent = 'Edit';
+        editBtn.onclick = openJournalModal;
+        content.appendChild(editBtn);
+
       } else {
-        content.innerHTML = `<button class="card-action-btn" id="journal-open-btn">Journal</button>`;
-        document.getElementById('journal-open-btn').onclick = openJournalModal;
+        const openBtn = document.createElement('button');
+        openBtn.className = 'card-action-btn';
+        openBtn.textContent = 'Journal';
+        openBtn.onclick = openJournalModal;
+        content.appendChild(openBtn);
       }
     }
 
@@ -1110,6 +1232,9 @@
       const intention = document.getElementById('journal-intention').value.trim();
       const gratitude = document.getElementById('journal-gratitude').value.trim();
       const oneThing  = document.getElementById('journal-one-thing').value.trim();
+
+      // Block saving if all fields are empty
+      if (!intention && !gratitude && !oneThing) return;
 
       // Gratitude similarity check — only run once per save attempt
       if (gratitude && !_journalNudgeConfirmed && checkGratitudeSimilarity(gratitude)) {
@@ -1845,6 +1970,12 @@
     document.getElementById('htab-schedule').onclick   = () => switchHistorySubTab('schedule');
 
     // ── Journal event listeners ─────────────────────────────────────────────
+    // ── Log activity chooser listeners ─────────────────────────────────────
+    document.getElementById('log-activity-cancel-btn').onclick = () => closeLogActivityModal();
+    document.getElementById('log-activity-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('log-activity-modal')) closeLogActivityModal();
+    });
+
     // ── Weight event listeners ──────────────────────────────────────────────
     document.getElementById('weight-save-btn').onclick   = () => saveWeight();
     document.getElementById('weight-cancel-btn').onclick = () => closeWeightModal();
@@ -1966,7 +2097,7 @@
 
       if (heroState === 'default') {
         mainBtn.onclick     = markDone;
-        logOtherBtn.onclick = openOtherActivityModal;
+        logOtherBtn.onclick = openLogActivityModal;
         undoBtn.hidden = true;
       } else {
         // Undo button with lucide icon (no iOS emoji arrow)
@@ -1984,12 +2115,15 @@
         undoBtn.hidden = false;
       }
 
-      // Tomorrow row — one step ahead of whatever is currently next
-      // If action was taken today, rotation already advanced so nextInRotation IS tomorrow.
-      // If today hasn't been actioned yet, rotation still points to today, so add 1.
+      // Tomorrow preview — reads rotation_index directly, same source as the calendar.
+      // Advancing action (Done!): rotationIndex already incremented, so ROTATION[idx] IS tomorrow.
+      // Non-advancing action (skip/other/chooser): rotationIndex unchanged, so ROTATION[idx]
+      //   is still today's scheduled workout, which is also tomorrow's (rotation didn't move).
+      // No action yet today: rotationIndex points to today, so tomorrow is idx + 1.
+      const rotIdx = data.rotationIndex || 0;
       const tomorrowWorkout = actionTakenToday
-        ? nextInRotation
-        : WORKOUTS.find(w => w.id === ROTATION[((data.rotationIndex || 0) + 1) % ROTATION.length]);
+        ? WORKOUTS.find(w => w.id === ROTATION[rotIdx % ROTATION.length])
+        : WORKOUTS.find(w => w.id === ROTATION[(rotIdx + 1) % ROTATION.length]);
       const tomorrowNameEl = document.getElementById('tomorrow-name');
       tomorrowNameEl.innerHTML = '';
       const tomorrowIconEl = document.createElement('i');
@@ -2019,7 +2153,9 @@
         localStorage.removeItem(OTHER_ACTIVITIES_KEY);
         localStorage.removeItem(SKIP_REASONS_KEY);
         localStorage.removeItem(JOURNAL_KEY);
+        localStorage.removeItem(WEIGHT_KEY);
         cachedJournal = null;
+        cachedWeight  = null;
         render();
       };
       document.getElementById('test-exit-btn').onclick = toggleTestMode;

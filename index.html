@@ -47,7 +47,7 @@
         <div class="suggestion-subtitle" id="suggestion-subtitle"></div>
         <div class="card-actions">
           <button class="done-btn" id="main-done-btn">Done!</button>
-          <button class="skip-btn" id="log-other-btn">Log other activity</button>
+          <button class="skip-btn" id="log-other-btn">Log activity</button>
           <button class="undo-btn" id="undo-btn" hidden></button>
         </div>
       </div>
@@ -96,10 +96,11 @@
   </div>
 
   <!-- ── Weight Modal ───────────────────────────────────────────────────── -->
-  <div class="modal-overlay" id="weight-modal" hidden>
+  <div class="modal-overlay" id="weight-modal" hidden aria-labelledby="weight-modal-title">
     <div class="modal-sheet">
-      <div class="modal-title">Log Weight</div>
+      <div class="modal-title" id="weight-modal-title">Log Weight</div>
       <div class="weight-input-row">
+        <label for="weight-input" class="sr-only">Weight in lbs</label>
         <input class="weight-input" id="weight-input" type="number"
                inputmode="decimal" placeholder="0.0" min="50" max="999" step="0.1">
         <span class="weight-unit">lbs</span>
@@ -118,19 +119,19 @@
 
       <div id="journal-form">
         <div class="journal-field">
-          <label class="journal-field-label">What's your intention for today?</label>
+          <label class="journal-field-label" for="journal-intention">What's your intention for today?</label>
           <textarea class="journal-textarea" id="journal-intention"
                     placeholder="Enter your intention…" rows="3"></textarea>
         </div>
 
         <div class="journal-field">
-          <label class="journal-field-label">What are you grateful for?</label>
+          <label class="journal-field-label" for="journal-gratitude">What are you grateful for?</label>
           <textarea class="journal-textarea" id="journal-gratitude"
                     placeholder="Enter what you're grateful for…" rows="3"></textarea>
         </div>
 
         <div class="journal-field">
-          <label class="journal-field-label">What's the one thing you'll get done today?</label>
+          <label class="journal-field-label" for="journal-one-thing">What's the one thing you'll get done today?</label>
           <textarea class="journal-textarea" id="journal-one-thing"
                     placeholder="Enter your one thing…" rows="3"></textarea>
         </div>
@@ -153,6 +154,15 @@
   </div>
 
   <div class="toast" id="toast"></div>
+
+  <!-- ── Log Activity Chooser Modal ─────────────────────────────────────── -->
+  <div class="modal-overlay" id="log-activity-modal" hidden>
+    <div class="modal-sheet">
+      <div class="modal-title">Log activity</div>
+      <div class="log-activity-options" id="log-activity-options"></div>
+      <button class="modal-cancel-btn" id="log-activity-cancel-btn">Cancel</button>
+    </div>
+  </div>
 
   <!-- ── Other Activity Modal ────────────────────────────────────────────── -->
   <div class="modal-overlay" id="other-activity-modal" hidden>
