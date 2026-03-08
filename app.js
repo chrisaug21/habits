@@ -548,6 +548,7 @@
 
       document.getElementById('log-activity-modal').hidden = false;
       if (typeof lucide !== 'undefined') lucide.createIcons();
+      setTimeout(() => opts.querySelector('.log-activity-option')?.focus(), 80);
     }
 
     function closeLogActivityModal() {
@@ -1123,6 +1124,7 @@
       const todayEntry = journal.find(e => e.date === todayStr());
       _showJournalForm(todayEntry || null);
       document.getElementById('journal-modal').hidden = false;
+      setTimeout(() => document.getElementById('journal-intention').focus(), 80);
     }
 
     function closeJournalModal() {
@@ -1208,7 +1210,13 @@
                     toggle.textContent = 'Show more';
                   }
                 };
-                content.appendChild(toggle);
+                // Insert before Edit button so order is: fields → Show more → Edit
+                const editBtnEl = content.querySelector('.card-edit-btn');
+                if (editBtnEl) {
+                  content.insertBefore(toggle, editBtnEl);
+                } else {
+                  content.appendChild(toggle);
+                }
               }
             }
           });

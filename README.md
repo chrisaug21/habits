@@ -151,7 +151,7 @@ create policy "allow all" on weight for all using (true) with check (true);
 
 ### Test-mode localStorage keys
 
-When test mode is active (`?test=true` in the URL), the app writes to isolated keys (`habits_test`, `habits_test_other_activities`, `habits_test_journal`, `habits_test_weight`) and skips all Supabase calls. All test data is wiped by the Reset button in the test banner.
+When test mode is active (`?test=true` in the URL), the app writes to isolated keys (`habits_test`, `habits_test_other_activities`, `habits_test_skip_reasons`, `habits_test_journal`, `habits_test_weight`) and skips all Supabase calls. All test data is wiped by the Reset button in the test banner.
 
 ## File structure
 
