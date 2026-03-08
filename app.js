@@ -509,8 +509,10 @@
       const opts = document.getElementById('log-activity-options');
       opts.innerHTML = '';
 
-      // 5 workout types
+      // Workout types — exclude the currently scheduled workout (logged via Done! only)
+      const suggestedId = cachedData ? getSuggested(cachedData).id : null;
       for (const w of WORKOUTS) {
+        if (w.id === suggestedId) continue;
         const btn = document.createElement('button');
         btn.className = 'log-activity-option';
         btn.type = 'button';
@@ -2216,6 +2218,7 @@
     // localStorage render; this call refreshes the cache from Supabase and
     // re-renders the calendar if the Log view is already visible.
     loadJournal().then(() => {
+      renderJournalCard();
       if (historyViewActive && historySubTab === 'calendar' && cachedData) {
         renderCalendar(cachedData);
       }

@@ -46,7 +46,7 @@ The Today tab is a daily habit dashboard with three cards. All entry happens via
 **Workout card**
 - Shows today's suggested workout (Next Up) with rotation, Done!, and Undo logic unchanged
 - **Done!** — logs the workout and advances the rotation
-- **Log other activity** — opens a modal to record a free-form activity or rest day
+- **Log activity** — opens a chooser modal with all 5 workout types, Rest Day, and a freeform Other activity option
 - **Undo** — reverses the most recent log entry; rolls back the rotation if applicable
 - **Tomorrow preview** — shows the next step in the rotation below the card
 

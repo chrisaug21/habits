@@ -96,7 +96,7 @@
   </div>
 
   <!-- ── Weight Modal ───────────────────────────────────────────────────── -->
-  <div class="modal-overlay" id="weight-modal" hidden aria-labelledby="weight-modal-title">
+  <div class="modal-overlay" id="weight-modal" hidden role="dialog" aria-modal="true" aria-labelledby="weight-modal-title">
     <div class="modal-sheet">
       <div class="modal-title" id="weight-modal-title">Log Weight</div>
       <div class="weight-input-row">
@@ -113,9 +113,9 @@
   </div>
 
   <!-- ── Journal Modal ──────────────────────────────────────────────────── -->
-  <div class="modal-overlay" id="journal-modal" hidden>
+  <div class="modal-overlay" id="journal-modal" hidden role="dialog" aria-modal="true" aria-labelledby="journal-modal-title">
     <div class="modal-sheet">
-      <div class="modal-title">Today's Journal</div>
+      <div class="modal-title" id="journal-modal-title">Today's Journal</div>
 
       <div id="journal-form">
         <div class="journal-field">
@@ -156,9 +156,9 @@
   <div class="toast" id="toast"></div>
 
   <!-- ── Log Activity Chooser Modal ─────────────────────────────────────── -->
-  <div class="modal-overlay" id="log-activity-modal" hidden>
+  <div class="modal-overlay" id="log-activity-modal" hidden role="dialog" aria-modal="true" aria-labelledby="log-activity-modal-title">
     <div class="modal-sheet">
-      <div class="modal-title">Log activity</div>
+      <div class="modal-title" id="log-activity-modal-title">Log activity</div>
       <div class="log-activity-options" id="log-activity-options"></div>
       <button class="modal-cancel-btn" id="log-activity-cancel-btn">Cancel</button>
     </div>

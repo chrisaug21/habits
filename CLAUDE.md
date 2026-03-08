@@ -170,7 +170,7 @@ Any new card that reflects daily state must call its `renderXCard()` from two pl
 When adding or removing buttons in the hero card, update the `setButtonsDisabled` array near the top of app.js (search `setButtonsDisabled`) — it controls which buttons are disabled during network round-trips.
 
 ### Removing a nav tab
-Requires 4 changes: (1) HTML button, (2) `switchMainTab` variable assignment, (3) `switchMainTab` hidden toggle, (4) `switchMainTab` classList toggle, and (5) the nav event listener. Also remove any `if (xViewActive)` block from `switchMainTab`.
+Requires 5 changes: (1) HTML button, (2) `switchMainTab` variable assignment, (3) `switchMainTab` hidden toggle, (4) `switchMainTab` classList toggle, and (5) the nav event listener. Also remove any `if (xViewActive)` block from `switchMainTab`.
 
 ### Modal conversion pattern
 To convert a full-page view into a bottom-sheet modal: change outer div to `class="modal-overlay" id="x-modal" hidden`, wrap content in `<div class="modal-sheet">`, add `<div class="modal-title">`, replace save button with `modal-cancel-btn` + `modal-confirm-btn` pair. Add `max-height: 88vh; overflow-y: auto` on the sheet if content is tall (e.g. multiple textareas).
