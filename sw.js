@@ -1,4 +1,4 @@
-const CACHE = 'habits-v56';
+const CACHE = 'habits-v57';
 const PRECACHE = [
   '/',
   '/index.html',
@@ -16,6 +16,7 @@ const PRECACHE = [
   // network round-trips to external hosts.
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
   'https://cdn.jsdelivr.net/npm/lucide@0.563.0/dist/umd/lucide.min.js',
+  'https://cdn.jsdelivr.net/npm/chart.js',
 ];
 
 self.addEventListener('install', event => {

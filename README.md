@@ -2,7 +2,7 @@
 
 A mobile-first PWA for daily habits — workout tracking, journaling, and intention-setting.
 
-**Current version: 1.2.50**
+**Current version: 1.4.57**
 
 Live at: https://habits.chrisaug.com
 
@@ -65,10 +65,11 @@ The Today tab is a daily habit dashboard with three cards. All entry happens via
 - **Calendar** (default): monthly grid with prev/next month navigation; each day shows a purple workout icon for completed workouts, an amber moon for rest/skip days, a teal zap icon for other activities, a dimmed projected icon for future days, or is empty for past days with no data; days with a journal entry show a small **green dot**; days with weight logged show a small **coral dot**; today is subtly highlighted; all past days are tappable
 - **List**: chronological log of all past entries (newest first), with workout icon, date, day of week, and name
 - **Schedule**: the next 14 projected workouts based on the current rotation
-- **Backfill / edit past days** — tap any past day in the calendar to open the Backfill modal; if the day has an existing workout entry it opens read-only (with an Edit button); if the day also has a journal entry, the journal answers are shown below the workout summary; if the day has no entry it opens directly in edit mode; options are all 5 rotation workouts, Rest Day, and Other Activity
+- **Past-day detail / backfill** — tap any past day in the calendar to open a day-detail sheet; it always opens in read-only mode first and shows exercise, weight, and any journal entry for that day; from there you can add or edit exercise, and add or edit weight for any past day; journal remains read-only; exercise options are all 5 rotation workouts, Rest Day, and Other Activity
 
 ### Stats tab
 - **Last 30 Days / All Time toggle** — defaults to Last 30 Days; toggle state resets on each open
+- **Weight Trend** — first section on the tab; shows raw weigh-in dots, a 7-day rolling average line, and a dimmer trendline; if fewer than 2 weights exist it shows an empty state instead
 - **Total Workouts** — count of rotation-advancing entries in the selected time range
 - **Streaks** — current streak and longest streak (always computed from full history regardless of range toggle)
 - **Consistency %** — days with a workout / total days in range
@@ -194,7 +195,7 @@ For local testing, temporarily replace the placeholder tokens in `app.js` with y
 
 Requires `apple-touch-icon.png` (180×180 PNG, generated from `icon.svg`) for a proper home screen icon on iOS. Until added, iOS uses a page screenshot as the icon.
 
-The service worker (`sw.js`) precaches `index.html`, `style.css`, `app.js`, and the Supabase JS client from the CDN. This means the app loads correctly offline after the first visit — no network request to the CDN needed.
+The service worker (`sw.js`) precaches `index.html`, `style.css`, `app.js`, and the CDN scripts used by the app (Supabase, Lucide, and Chart.js). This means the app loads correctly offline after the first visit — no network request to the CDN needed.
 
 ## Next Steps
 

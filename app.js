@@ -33,7 +33,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.3.56';
+    const VERSION = '1.4.57';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -694,8 +694,19 @@
     let backfillDate         = null;  // 'YYYY-MM-DD' being edited
     let backfillExisting     = null;  // existing history entry object, or null
     let backfillJournalEntry = null;  // journal entry for this date, or null
+    let backfillWeightEntry  = null;  // weight entry for this date, or null
     let backfillSelectedType = null;  // currently selected option id
     let backfillSaving       = false; // true while confirmBackfill is awaiting
+    let activeWeightDate     = null;  // date currently being edited in the weight modal
+    let weightModalFromBackfill = false; // true when weight modal was opened from the day-detail sheet
+
+    function showBackfillModal() {
+      document.getElementById('backfill-modal').hidden = false;
+    }
+
+    function hideBackfillModal() {
+      document.getElementById('backfill-modal').hidden = true;
+    }
 
     function openBackfillModal(dateStr) {
       backfillDate = dateStr;
@@ -707,29 +718,26 @@
       // Look up the journal entry for this date (used in the readonly view)
       const journalEntry = (getJournalSync() || []).find(e => e.date === dateStr) || null;
       backfillJournalEntry = journalEntry;
+      backfillWeightEntry = (getWeightSync() || []).find(r => r.date === dateStr) || null;
 
       // Build the date label: "Wednesday, February 19"
       const d = new Date(dateStr + 'T00:00:00');
       document.getElementById('backfill-date-label').textContent =
         `${BF_WEEKDAYS[d.getDay()]}, ${BF_MONTHS[d.getMonth()]} ${d.getDate()}`;
 
-      if (backfillExisting) {
-        // Entry exists — open in read-only mode
-        _showBackfillReadonly(backfillExisting);
-      } else {
-        // No entry — open straight into edit/new mode
-        backfillSelectedType = null;
-        _showBackfillEdit(null);
-      }
+      // All past days open into the same read-only day-detail state first.
+      _showBackfillReadonly(backfillExisting);
 
-      document.getElementById('backfill-modal').hidden = false;
+      showBackfillModal();
     }
 
     function closeBackfillModal() {
       if (backfillSaving) return; // don't dismiss while a save is in flight
-      document.getElementById('backfill-modal').hidden = true;
+      hideBackfillModal();
       backfillDate     = null;
       backfillExisting = null;
+      backfillJournalEntry = null;
+      backfillWeightEntry = null;
       backfillSelectedType = null;
     }
 
@@ -737,20 +745,39 @@
       document.getElementById('backfill-readonly').hidden  = false;
       document.getElementById('backfill-edit-view').hidden = true;
 
-      const isOff   = entry.type === 'off';
-      const isOther = entry.type === 'other';
-      const workout = (!isOff && !isOther) ? WORKOUTS.find(w => w.id === entry.type) : null;
+      const hasExercise = !!entry;
+      const isOff   = entry?.type === 'off';
+      const isOther = entry?.type === 'other';
+      const workout = (hasExercise && !isOff && !isOther) ? WORKOUTS.find(w => w.id === entry.type) : null;
 
-      const iconName   = isOff ? 'moon' : isOther ? 'zap' : (workout ? workout.icon : 'dumbbell');
-      const displayName = isOff   ? (entry.note || 'Rest Day') :
-                          isOther ? (entry.note || 'Other Activity') :
-                          (workout ? workout.name : entry.type);
+      const iconName = !hasExercise ? 'dumbbell' :
+        (isOff ? 'moon' : isOther ? 'zap' : (workout ? workout.icon : 'dumbbell'));
+      const displayName = !hasExercise ? 'No exercise logged' :
+        (isOff   ? (entry.note || 'Rest Day') :
+         isOther ? (entry.note || 'Other Activity') :
+         (workout ? workout.name : entry.type));
 
       const iconEl = document.getElementById('backfill-readonly-icon');
       iconEl.className = 'backfill-readonly-icon' +
-        (isOff ? ' is-rest' : isOther ? ' is-other' : '');
+        (!hasExercise ? ' is-empty' : isOff ? ' is-rest' : isOther ? ' is-other' : '');
       iconEl.innerHTML = `<i data-lucide="${iconName}"></i>`;
       document.getElementById('backfill-readonly-name').textContent = displayName;
+
+      const weightValueEl = document.getElementById('backfill-weight-value');
+      if (backfillWeightEntry) {
+        weightValueEl.textContent = `${backfillWeightEntry.value_lbs} lbs`;
+        weightValueEl.classList.remove('is-empty');
+      } else {
+        weightValueEl.textContent = 'No weight logged';
+        weightValueEl.classList.add('is-empty');
+      }
+
+      const weightBtn = document.getElementById('backfill-weight-btn');
+      weightBtn.textContent = backfillWeightEntry ? 'Edit Weight' : 'Add Weight';
+      weightBtn.disabled = false;
+
+      const exerciseBtn = document.getElementById('backfill-edit-btn');
+      exerciseBtn.textContent = hasExercise ? 'Edit Exercise' : 'Add Exercise';
 
       if (typeof lucide !== 'undefined') lucide.createIcons();
 
@@ -1367,10 +1394,13 @@
       localStorage.setItem(WEIGHT_KEY, JSON.stringify(rows));
     }
 
-    function openWeightModal() {
-      // Pre-fill if weight already logged today
-      const today = todayStr();
-      const existing = (getWeightSync() || []).find(r => r.date === today);
+    function openWeightModal(dateStr = todayStr(), options = {}) {
+      const { fromBackfill = false } = options;
+      activeWeightDate = dateStr;
+      weightModalFromBackfill = fromBackfill;
+      if (fromBackfill) hideBackfillModal();
+
+      const existing = (getWeightSync() || []).find(r => r.date === dateStr);
       const input = document.getElementById('weight-input');
       input.value = existing ? existing.value_lbs : '';
       document.getElementById('weight-save-btn').disabled = !existing;
@@ -1380,6 +1410,9 @@
 
     function closeWeightModal() {
       document.getElementById('weight-modal').hidden = true;
+      if (weightModalFromBackfill && backfillDate) showBackfillModal();
+      activeWeightDate = null;
+      weightModalFromBackfill = false;
     }
 
     async function saveWeight() {
@@ -1387,10 +1420,21 @@
       if (!val || val < 50 || val > 999) return;
       document.getElementById('weight-save-btn').disabled = true;
       try {
-        await saveWeightEntry(todayStr(), val);
+        const saveDate = activeWeightDate || todayStr();
+        await saveWeightEntry(saveDate, val);
+        if (weightModalFromBackfill && backfillDate === saveDate) {
+          backfillWeightEntry = (getWeightSync() || []).find(r => r.date === saveDate) || null;
+          _showBackfillReadonly(backfillExisting);
+        }
         closeWeightModal();
         renderWeightCard();
-        showToast('Weight logged \u2713');
+        if (historyViewActive && historySubTab === 'calendar' && cachedData) {
+          renderCalendar(cachedData);
+        }
+        if (statsViewActive && cachedData) {
+          renderStatsView(cachedData);
+        }
+        showToast('Weight saved');
       } catch {
         showToast('Could not save \u2014 check your connection');
       } finally {
@@ -1421,6 +1465,7 @@
     let historySubTab = 'calendar'; // 'calendar' or 'list'
     let statsRange = '30'; // '30' or 'all'
     let calViewDate = new Date(); // month currently shown in the calendar
+    let weightChart = null;      // Chart.js instance for the Stats tab weight chart
 
     // Convert a Date object → 'YYYY-MM-DD' string (local time)
     function dateToStr(d) {
@@ -1710,8 +1755,160 @@
       else renderHistoryList(data);
     }
 
+    function destroyWeightChart() {
+      if (weightChart) {
+        weightChart.destroy();
+        weightChart = null;
+      }
+    }
+
+    function dateDiffInDays(startDateStr, endDateStr) {
+      const [sy, sm, sd] = startDateStr.split('-').map(Number);
+      const [ey, em, ed] = endDateStr.split('-').map(Number);
+      return Math.round((Date.UTC(ey, em - 1, ed) - Date.UTC(sy, sm - 1, sd)) / 86400000);
+    }
+
+    function computeRollingSeries(rows, values) {
+      return rows.map((row, idx) => {
+        const windowValues = [];
+        for (let i = idx; i >= 0; i--) {
+          const diff = dateDiffInDays(rows[i].date, row.date);
+          if (diff > 6) break;
+          const value = values[i];
+          if (Number.isFinite(value)) windowValues.push(value);
+        }
+        if (!windowValues.length) return null;
+        const avg = windowValues.reduce((sum, value) => sum + value, 0) / windowValues.length;
+        return Math.round(avg * 10) / 10;
+      });
+    }
+
+    function renderWeightChart() {
+      const emptyEl = document.getElementById('weight-chart-empty');
+      const wrapEl  = document.getElementById('weight-chart-wrap');
+      const canvas  = document.getElementById('weight-chart-canvas');
+      const rows = [...(getWeightSync() || [])].sort((a, b) => a.date.localeCompare(b.date));
+
+      destroyWeightChart();
+
+      if (rows.length < 2 || typeof window.Chart === 'undefined') {
+        emptyEl.hidden = false;
+        wrapEl.hidden = true;
+        return;
+      }
+
+      emptyEl.hidden = true;
+      wrapEl.hidden = false;
+
+      const labels = rows.map(r => {
+        const d = new Date(r.date + 'T00:00:00');
+        return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      });
+      const rawValues = rows.map(r => r.value_lbs);
+      const avg7Values = computeRollingSeries(rows, rawValues);
+      const trendValues = computeRollingSeries(rows, avg7Values);
+      const plottedValues = [...rawValues, ...avg7Values, ...trendValues].filter(v => Number.isFinite(v));
+      const minValue = Math.min(...plottedValues);
+      const maxValue = Math.max(...plottedValues);
+      const range = maxValue - minValue;
+      const buffer = Math.max(1.5, range * 0.12 || 1.5);
+      const css = getComputedStyle(document.documentElement);
+      const accent = css.getPropertyValue('--accent').trim() || '#6c63ff';
+      const coral = css.getPropertyValue('--coral').trim() || '#ff6b6b';
+      const textDim = css.getPropertyValue('--text-dim').trim() || '#3a3a58';
+      const textSecondary = css.getPropertyValue('--text-secondary').trim() || '#6a6a90';
+      const border = css.getPropertyValue('--border').trim() || '#222235';
+
+      weightChart = new window.Chart(canvas, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Weight',
+              data: rawValues,
+              showLine: false,
+              pointRadius: 2.5,
+              pointHoverRadius: 4,
+              pointBackgroundColor: coral,
+              pointBorderColor: coral,
+            },
+            {
+              label: '7-day average',
+              data: avg7Values,
+              borderColor: accent,
+              backgroundColor: accent,
+              borderWidth: 2.5,
+              pointRadius: 0,
+              pointHitRadius: 12,
+              tension: 0.32,
+            },
+            {
+              label: 'Trend',
+              data: trendValues,
+              borderColor: textSecondary,
+              backgroundColor: textSecondary,
+              borderWidth: 2,
+              pointRadius: 0,
+              pointHitRadius: 12,
+              tension: 0.28,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          interaction: {
+            mode: 'index',
+            intersect: false,
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#13131e',
+              borderColor: border,
+              borderWidth: 1,
+              titleColor: '#e4e4f4',
+              bodyColor: '#e4e4f4',
+              displayColors: false,
+              callbacks: {
+                label(context) {
+                  if (!Number.isFinite(context.raw)) return null;
+                  return `${context.dataset.label}: ${context.raw} lbs`;
+                },
+              },
+            },
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              border: { color: border },
+              ticks: {
+                color: textDim,
+                autoSkip: true,
+                maxTicksLimit: 5,
+                maxRotation: 0,
+              },
+            },
+            y: {
+              suggestedMin: minValue - buffer,
+              suggestedMax: maxValue + buffer,
+              grid: { color: border },
+              border: { color: border },
+              ticks: {
+                color: textDim,
+                maxTicksLimit: 5,
+              },
+            },
+          },
+        },
+      });
+    }
+
     // ── Stats view ─────────────────────────────────────────────────────────
     function renderStatsView(data) {
+      renderWeightChart();
       const container = document.getElementById('stats-content');
       const history   = data.history || [];
 
@@ -2012,9 +2209,13 @@
     document.getElementById('backfill-modal').addEventListener('click', function (e) {
       if (e.target === this) closeBackfillModal();
     });
-    document.getElementById('backfill-ro-close-btn').onclick = closeBackfillModal;
+    document.getElementById('backfill-x-btn').onclick = closeBackfillModal;
     document.getElementById('backfill-edit-btn').onclick = () => {
       _showBackfillEdit(backfillExisting ? backfillExisting.type : null);
+    };
+    document.getElementById('backfill-weight-btn').onclick = () => {
+      if (!backfillDate) return;
+      openWeightModal(backfillDate, { fromBackfill: true });
     };
     document.getElementById('backfill-cancel-btn').onclick = () => {
       if (backfillExisting) {
@@ -2307,6 +2508,9 @@
       renderWeightCard();
       if (historyViewActive && historySubTab === 'calendar' && cachedData) {
         renderCalendar(cachedData);
+      }
+      if (statsViewActive && cachedData) {
+        renderStatsView(cachedData);
       }
     });
 

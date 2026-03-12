@@ -20,6 +20,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer crossorigin="anonymous"></script>
   <!-- Lucide Icons — defer matches Supabase script; crossorigin for SW caching -->
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.563.0/dist/umd/lucide.min.js" defer crossorigin="anonymous"></script>
+  <!-- Chart.js — used for the weight trend chart on Stats -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer crossorigin="anonymous"></script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -100,6 +102,15 @@
       <div class="stats-range-toggle">
         <button class="stats-toggle-btn active" id="stats-btn-30">Last 30 Days</button>
         <button class="stats-toggle-btn" id="stats-btn-all">All Time</button>
+      </div>
+      <div class="stats-section" id="weight-chart-section">
+        <div class="stats-section-label">Weight Trend</div>
+        <div class="stats-card weight-chart-card">
+          <div class="weight-chart-empty" id="weight-chart-empty" hidden>Log a few weigh-ins to see your trend.</div>
+          <div class="weight-chart-wrap" id="weight-chart-wrap" hidden>
+            <canvas id="weight-chart-canvas" aria-label="Weight trend chart"></canvas>
+          </div>
+        </div>
       </div>
       <div id="stats-content"></div>
     </div>
@@ -209,6 +220,9 @@
   <!-- ── Backfill Modal ───────────────────────────────────────────────────── -->
   <div class="modal-overlay" id="backfill-modal" hidden>
     <div class="modal-sheet" id="backfill-sheet">
+      <button class="backfill-close-btn" id="backfill-x-btn" type="button" aria-label="Close">
+        <i data-lucide="x"></i>
+      </button>
       <div class="backfill-date-label" id="backfill-date-label"></div>
 
       <!-- Read-only view (shown when entry already exists) -->
@@ -219,13 +233,17 @@
           </div>
           <div class="backfill-readonly-name" id="backfill-readonly-name"></div>
         </div>
+        <div class="backfill-weight-section" id="backfill-weight-section">
+          <div class="backfill-section-label">Weight</div>
+          <div class="backfill-weight-value" id="backfill-weight-value"></div>
+        </div>
         <!-- Journal entry for this past day (shown if one exists) -->
         <div id="backfill-journal-section" hidden>
           <div id="backfill-journal-content"></div>
         </div>
-        <div class="modal-actions" style="margin-top:4px">
-          <button class="modal-cancel-btn" id="backfill-ro-close-btn">Close</button>
-          <button class="modal-confirm-btn" id="backfill-edit-btn">Edit</button>
+        <div class="backfill-readonly-actions">
+          <button class="modal-cancel-btn" id="backfill-edit-btn">Edit Exercise</button>
+          <button class="modal-confirm-btn" id="backfill-weight-btn">Add Weight</button>
         </div>
       </div>
 
