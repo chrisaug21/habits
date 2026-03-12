@@ -700,6 +700,14 @@
     let activeWeightDate     = null;  // date currently being edited in the weight modal
     let weightModalFromBackfill = false; // true when weight modal was opened from the day-detail sheet
 
+    function showBackfillModal() {
+      document.getElementById('backfill-modal').hidden = false;
+    }
+
+    function hideBackfillModal() {
+      document.getElementById('backfill-modal').hidden = true;
+    }
+
     function openBackfillModal(dateStr) {
       backfillDate = dateStr;
 
@@ -720,12 +728,12 @@
       // All past days open into the same read-only day-detail state first.
       _showBackfillReadonly(backfillExisting);
 
-      document.getElementById('backfill-modal').hidden = false;
+      showBackfillModal();
     }
 
     function closeBackfillModal() {
       if (backfillSaving) return; // don't dismiss while a save is in flight
-      document.getElementById('backfill-modal').hidden = true;
+      hideBackfillModal();
       backfillDate     = null;
       backfillExisting = null;
       backfillJournalEntry = null;
@@ -1390,6 +1398,7 @@
       const { fromBackfill = false } = options;
       activeWeightDate = dateStr;
       weightModalFromBackfill = fromBackfill;
+      if (fromBackfill) hideBackfillModal();
 
       const existing = (getWeightSync() || []).find(r => r.date === dateStr);
       const input = document.getElementById('weight-input');
@@ -1401,6 +1410,7 @@
 
     function closeWeightModal() {
       document.getElementById('weight-modal').hidden = true;
+      if (weightModalFromBackfill && backfillDate) showBackfillModal();
       activeWeightDate = null;
       weightModalFromBackfill = false;
     }

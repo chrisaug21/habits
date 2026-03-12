@@ -1141,6 +1141,16 @@
       flex: 1;
     }
 
+    .backfill-readonly-actions .modal-cancel-btn {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .backfill-readonly-actions .modal-cancel-btn:active {
+      opacity: 0.85;
+    }
+
     /* Edit view: flex column so options / note section / actions have consistent gaps */
     #backfill-edit-view {
       display: flex;
