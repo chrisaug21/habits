@@ -1293,6 +1293,31 @@
       }
     }
 
+    // Reads all three Supabase tables in parallel. Throws on any failure so
+    // the sync-btn handler can distinguish a real sync from a silent fallback.
+    async function syncAllData() {
+      if (!sb) throw new Error('No Supabase connection');
+      const [stateRes, historyRes, journalRes, weightRes] = await Promise.all([
+        sb.from('state').select('*').eq('id', 1).maybeSingle(),
+        sb.from('history').select('*').order('sequence', { ascending: true, nullsFirst: true }),
+        sb.from('journal').select('*').order('date', { ascending: false }),
+        sb.from('weight').select('date, value_lbs').order('date', { ascending: false }),
+      ]);
+      if (stateRes.error)   throw stateRes.error;
+      if (historyRes.error) throw historyRes.error;
+      if (journalRes.error) throw journalRes.error;
+      if (weightRes.error)  throw weightRes.error;
+      // Update journal + weight caches directly
+      cachedJournal = (journalRes.data || []).map(r => ({
+        date: r.date, intention: r.intention || '', gratitude: r.gratitude || '', one_thing: r.one_thing || '',
+      }));
+      cachedWeight = (weightRes.data || []).map(r => ({ date: r.date, value_lbs: parseFloat(r.value_lbs) }));
+      localStorage.setItem(JOURNAL_KEY, JSON.stringify(cachedJournal));
+      localStorage.setItem(WEIGHT_KEY,  JSON.stringify(cachedWeight));
+      // render() calls loadData() internally for state+history (preserves offline-sync logic)
+      await render();
+    }
+
     async function saveWeightEntry(date, valueLbs) {
       const rows = cachedWeight ? [...cachedWeight] : [];
       const idx = rows.findIndex(r => r.date === date);
@@ -1980,9 +2005,12 @@
     document.getElementById('nav-settings-btn').onclick = () => switchMainTab('settings');
 
     document.getElementById('sync-btn').onclick = async () => {
-      await loadData();
-      await render();
-      showToast('Synced ✓');
+      try {
+        await syncAllData();
+        showToast('Synced ✓');
+      } catch {
+        showToast('Sync failed — check your connection');
+      }
     };
     document.getElementById('htab-calendar').onclick   = () => switchHistorySubTab('calendar');
     document.getElementById('htab-list').onclick       = () => switchHistorySubTab('list');
