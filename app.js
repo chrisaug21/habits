@@ -33,7 +33,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.3.54';
+    const VERSION = '1.3.55';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -188,20 +188,14 @@
     }
 
     async function saveData(data, deletedSid = null) {
-      if (!sb || TEST_MODE) {
-        // No Supabase connection — write to localStorage only (test mode / offline dev)
+      if (TEST_MODE) {
+        // Test mode — write to localStorage only, no Supabase
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         return;
       }
+      if (!sb) throw new Error('Supabase client not available');
 
-      // Write to Supabase FIRST — throws on any failure so callers can handle the error
-      const { error: stateErr } = await sb.from('state').upsert({
-        id: 1,
-        rotation_index: data.rotationIndex ?? 0,
-        action_date:    data.actionDate    ?? null,
-      });
-      if (stateErr) throw stateErr;
-
+      // History operations run FIRST — if they fail, state is never touched
       // If this save was triggered by an undo, delete only that one row
       if (deletedSid) {
         const { error: delErr } = await sb.from('history').delete().eq('id', deletedSid);
@@ -238,6 +232,14 @@
         // Keep _maxSeq current so subsequent saves in the same session are correct.
         data._maxSeq = baseSeq + newEntries.length - 1;
       }
+
+      // State upsert runs AFTER history succeeds — no partial commit
+      const { error: stateErr } = await sb.from('state').upsert({
+        id: 1,
+        rotation_index: data.rotationIndex ?? 0,
+        action_date:    data.actionDate    ?? null,
+      });
+      if (stateErr) throw stateErr;
 
       // Supabase confirmed — update localStorage as read cache only
       lastSyncedAt = Date.now();

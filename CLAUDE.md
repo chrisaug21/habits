@@ -148,8 +148,7 @@ When proposing UI changes, explain the user benefit in plain English.
 ## Data / Supabase
 Supabase is the primary and authoritative data store. All reads and writes go to Supabase first.
 
-localStorage is used as a lightweight cache only — it mirrors Supabase data and is not a fallback 
-source of truth. A future ticket (#79) will remove localStorage entirely.
+localStorage is used as a read-only cache only — populated after a successful Supabase write, never written on failure. If Supabase is unreachable on a write, saveData throws — no localStorage fallback occurs.
 
 Current tables: `state`, `history`, `journal`
 Credentials are injected at deploy time via Netlify env vars — never hardcoded in source.
@@ -186,6 +185,12 @@ The hero card locks for the day when `data.actionDate === todayStr()`. Any log a
 
 ### Modal → log action order
 Always call `closeXModal()` BEFORE calling an async log function (`markRowDone`, `logSkip`, `logOtherActivity`). The `isProcessing` guard and `setButtonsDisabled` run at the start of every log function — if the modal is still open, its buttons stay frozen.
+
+### saveData operation order
+Inside `saveData`: history delete/insert always runs BEFORE the state upsert. If history fails, state is never touched. Do not reorder — this prevents partial commits.
+
+### Service worker fetch strategy
+sw.js uses network-first: tries the network, falls back to cache on failure. Supabase API requests (`supabase.co`) bypass the SW entirely and are never cached. Keep it this way — caching Supabase responses caused stale-data bugs.
 
 ### Action function error pattern
 `saveData` throws on Supabase failure — do NOT use `try/finally` alone. All action functions that call `saveData` must follow:
