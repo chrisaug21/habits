@@ -33,7 +33,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.2.50';
+    const VERSION = '1.3.53';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -1883,12 +1883,14 @@
     function switchMainTab(tab) {
       historyViewActive = tab === 'history';
       statsViewActive   = tab === 'stats';
-      document.getElementById('view-today').hidden   = tab !== 'today';
-      document.getElementById('view-history').hidden = tab !== 'history';
-      document.getElementById('view-stats').hidden   = tab !== 'stats';
+      document.getElementById('view-today').hidden    = tab !== 'today';
+      document.getElementById('view-history').hidden  = tab !== 'history';
+      document.getElementById('view-stats').hidden    = tab !== 'stats';
+      document.getElementById('view-settings').hidden = tab !== 'settings';
       document.getElementById('nav-today-btn').classList.toggle('active', tab === 'today');
       document.getElementById('nav-history-btn').classList.toggle('active', tab === 'history');
       document.getElementById('nav-stats-btn').classList.toggle('active', tab === 'stats');
+      document.getElementById('nav-settings-btn').classList.toggle('active', tab === 'settings');
       if (historyViewActive) switchHistorySubTab('calendar');
       if (statsViewActive) {
         // Always reset to Last 30 Days when entering the Stats tab so the
@@ -1972,9 +1974,16 @@
     });
 
     // ── Nav event listeners ─────────────────────────────────────────────────
-    document.getElementById('nav-today-btn').onclick   = () => switchMainTab('today');
-    document.getElementById('nav-history-btn').onclick = () => switchMainTab('history');
-    document.getElementById('nav-stats-btn').onclick   = () => switchMainTab('stats');
+    document.getElementById('nav-today-btn').onclick    = () => switchMainTab('today');
+    document.getElementById('nav-history-btn').onclick  = () => switchMainTab('history');
+    document.getElementById('nav-stats-btn').onclick    = () => switchMainTab('stats');
+    document.getElementById('nav-settings-btn').onclick = () => switchMainTab('settings');
+
+    document.getElementById('sync-btn').onclick = async () => {
+      await loadData();
+      await render();
+      showToast('Synced ✓');
+    };
     document.getElementById('htab-calendar').onclick   = () => switchHistorySubTab('calendar');
     document.getElementById('htab-list').onclick       = () => switchHistorySubTab('list');
     document.getElementById('htab-schedule').onclick   = () => switchHistorySubTab('schedule');
