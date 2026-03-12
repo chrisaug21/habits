@@ -33,7 +33,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.3.55';
+    const VERSION = '1.3.56';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -1096,25 +1096,31 @@
 
     // Save or update a journal entry ({ date, intention, gratitude, one_thing }).
     async function saveJournalEntry(entry) {
+      if (TEST_MODE) {
+        const journal = cachedJournal ? [...cachedJournal] : [];
+        const idx = journal.findIndex(e => e.date === entry.date);
+        if (idx !== -1) { journal[idx] = entry; } else { journal.unshift(entry); }
+        cachedJournal = journal;
+        localStorage.setItem(JOURNAL_KEY, JSON.stringify(journal));
+        return;
+      }
+      if (!sb) throw new Error('Supabase client not available');
+
+      // Write to Supabase FIRST — throws on failure so caller can show error
+      const { error } = await sb.from('journal').upsert({
+        date:      entry.date,
+        intention: entry.intention || null,
+        gratitude: entry.gratitude || null,
+        one_thing: entry.one_thing || null,
+      }, { onConflict: 'date' });
+      if (error) throw error;
+
+      // Supabase confirmed — update cache
       const journal = cachedJournal ? [...cachedJournal] : [];
       const idx = journal.findIndex(e => e.date === entry.date);
-      if (idx !== -1) { journal[idx] = entry; }
-      else { journal.unshift(entry); } // newest first
+      if (idx !== -1) { journal[idx] = entry; } else { journal.unshift(entry); }
       cachedJournal = journal;
       localStorage.setItem(JOURNAL_KEY, JSON.stringify(journal));
-
-      if (!sb || TEST_MODE) return;
-      try {
-        const { error } = await sb.from('journal').upsert({
-          date:      entry.date,
-          intention: entry.intention || null,
-          gratitude: entry.gratitude || null,
-          one_thing: entry.one_thing || null,
-        }, { onConflict: 'date' });
-        if (error) throw error;
-      } catch (err) {
-        console.warn('Journal save to Supabase failed (saved locally):', err);
-      }
     }
 
     // Returns true if newGratitude is a substring (or superset) of any gratitude
@@ -1272,13 +1278,15 @@
       document.getElementById('journal-save-btn').disabled = true;
       try {
         await saveJournalEntry(entry);
+        _journalNudgeConfirmed = false;
+        closeJournalModal();
+        renderJournalCard();
+        showToast('Journal saved \u2713');
+      } catch {
+        showToast('Could not save \u2014 check your connection');
       } finally {
         document.getElementById('journal-save-btn').disabled = false;
       }
-      _journalNudgeConfirmed = false;
-      closeJournalModal();
-      renderJournalCard();
-      showToast('Journal saved \u2713');
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -1335,20 +1343,28 @@
     }
 
     async function saveWeightEntry(date, valueLbs) {
+      if (TEST_MODE) {
+        const rows = cachedWeight ? [...cachedWeight] : [];
+        const idx = rows.findIndex(r => r.date === date);
+        const entry = { date, value_lbs: valueLbs };
+        if (idx !== -1) { rows[idx] = entry; } else { rows.unshift(entry); }
+        cachedWeight = rows;
+        localStorage.setItem(WEIGHT_KEY, JSON.stringify(rows));
+        return;
+      }
+      if (!sb) throw new Error('Supabase client not available');
+
+      // Write to Supabase FIRST — throws on failure so caller can show error
+      const { error } = await sb.from('weight').upsert({ date, value_lbs: valueLbs }, { onConflict: 'date' });
+      if (error) throw error;
+
+      // Supabase confirmed — update cache
       const rows = cachedWeight ? [...cachedWeight] : [];
       const idx = rows.findIndex(r => r.date === date);
       const entry = { date, value_lbs: valueLbs };
       if (idx !== -1) { rows[idx] = entry; } else { rows.unshift(entry); }
       cachedWeight = rows;
       localStorage.setItem(WEIGHT_KEY, JSON.stringify(rows));
-
-      if (!sb || TEST_MODE) return;
-      try {
-        const { error } = await sb.from('weight').upsert({ date, value_lbs: valueLbs }, { onConflict: 'date' });
-        if (error) throw error;
-      } catch (err) {
-        console.warn('Weight save to Supabase failed (saved locally):', err);
-      }
     }
 
     function openWeightModal() {
@@ -1372,12 +1388,14 @@
       document.getElementById('weight-save-btn').disabled = true;
       try {
         await saveWeightEntry(todayStr(), val);
+        closeWeightModal();
+        renderWeightCard();
+        showToast('Weight logged \u2713');
+      } catch {
+        showToast('Could not save \u2014 check your connection');
       } finally {
         document.getElementById('weight-save-btn').disabled = false;
       }
-      closeWeightModal();
-      renderWeightCard();
-      showToast('Weight logged \u2713');
     }
 
     function renderWeightCard() {
