@@ -20,6 +20,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer crossorigin="anonymous"></script>
   <!-- Lucide Icons — defer matches Supabase script; crossorigin for SW caching -->
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.563.0/dist/umd/lucide.min.js" defer crossorigin="anonymous"></script>
+  <!-- Chart.js — used for the weight trend chart on Stats -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer crossorigin="anonymous"></script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -100,6 +102,15 @@
       <div class="stats-range-toggle">
         <button class="stats-toggle-btn active" id="stats-btn-30">Last 30 Days</button>
         <button class="stats-toggle-btn" id="stats-btn-all">All Time</button>
+      </div>
+      <div class="stats-section" id="weight-chart-section">
+        <div class="stats-section-label">Weight Trend</div>
+        <div class="stats-card weight-chart-card">
+          <div class="weight-chart-empty" id="weight-chart-empty" hidden>Log a few weigh-ins to see your trend.</div>
+          <div class="weight-chart-wrap" id="weight-chart-wrap" hidden>
+            <canvas id="weight-chart-canvas" aria-label="Weight trend chart"></canvas>
+          </div>
+        </div>
       </div>
       <div id="stats-content"></div>
     </div>

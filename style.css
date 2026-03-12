@@ -1246,6 +1246,33 @@
       padding: 48px 0 24px;
     }
 
+    .weight-chart-card {
+      padding: 14px 14px 10px;
+    }
+
+    .weight-chart-wrap {
+      position: relative;
+      height: 220px;
+    }
+
+    #weight-chart-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .weight-chart-empty {
+      min-height: 220px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 0.92rem;
+      padding: 0 18px;
+      line-height: 1.45;
+    }
+
     /* Workout-type breakdown rows */
     .stats-type-row {
       display: flex;
