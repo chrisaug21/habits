@@ -169,6 +169,9 @@ Any new card that reflects daily state must call its `renderXCard()` from two pl
 ### Hero card buttons
 When adding or removing buttons in the hero card, update the `setButtonsDisabled` array near the top of app.js (search `setButtonsDisabled`) — it controls which buttons are disabled during network round-trips.
 
+### Adding a nav tab
+Requires 6 changes across 3 files: (1) `#view-x` div in `index.html` (hidden by default), (2) nav `<button>` in the `<nav>` block, (3) `switchMainTab` hidden toggle line, (4) `switchMainTab` classList toggle line, (5) nav event listener, (6) CSS for the new view. Current views: `view-today`, `view-history`, `view-stats`, `view-settings`.
+
 ### Removing a nav tab
 Requires 5 changes: (1) HTML button, (2) `switchMainTab` variable assignment, (3) `switchMainTab` hidden toggle, (4) `switchMainTab` classList toggle, and (5) the nav event listener. Also remove any `if (xViewActive)` block from `switchMainTab`.
 
@@ -210,7 +213,7 @@ When making changes:
 - leave brief comments only where they help a non-technical maintainer understand why something exists
 
 ## Version numbering
-The app version is defined as a `VERSION` constant near the top of `index.html` and must follow `MAJOR.MINOR.BUILD` format (e.g. `1.0.27`).
+The app version is defined as a `VERSION` constant near the top of `app.js` and must follow `MAJOR.MINOR.BUILD` format (e.g. `1.0.27`).
 
 On every PR:
 - Always increment BUILD by 1, keeping it in sync with the sw.js cache version (they should always match — e.g. `VERSION = '1.0.27'` and `CACHE = 'wmw-v27'`)

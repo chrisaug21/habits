@@ -33,7 +33,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.2.50';
+    const VERSION = '1.3.53';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -1293,6 +1293,31 @@
       }
     }
 
+    // Reads all three Supabase tables in parallel. Throws on any failure so
+    // the sync-btn handler can distinguish a real sync from a silent fallback.
+    async function syncAllData() {
+      if (!sb) throw new Error('No Supabase connection');
+      const [stateRes, historyRes, journalRes, weightRes] = await Promise.all([
+        sb.from('state').select('*').eq('id', 1).maybeSingle(),
+        sb.from('history').select('*').order('sequence', { ascending: true, nullsFirst: true }),
+        sb.from('journal').select('*').order('date', { ascending: false }),
+        sb.from('weight').select('date, value_lbs').order('date', { ascending: false }),
+      ]);
+      if (stateRes.error)   throw stateRes.error;
+      if (historyRes.error) throw historyRes.error;
+      if (journalRes.error) throw journalRes.error;
+      if (weightRes.error)  throw weightRes.error;
+      // Update journal + weight caches directly
+      cachedJournal = (journalRes.data || []).map(r => ({
+        date: r.date, intention: r.intention || '', gratitude: r.gratitude || '', one_thing: r.one_thing || '',
+      }));
+      cachedWeight = (weightRes.data || []).map(r => ({ date: r.date, value_lbs: parseFloat(r.value_lbs) }));
+      localStorage.setItem(JOURNAL_KEY, JSON.stringify(cachedJournal));
+      localStorage.setItem(WEIGHT_KEY,  JSON.stringify(cachedWeight));
+      // render() calls loadData() internally for state+history (preserves offline-sync logic)
+      await render();
+    }
+
     async function saveWeightEntry(date, valueLbs) {
       const rows = cachedWeight ? [...cachedWeight] : [];
       const idx = rows.findIndex(r => r.date === date);
@@ -1883,12 +1908,14 @@
     function switchMainTab(tab) {
       historyViewActive = tab === 'history';
       statsViewActive   = tab === 'stats';
-      document.getElementById('view-today').hidden   = tab !== 'today';
-      document.getElementById('view-history').hidden = tab !== 'history';
-      document.getElementById('view-stats').hidden   = tab !== 'stats';
+      document.getElementById('view-today').hidden    = tab !== 'today';
+      document.getElementById('view-history').hidden  = tab !== 'history';
+      document.getElementById('view-stats').hidden    = tab !== 'stats';
+      document.getElementById('view-settings').hidden = tab !== 'settings';
       document.getElementById('nav-today-btn').classList.toggle('active', tab === 'today');
       document.getElementById('nav-history-btn').classList.toggle('active', tab === 'history');
       document.getElementById('nav-stats-btn').classList.toggle('active', tab === 'stats');
+      document.getElementById('nav-settings-btn').classList.toggle('active', tab === 'settings');
       if (historyViewActive) switchHistorySubTab('calendar');
       if (statsViewActive) {
         // Always reset to Last 30 Days when entering the Stats tab so the
@@ -1972,9 +1999,19 @@
     });
 
     // ── Nav event listeners ─────────────────────────────────────────────────
-    document.getElementById('nav-today-btn').onclick   = () => switchMainTab('today');
-    document.getElementById('nav-history-btn').onclick = () => switchMainTab('history');
-    document.getElementById('nav-stats-btn').onclick   = () => switchMainTab('stats');
+    document.getElementById('nav-today-btn').onclick    = () => switchMainTab('today');
+    document.getElementById('nav-history-btn').onclick  = () => switchMainTab('history');
+    document.getElementById('nav-stats-btn').onclick    = () => switchMainTab('stats');
+    document.getElementById('nav-settings-btn').onclick = () => switchMainTab('settings');
+
+    document.getElementById('sync-btn').onclick = async () => {
+      try {
+        await syncAllData();
+        showToast('Synced ✓');
+      } catch {
+        showToast('Sync failed — check your connection');
+      }
+    };
     document.getElementById('htab-calendar').onclick   = () => switchHistorySubTab('calendar');
     document.getElementById('htab-list').onclick       = () => switchHistorySubTab('list');
     document.getElementById('htab-schedule').onclick   = () => switchHistorySubTab('schedule');
