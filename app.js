@@ -33,7 +33,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.3.53';
+    const VERSION = '1.3.56';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -188,65 +188,64 @@
     }
 
     async function saveData(data, deletedSid = null) {
-      // Always write localStorage immediately so the fallback is always fresh
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-      if (!sb || TEST_MODE) return; // localStorage-only or test mode — skip Supabase
-      try {
-        // Upsert the single state row (rotation position + today's lock)
-        const { error: stateErr } = await sb.from('state').upsert({
-          id: 1,
-          rotation_index: data.rotationIndex ?? 0,
-          action_date:    data.actionDate    ?? null,
-        });
-        if (stateErr) throw stateErr;
-
-        // If this save was triggered by an undo, delete only that one row
-        if (deletedSid) {
-          const { error: delErr } = await sb.from('history').delete().eq('id', deletedSid);
-          if (delErr) throw delErr;
-        }
-
-        // Insert only new entries — those not yet synced (no _sid means never written to Supabase)
-        const newEntries = (data.history || []).filter(e => !e._sid);
-        if (newEntries.length) {
-          // Base sequence = max existing Supabase sequence + 1, so new inserts
-          // never collide with gaps left by undo deletions. _maxSeq is set by
-          // loadData when reading from Supabase; fall back to synced-entry count
-          // for the rare case where data came from the localStorage fallback.
-          const baseSeq = (typeof data._maxSeq === 'number' ? data._maxSeq : data.history.filter(e => e._sid).length - 1) + 1;
-          const rows = newEntries.map((e, i) => ({
-            type: e.type,
-            date: e.date,
-            advanced: e.advanced ?? true,
-            note: e.note ?? null,
-            sequence: baseSeq + i,
-          }));
-          console.log('[saveData] Inserting rows into Supabase:', rows.map(r => ({ type: r.type, date: r.date, sequence: r.sequence })));
-          const { data: inserted, error: insErr } = await sb.from('history').insert(rows).select('id, sequence');
-          if (insErr) {
-            console.error('[saveData] Supabase INSERT failed:', insErr, 'rows attempted:', rows.map(r => ({ type: r.type, date: r.date, sequence: r.sequence })));
-            throw insErr;
-          }
-          console.log('[saveData] Supabase INSERT succeeded:', inserted);
-          // Match returned rows by sequence value — insert order is not guaranteed.
-          const insertedBySeq = {};
-          inserted.forEach(row => { insertedBySeq[row.sequence] = row.id; });
-          newEntries.forEach((e, i) => {
-            const seq = baseSeq + i;
-            if (insertedBySeq[seq] !== undefined) e._sid = insertedBySeq[seq];
-          });
-          // Keep _maxSeq current so subsequent saves in the same session are correct.
-          data._maxSeq = baseSeq + newEntries.length - 1;
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        }
-        lastSyncedAt = Date.now();
-        syncOffline  = false;
-        updateSyncStamp();
-      } catch (err) {
-        console.warn('Supabase write failed (data saved locally):', err);
-        syncOffline = true;
-        updateSyncStamp();
+      if (TEST_MODE) {
+        // Test mode — write to localStorage only, no Supabase
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        return;
       }
+      if (!sb) throw new Error('Supabase client not available');
+
+      // History operations run FIRST — if they fail, state is never touched
+      // If this save was triggered by an undo, delete only that one row
+      if (deletedSid) {
+        const { error: delErr } = await sb.from('history').delete().eq('id', deletedSid);
+        if (delErr) throw delErr;
+      }
+
+      // Insert the newly-pushed entry (no _sid means not yet in Supabase)
+      const newEntries = (data.history || []).filter(e => !e._sid);
+      if (newEntries.length) {
+        // Base sequence = max existing Supabase sequence + 1, so new inserts
+        // never collide with gaps left by undo deletions.
+        const baseSeq = (typeof data._maxSeq === 'number' ? data._maxSeq : data.history.filter(e => e._sid).length - 1) + 1;
+        const rows = newEntries.map((e, i) => ({
+          type: e.type,
+          date: e.date,
+          advanced: e.advanced ?? true,
+          note: e.note ?? null,
+          sequence: baseSeq + i,
+        }));
+        console.log('[saveData] Inserting rows into Supabase:', rows.map(r => ({ type: r.type, date: r.date, sequence: r.sequence })));
+        const { data: inserted, error: insErr } = await sb.from('history').insert(rows).select('id, sequence');
+        if (insErr) {
+          console.error('[saveData] Supabase INSERT failed:', insErr, 'rows attempted:', rows.map(r => ({ type: r.type, date: r.date, sequence: r.sequence })));
+          throw insErr;
+        }
+        console.log('[saveData] Supabase INSERT succeeded:', inserted);
+        // Match returned rows by sequence value — insert order is not guaranteed.
+        const insertedBySeq = {};
+        inserted.forEach(row => { insertedBySeq[row.sequence] = row.id; });
+        newEntries.forEach((e, i) => {
+          const seq = baseSeq + i;
+          if (insertedBySeq[seq] !== undefined) e._sid = insertedBySeq[seq];
+        });
+        // Keep _maxSeq current so subsequent saves in the same session are correct.
+        data._maxSeq = baseSeq + newEntries.length - 1;
+      }
+
+      // State upsert runs AFTER history succeeds — no partial commit
+      const { error: stateErr } = await sb.from('state').upsert({
+        id: 1,
+        rotation_index: data.rotationIndex ?? 0,
+        action_date:    data.actionDate    ?? null,
+      });
+      if (stateErr) throw stateErr;
+
+      // Supabase confirmed — update localStorage as read cache only
+      lastSyncedAt = Date.now();
+      syncOffline  = false;
+      updateSyncStamp();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     }
 
     function todayStr() {
@@ -350,6 +349,9 @@
         await saveData(data);
         render(data);
         showToast('Logged \u2713');
+      } catch {
+        setButtonsDisabled(false);
+        showToast('Could not save \u2014 check your connection');
       } finally {
         isProcessing = false;
       }
@@ -408,6 +410,9 @@
         await saveData(data);
         render(data);
         showToast('Day off logged');
+      } catch {
+        setButtonsDisabled(false);
+        showToast('Could not save \u2014 check your connection');
       } finally {
         isProcessing = false;
       }
@@ -478,6 +483,9 @@
           ? (last.note || 'other activity')
           : (WORKOUTS.find(w => w.id === last.type)?.name ?? last.type);
         showToast(`Undone \u2014 ${name}`);
+      } catch {
+        setButtonsDisabled(false);
+        showToast('Could not save \u2014 check your connection');
       } finally {
         isProcessing = false;
       }
@@ -500,6 +508,9 @@
         await saveData(data);
         render(data);
         showToast('Logged \u2713');
+      } catch {
+        setButtonsDisabled(false);
+        showToast('Could not save \u2014 check your connection');
       } finally {
         isProcessing = false;
       }
@@ -657,6 +668,9 @@
         await saveData(data);
         render(data);
         showToast(`${name} logged`);
+      } catch {
+        setButtonsDisabled(false);
+        showToast('Could not save \u2014 check your connection');
       } finally {
         isProcessing = false;
       }
@@ -1030,6 +1044,8 @@
                             (WORKOUTS.find(w => w.id === newType)?.name ?? newType);
         showToast(wasEdit ? `${displayName} updated` : `${displayName} logged`);
 
+      } catch {
+        showToast('Could not save \u2014 check your connection');
       } finally {
         isProcessing  = false;
         backfillSaving = false;
@@ -1080,25 +1096,31 @@
 
     // Save or update a journal entry ({ date, intention, gratitude, one_thing }).
     async function saveJournalEntry(entry) {
+      if (TEST_MODE) {
+        const journal = cachedJournal ? [...cachedJournal] : [];
+        const idx = journal.findIndex(e => e.date === entry.date);
+        if (idx !== -1) { journal[idx] = entry; } else { journal.unshift(entry); }
+        cachedJournal = journal;
+        localStorage.setItem(JOURNAL_KEY, JSON.stringify(journal));
+        return;
+      }
+      if (!sb) throw new Error('Supabase client not available');
+
+      // Write to Supabase FIRST — throws on failure so caller can show error
+      const { error } = await sb.from('journal').upsert({
+        date:      entry.date,
+        intention: entry.intention || null,
+        gratitude: entry.gratitude || null,
+        one_thing: entry.one_thing || null,
+      }, { onConflict: 'date' });
+      if (error) throw error;
+
+      // Supabase confirmed — update cache
       const journal = cachedJournal ? [...cachedJournal] : [];
       const idx = journal.findIndex(e => e.date === entry.date);
-      if (idx !== -1) { journal[idx] = entry; }
-      else { journal.unshift(entry); } // newest first
+      if (idx !== -1) { journal[idx] = entry; } else { journal.unshift(entry); }
       cachedJournal = journal;
       localStorage.setItem(JOURNAL_KEY, JSON.stringify(journal));
-
-      if (!sb || TEST_MODE) return;
-      try {
-        const { error } = await sb.from('journal').upsert({
-          date:      entry.date,
-          intention: entry.intention || null,
-          gratitude: entry.gratitude || null,
-          one_thing: entry.one_thing || null,
-        }, { onConflict: 'date' });
-        if (error) throw error;
-      } catch (err) {
-        console.warn('Journal save to Supabase failed (saved locally):', err);
-      }
     }
 
     // Returns true if newGratitude is a substring (or superset) of any gratitude
@@ -1256,13 +1278,15 @@
       document.getElementById('journal-save-btn').disabled = true;
       try {
         await saveJournalEntry(entry);
+        _journalNudgeConfirmed = false;
+        closeJournalModal();
+        renderJournalCard();
+        showToast('Journal saved \u2713');
+      } catch {
+        showToast('Could not save \u2014 check your connection');
       } finally {
         document.getElementById('journal-save-btn').disabled = false;
       }
-      _journalNudgeConfirmed = false;
-      closeJournalModal();
-      renderJournalCard();
-      showToast('Journal saved \u2713');
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -1319,20 +1343,28 @@
     }
 
     async function saveWeightEntry(date, valueLbs) {
+      if (TEST_MODE) {
+        const rows = cachedWeight ? [...cachedWeight] : [];
+        const idx = rows.findIndex(r => r.date === date);
+        const entry = { date, value_lbs: valueLbs };
+        if (idx !== -1) { rows[idx] = entry; } else { rows.unshift(entry); }
+        cachedWeight = rows;
+        localStorage.setItem(WEIGHT_KEY, JSON.stringify(rows));
+        return;
+      }
+      if (!sb) throw new Error('Supabase client not available');
+
+      // Write to Supabase FIRST — throws on failure so caller can show error
+      const { error } = await sb.from('weight').upsert({ date, value_lbs: valueLbs }, { onConflict: 'date' });
+      if (error) throw error;
+
+      // Supabase confirmed — update cache
       const rows = cachedWeight ? [...cachedWeight] : [];
       const idx = rows.findIndex(r => r.date === date);
       const entry = { date, value_lbs: valueLbs };
       if (idx !== -1) { rows[idx] = entry; } else { rows.unshift(entry); }
       cachedWeight = rows;
       localStorage.setItem(WEIGHT_KEY, JSON.stringify(rows));
-
-      if (!sb || TEST_MODE) return;
-      try {
-        const { error } = await sb.from('weight').upsert({ date, value_lbs: valueLbs }, { onConflict: 'date' });
-        if (error) throw error;
-      } catch (err) {
-        console.warn('Weight save to Supabase failed (saved locally):', err);
-      }
     }
 
     function openWeightModal() {
@@ -1356,12 +1388,14 @@
       document.getElementById('weight-save-btn').disabled = true;
       try {
         await saveWeightEntry(todayStr(), val);
+        closeWeightModal();
+        renderWeightCard();
+        showToast('Weight logged \u2713');
+      } catch {
+        showToast('Could not save \u2014 check your connection');
       } finally {
         document.getElementById('weight-save-btn').disabled = false;
       }
-      closeWeightModal();
-      renderWeightCard();
-      showToast('Weight logged \u2713');
     }
 
     function renderWeightCard() {

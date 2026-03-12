@@ -1,4 +1,4 @@
-const CACHE = 'habits-v53';
+const CACHE = 'habits-v56';
 const PRECACHE = [
   '/',
   '/index.html',
@@ -37,20 +37,21 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  // Only handle GET requests
+  // Only handle GET requests; skip Supabase API calls entirely
   if (event.request.method !== 'GET') return;
+  if (event.request.url.includes('supabase.co')) return;
 
   event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) return cached;
-      return fetch(event.request).then(response => {
-        // Cache successful same-origin responses
-        if (response.ok && response.type !== 'opaque') {
-          const clone = response.clone();
-          caches.open(CACHE).then(cache => cache.put(event.request, clone));
-        }
-        return response;
-      }).catch(() => cached); // Fall back to cache if offline
-    })
+    fetch(event.request).then(response => {
+      // Network succeeded — update cache and return response
+      if (response.ok && response.type !== 'opaque') {
+        const clone = response.clone();
+        caches.open(CACHE).then(cache => cache.put(event.request, clone));
+      }
+      return response;
+    }).catch(() =>
+      // Network failed — fall back to cache
+      caches.match(event.request)
+    )
   );
 });
