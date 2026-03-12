@@ -694,6 +694,7 @@
     let backfillDate         = null;  // 'YYYY-MM-DD' being edited
     let backfillExisting     = null;  // existing history entry object, or null
     let backfillJournalEntry = null;  // journal entry for this date, or null
+    let backfillWeightEntry  = null;  // weight entry for this date, or null
     let backfillSelectedType = null;  // currently selected option id
     let backfillSaving       = false; // true while confirmBackfill is awaiting
 
@@ -707,6 +708,7 @@
       // Look up the journal entry for this date (used in the readonly view)
       const journalEntry = (getJournalSync() || []).find(e => e.date === dateStr) || null;
       backfillJournalEntry = journalEntry;
+      backfillWeightEntry = (getWeightSync() || []).find(r => r.date === dateStr) || null;
 
       // Build the date label: "Wednesday, February 19"
       const d = new Date(dateStr + 'T00:00:00');
@@ -730,6 +732,8 @@
       document.getElementById('backfill-modal').hidden = true;
       backfillDate     = null;
       backfillExisting = null;
+      backfillJournalEntry = null;
+      backfillWeightEntry = null;
       backfillSelectedType = null;
     }
 
@@ -751,6 +755,19 @@
         (isOff ? ' is-rest' : isOther ? ' is-other' : '');
       iconEl.innerHTML = `<i data-lucide="${iconName}"></i>`;
       document.getElementById('backfill-readonly-name').textContent = displayName;
+
+      const weightValueEl = document.getElementById('backfill-weight-value');
+      if (backfillWeightEntry) {
+        weightValueEl.textContent = `${backfillWeightEntry.value_lbs} lbs`;
+        weightValueEl.classList.remove('is-empty');
+      } else {
+        weightValueEl.textContent = 'No weight logged';
+        weightValueEl.classList.add('is-empty');
+      }
+
+      const weightBtn = document.getElementById('backfill-weight-btn');
+      weightBtn.textContent = backfillWeightEntry ? 'Edit Weight' : 'Add Weight';
+      weightBtn.disabled = true;
 
       if (typeof lucide !== 'undefined') lucide.createIcons();
 
@@ -2012,10 +2029,11 @@
     document.getElementById('backfill-modal').addEventListener('click', function (e) {
       if (e.target === this) closeBackfillModal();
     });
-    document.getElementById('backfill-ro-close-btn').onclick = closeBackfillModal;
+    document.getElementById('backfill-x-btn').onclick = closeBackfillModal;
     document.getElementById('backfill-edit-btn').onclick = () => {
       _showBackfillEdit(backfillExisting ? backfillExisting.type : null);
     };
+    document.getElementById('backfill-weight-btn').onclick = () => {};
     document.getElementById('backfill-cancel-btn').onclick = () => {
       if (backfillExisting) {
         // Return to read-only view instead of closing

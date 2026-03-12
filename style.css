@@ -953,6 +953,7 @@
 
     /* ── Backfill Modal ──────────────────────────────────────────────────────── */
     #backfill-sheet {
+      position: relative;
       max-height: 90vh;
       overflow-y: auto;
     }
@@ -962,6 +963,34 @@
       font-weight: 700;
       color: var(--text-primary);
       text-align: center;
+    }
+
+    .backfill-close-btn {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface2);
+      color: var(--text-secondary);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .backfill-close-btn i,
+    .backfill-close-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .backfill-close-btn:active {
+      opacity: 0.75;
     }
 
     /* Scrollable list of 7 selectable options */
@@ -1060,6 +1089,51 @@
       font-size: 1rem;
       font-weight: 700;
       color: var(--text-primary);
+    }
+
+    #backfill-readonly {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .backfill-weight-section {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .backfill-section-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    .backfill-weight-value {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .backfill-weight-value.is-empty {
+      font-weight: 600;
+      color: var(--text-dim);
+    }
+
+    .backfill-readonly-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .backfill-readonly-actions .modal-cancel-btn,
+    .backfill-readonly-actions .modal-confirm-btn {
+      flex: 1;
     }
 
     /* Edit view: flex column so options / note section / actions have consistent gaps */
