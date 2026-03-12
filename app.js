@@ -697,6 +697,8 @@
     let backfillWeightEntry  = null;  // weight entry for this date, or null
     let backfillSelectedType = null;  // currently selected option id
     let backfillSaving       = false; // true while confirmBackfill is awaiting
+    let activeWeightDate     = null;  // date currently being edited in the weight modal
+    let weightModalFromBackfill = false; // true when weight modal was opened from the day-detail sheet
 
     function openBackfillModal(dateStr) {
       backfillDate = dateStr;
@@ -715,14 +717,8 @@
       document.getElementById('backfill-date-label').textContent =
         `${BF_WEEKDAYS[d.getDay()]}, ${BF_MONTHS[d.getMonth()]} ${d.getDate()}`;
 
-      if (backfillExisting) {
-        // Entry exists — open in read-only mode
-        _showBackfillReadonly(backfillExisting);
-      } else {
-        // No entry — open straight into edit/new mode
-        backfillSelectedType = null;
-        _showBackfillEdit(null);
-      }
+      // All past days open into the same read-only day-detail state first.
+      _showBackfillReadonly(backfillExisting);
 
       document.getElementById('backfill-modal').hidden = false;
     }
@@ -741,18 +737,21 @@
       document.getElementById('backfill-readonly').hidden  = false;
       document.getElementById('backfill-edit-view').hidden = true;
 
-      const isOff   = entry.type === 'off';
-      const isOther = entry.type === 'other';
-      const workout = (!isOff && !isOther) ? WORKOUTS.find(w => w.id === entry.type) : null;
+      const hasExercise = !!entry;
+      const isOff   = entry?.type === 'off';
+      const isOther = entry?.type === 'other';
+      const workout = (hasExercise && !isOff && !isOther) ? WORKOUTS.find(w => w.id === entry.type) : null;
 
-      const iconName   = isOff ? 'moon' : isOther ? 'zap' : (workout ? workout.icon : 'dumbbell');
-      const displayName = isOff   ? (entry.note || 'Rest Day') :
-                          isOther ? (entry.note || 'Other Activity') :
-                          (workout ? workout.name : entry.type);
+      const iconName = !hasExercise ? 'dumbbell' :
+        (isOff ? 'moon' : isOther ? 'zap' : (workout ? workout.icon : 'dumbbell'));
+      const displayName = !hasExercise ? 'No exercise logged' :
+        (isOff   ? (entry.note || 'Rest Day') :
+         isOther ? (entry.note || 'Other Activity') :
+         (workout ? workout.name : entry.type));
 
       const iconEl = document.getElementById('backfill-readonly-icon');
       iconEl.className = 'backfill-readonly-icon' +
-        (isOff ? ' is-rest' : isOther ? ' is-other' : '');
+        (!hasExercise ? ' is-empty' : isOff ? ' is-rest' : isOther ? ' is-other' : '');
       iconEl.innerHTML = `<i data-lucide="${iconName}"></i>`;
       document.getElementById('backfill-readonly-name').textContent = displayName;
 
@@ -767,7 +766,10 @@
 
       const weightBtn = document.getElementById('backfill-weight-btn');
       weightBtn.textContent = backfillWeightEntry ? 'Edit Weight' : 'Add Weight';
-      weightBtn.disabled = true;
+      weightBtn.disabled = false;
+
+      const exerciseBtn = document.getElementById('backfill-edit-btn');
+      exerciseBtn.textContent = hasExercise ? 'Edit Exercise' : 'Add Exercise';
 
       if (typeof lucide !== 'undefined') lucide.createIcons();
 
@@ -1384,10 +1386,12 @@
       localStorage.setItem(WEIGHT_KEY, JSON.stringify(rows));
     }
 
-    function openWeightModal() {
-      // Pre-fill if weight already logged today
-      const today = todayStr();
-      const existing = (getWeightSync() || []).find(r => r.date === today);
+    function openWeightModal(dateStr = todayStr(), options = {}) {
+      const { fromBackfill = false } = options;
+      activeWeightDate = dateStr;
+      weightModalFromBackfill = fromBackfill;
+
+      const existing = (getWeightSync() || []).find(r => r.date === dateStr);
       const input = document.getElementById('weight-input');
       input.value = existing ? existing.value_lbs : '';
       document.getElementById('weight-save-btn').disabled = !existing;
@@ -1397,6 +1401,8 @@
 
     function closeWeightModal() {
       document.getElementById('weight-modal').hidden = true;
+      activeWeightDate = null;
+      weightModalFromBackfill = false;
     }
 
     async function saveWeight() {
@@ -1404,10 +1410,15 @@
       if (!val || val < 50 || val > 999) return;
       document.getElementById('weight-save-btn').disabled = true;
       try {
-        await saveWeightEntry(todayStr(), val);
+        const saveDate = activeWeightDate || todayStr();
+        await saveWeightEntry(saveDate, val);
+        if (weightModalFromBackfill && backfillDate === saveDate) {
+          backfillWeightEntry = (getWeightSync() || []).find(r => r.date === saveDate) || null;
+          _showBackfillReadonly(backfillExisting);
+        }
         closeWeightModal();
         renderWeightCard();
-        showToast('Weight logged \u2713');
+        showToast('Weight saved');
       } catch {
         showToast('Could not save \u2014 check your connection');
       } finally {
@@ -2033,7 +2044,10 @@
     document.getElementById('backfill-edit-btn').onclick = () => {
       _showBackfillEdit(backfillExisting ? backfillExisting.type : null);
     };
-    document.getElementById('backfill-weight-btn').onclick = () => {};
+    document.getElementById('backfill-weight-btn').onclick = () => {
+      if (!backfillDate) return;
+      openWeightModal(backfillDate, { fromBackfill: true });
+    };
     document.getElementById('backfill-cancel-btn').onclick = () => {
       if (backfillExisting) {
         // Return to read-only view instead of closing

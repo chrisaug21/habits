@@ -1085,6 +1085,11 @@
       color: var(--teal);
     }
 
+    .backfill-readonly-icon.is-empty i,
+    .backfill-readonly-icon.is-empty svg {
+      color: var(--text-dim);
+    }
+
     .backfill-readonly-name {
       font-size: 1rem;
       font-weight: 700;
