@@ -187,6 +187,11 @@ The hero card locks for the day when `data.actionDate === todayStr()`. Any log a
 ### Modal → log action order
 Always call `closeXModal()` BEFORE calling an async log function (`markRowDone`, `logSkip`, `logOtherActivity`). The `isProcessing` guard and `setButtonsDisabled` run at the start of every log function — if the modal is still open, its buttons stay frozen.
 
+### Action function error pattern
+`saveData` throws on Supabase failure — do NOT use `try/finally` alone. All action functions that call `saveData` must follow:
+`try { ...await saveData(data); render(data); showToast(...); } catch { setButtonsDisabled(false); showToast('Could not save — check your connection'); } finally { isProcessing = false; }`
+Exception: `confirmBackfill` uses `isProcessing` but not `setButtonsDisabled` — its catch block only needs `showToast(...)`, not `setButtonsDisabled(false)`.
+
 ## Architecture guardrails
 Because this is a simple personal app:
 
