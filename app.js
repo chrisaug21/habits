@@ -33,7 +33,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.4.58';
+    const VERSION = '1.4.59';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -1478,7 +1478,7 @@
     let historyViewActive = false;
     let statsViewActive = false;
     let historySubTab = 'calendar'; // 'calendar' or 'list'
-    let statsRange = '30'; // '30' or 'all'
+    let statsRange = '30'; // '7', '30', or 'all'
     let calViewDate = new Date(); // month currently shown in the calendar
     let weightChart = null;      // Chart.js instance for the Stats tab weight chart
 
@@ -1798,11 +1798,31 @@
       });
     }
 
+    function getStatsRangeDays(range = statsRange) {
+      if (range === '7') return 7;
+      if (range === '30') return 30;
+      return null;
+    }
+
+    function getStatsRangeCutoffStr(range = statsRange) {
+      const days = getStatsRangeDays(range);
+      if (!days) return null;
+
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - (days - 1));
+      return cutoff.getFullYear() + '-' +
+        String(cutoff.getMonth() + 1).padStart(2, '0') + '-' +
+        String(cutoff.getDate()).padStart(2, '0');
+    }
+
     function renderWeightChart() {
       const emptyEl = document.getElementById('weight-chart-empty');
       const wrapEl  = document.getElementById('weight-chart-wrap');
       const canvas  = document.getElementById('weight-chart-canvas');
-      const rows = [...(getWeightSync() || [])].sort((a, b) => a.date.localeCompare(b.date));
+      const cutoffStr = getStatsRangeCutoffStr();
+      const rows = [...(getWeightSync() || [])]
+        .filter(row => !cutoffStr || row.date >= cutoffStr)
+        .sort((a, b) => a.date.localeCompare(b.date));
 
       destroyWeightChart();
 
@@ -1935,15 +1955,10 @@
       const realWorkouts = history.filter(e => !NON_WORKOUT_TYPES.has(e.type));
 
       // ── Determine the filtered set for range-dependent stats ──────────────
-      // "Last 30 Days" includes today through 29 days ago (30 days inclusive).
       const today = todayStr();
       let rangeEntries;
-      if (statsRange === '30') {
-        const cutoff = new Date();
-        cutoff.setDate(cutoff.getDate() - 29);
-        const cutoffStr = cutoff.getFullYear() + '-' +
-          String(cutoff.getMonth() + 1).padStart(2, '0') + '-' +
-          String(cutoff.getDate()).padStart(2, '0');
+      const cutoffStr = getStatsRangeCutoffStr();
+      if (cutoffStr) {
         rangeEntries = realWorkouts.filter(e => e.date >= cutoffStr);
       } else {
         rangeEntries = realWorkouts.slice();
@@ -2008,8 +2023,9 @@
       // ── 3. Consistency % ──────────────────────────────────────────────────
       const distinctDays = new Set(rangeEntries.map(e => e.date)).size;
       let denominator;
-      if (statsRange === '30') {
-        denominator = 30;
+      const statsRangeDays = getStatsRangeDays();
+      if (statsRangeDays) {
+        denominator = statsRangeDays;
       } else {
         // All Time: days from first-ever logged workout to today (inclusive)
         const allDates = realWorkouts.map(e => e.date).sort();
@@ -2083,7 +2099,7 @@
           <div class="stats-section-label">Total Workouts</div>
           <div class="stats-card">
             <div class="stats-big-number">${totalWorkouts}</div>
-            <div class="stats-big-label">${statsRange === '30' ? 'in the last 30 days' : 'all time'}</div>
+            <div class="stats-big-label">${statsRange === '7' ? 'in the last 7 days' : statsRange === '30' ? 'in the last 30 days' : 'all time'}</div>
           </div>
         </div>
 
@@ -2167,6 +2183,7 @@
         // Always reset to Last 30 Days when entering the Stats tab so the
         // toggle never carries over state from a previous visit.
         statsRange = '30';
+        document.getElementById('stats-btn-7').classList.remove('active');
         document.getElementById('stats-btn-30').classList.add('active');
         document.getElementById('stats-btn-all').classList.remove('active');
         if (cachedData) renderStatsView(cachedData);
@@ -2301,11 +2318,13 @@
     };
 
     // ── Stats range toggle ─────────────────────────────────────────────────
+    document.getElementById('stats-btn-7').onclick = () => switchStatsRange('7');
     document.getElementById('stats-btn-30').onclick = () => switchStatsRange('30');
     document.getElementById('stats-btn-all').onclick = () => switchStatsRange('all');
 
     function switchStatsRange(range) {
       statsRange = range;
+      document.getElementById('stats-btn-7').classList.toggle('active', range === '7');
       document.getElementById('stats-btn-30').classList.toggle('active', range === '30');
       document.getElementById('stats-btn-all').classList.toggle('active', range === 'all');
       if (cachedData) renderStatsView(cachedData);
