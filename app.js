@@ -33,7 +33,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.4.57';
+    const VERSION = '1.4.58';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -254,6 +254,18 @@
       const m = String(d.getMonth() + 1).padStart(2, '0');
       const day = String(d.getDate()).padStart(2, '0');
       return `${y}-${m}-${day}`;
+    }
+
+    function isValidISODate(dateStr) {
+      if (typeof dateStr !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
+      const [year, month, day] = dateStr.split('-').map(Number);
+      if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return false;
+      const date = new Date(year, month - 1, day);
+      return (
+        date.getFullYear() === year &&
+        date.getMonth() === month - 1 &&
+        date.getDate() === day
+      );
     }
 
     function getYesterdayStr() {
@@ -1395,7 +1407,7 @@
     }
 
     function openWeightModal(dateStr = todayStr(), options = {}) {
-      if (typeof dateStr !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      if (!isValidISODate(dateStr)) {
         dateStr = todayStr();
       }
       const { fromBackfill = false } = options;
