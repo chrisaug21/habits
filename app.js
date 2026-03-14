@@ -1395,6 +1395,9 @@
     }
 
     function openWeightModal(dateStr = todayStr(), options = {}) {
+      if (typeof dateStr !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        dateStr = todayStr();
+      }
       const { fromBackfill = false } = options;
       activeWeightDate = dateStr;
       weightModalFromBackfill = fromBackfill;
@@ -1451,10 +1454,10 @@
           `<div class="weight-logged-value">${entry.value_lbs} lbs</div>` +
           `<div class="card-done-badge">Done ✓</div>` +
           `<button class="card-edit-btn" id="weight-edit-card-btn">Edit</button>`;
-        document.getElementById('weight-edit-card-btn').onclick = openWeightModal;
+        document.getElementById('weight-edit-card-btn').onclick = () => openWeightModal();
       } else {
         content.innerHTML = `<button class="card-action-btn" id="weight-open-btn">Log Weight</button>`;
-        document.getElementById('weight-open-btn').onclick = openWeightModal;
+        document.getElementById('weight-open-btn').onclick = () => openWeightModal();
       }
     }
 
