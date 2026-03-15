@@ -1672,11 +1672,19 @@
       font-size: 0.72rem;
       font-weight: 700;
       letter-spacing: 0.06em;
-      color: var(--green, #34c759);
-      background: rgba(52, 199, 89, 0.12);
       border-radius: 8px;
       padding: 4px 10px;
       margin-bottom: 12px;
+    }
+
+    .card-done-badge--journal {
+      color: var(--green, #34c759);
+      background: rgba(52, 199, 89, 0.12);
+    }
+
+    .card-done-badge--weight {
+      color: var(--coral);
+      background: rgba(255, 107, 107, 0.12);
     }
 
     .card-edit-btn {

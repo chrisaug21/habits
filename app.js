@@ -1209,7 +1209,7 @@
       if (entry) {
         // Done badge
         const badge = document.createElement('div');
-        badge.className = 'card-done-badge';
+        badge.className = 'card-done-badge card-done-badge--journal';
         badge.textContent = 'Done \u2713';
         content.appendChild(badge);
 
@@ -1464,7 +1464,7 @@
       if (entry) {
         content.innerHTML =
           `<div class="weight-logged-value">${entry.value_lbs} lbs</div>` +
-          `<div class="card-done-badge">Done ✓</div>` +
+          `<div class="card-done-badge card-done-badge--weight">Done ✓</div>` +
           `<button class="card-edit-btn" id="weight-edit-card-btn">Edit</button>`;
         document.getElementById('weight-edit-card-btn').onclick = () => openWeightModal();
       } else {
