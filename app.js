@@ -2371,7 +2371,7 @@
       document.getElementById('suggestion-eyebrow').textContent =
         heroState === 'done'    ? 'Completed'      :
         heroState === 'skipped' ? 'Day Off'        :
-        heroState === 'other'   ? 'Other Activity' : 'Next Up';
+        heroState === 'other'   ? 'Other Activity' : 'Next Up Workout';
 
       // Icon — rebuild the inner element so lucide picks up the change each render
       const heroIconWrap = document.getElementById('hero-icon-wrap');
@@ -2436,6 +2436,8 @@
       // Non-advancing action (skip/other/chooser): rotationIndex unchanged, so ROTATION[idx]
       //   is still today's scheduled workout, which is also tomorrow's (rotation didn't move).
       // No action yet today: rotationIndex points to today, so tomorrow is idx + 1.
+      const tomorrowPreviewEl = document.getElementById('tomorrow-preview');
+      tomorrowPreviewEl.hidden = heroState === 'default';
       const rotIdx = data.rotationIndex || 0;
       const tomorrowWorkout = actionTakenToday
         ? WORKOUTS.find(w => w.id === ROTATION[rotIdx % ROTATION.length])
