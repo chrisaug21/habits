@@ -79,7 +79,7 @@
     /* Today's date */
     .date-label {
       font-size: 0.72rem;
-      color: var(--text-dim);
+      color: var(--text-secondary);
       margin-top: 4px;
       letter-spacing: 0.06em;
       text-transform: uppercase;
@@ -91,7 +91,7 @@
       border: 1px solid var(--border-active);
       border-radius: 22px;
       padding: 32px 24px 28px;
-      margin-bottom: 28px;
+      margin-bottom: 16px;
       text-align: center;
       position: relative;
       overflow: hidden;
@@ -380,7 +380,7 @@
       border: 1px solid var(--border);
       border-radius: 16px;
       padding: 16px 20px 18px;
-      margin-bottom: 24px;
+      margin-bottom: 16px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -393,7 +393,7 @@
       font-weight: 700;
       letter-spacing: 0.12em;
       text-transform: uppercase;
-      color: var(--text-dim);
+      color: var(--text-secondary);
     }
 
     .tomorrow-name {
@@ -1333,7 +1333,7 @@
       text-align: right;
     }
 
-    /* Other row — tappable, chevron on the right */
+    /* Other row — tappable, chevron just left of the count */
     .stats-other-row {
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
@@ -1345,12 +1345,20 @@
       border-radius: 8px;
     }
 
+    .stats-other-meta {
+      flex-shrink: 0;
+      min-width: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 2px;
+    }
+
     .stats-other-chevron {
       flex-shrink: 0;
       width: 15px;
       height: 15px;
       color: var(--text-dim);
-      margin-left: 4px;
     }
 
     /* Expandable list of other-activity entries */
@@ -1638,7 +1646,7 @@
       font-weight: 700;
       letter-spacing: 0.12em;
       text-transform: uppercase;
-      color: var(--text-dim);
+      color: var(--text-secondary);
       margin-bottom: 14px;
     }
 
@@ -1672,11 +1680,19 @@
       font-size: 0.72rem;
       font-weight: 700;
       letter-spacing: 0.06em;
-      color: var(--green, #34c759);
-      background: rgba(52, 199, 89, 0.12);
       border-radius: 8px;
       padding: 4px 10px;
       margin-bottom: 12px;
+    }
+
+    .card-done-badge--journal {
+      color: var(--green, #34c759);
+      background: rgba(52, 199, 89, 0.12);
+    }
+
+    .card-done-badge--weight {
+      color: var(--coral);
+      background: rgba(255, 107, 107, 0.12);
     }
 
     .card-edit-btn {
@@ -1736,7 +1752,7 @@
     }
 
     .log-activity-option--other {
-      color: var(--text-secondary);
+      color: var(--text-primary);
     }
 
     /* Journal card completed state */
@@ -1857,6 +1873,21 @@
       min-height: 48px;
     }
 
+    .settings-sync-btn i,
+    .settings-sync-btn svg {
+      flex-shrink: 0;
+    }
+
+    .settings-sync-btn.is-syncing i,
+    .settings-sync-btn.is-syncing svg {
+      animation: settings-sync-spin 0.8s linear infinite;
+    }
+
     .settings-sync-btn:active {
       opacity: 0.8;
+    }
+
+    @keyframes settings-sync-spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
     }

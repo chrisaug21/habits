@@ -33,7 +33,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.4.59';
+    const VERSION = '1.4.61';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -1209,7 +1209,7 @@
       if (entry) {
         // Done badge
         const badge = document.createElement('div');
-        badge.className = 'card-done-badge';
+        badge.className = 'card-done-badge card-done-badge--journal';
         badge.textContent = 'Done \u2713';
         content.appendChild(badge);
 
@@ -1464,7 +1464,7 @@
       if (entry) {
         content.innerHTML =
           `<div class="weight-logged-value">${entry.value_lbs} lbs</div>` +
-          `<div class="card-done-badge">Done ✓</div>` +
+          `<div class="card-done-badge card-done-badge--weight">Done ✓</div>` +
           `<button class="card-edit-btn" id="weight-edit-card-btn">Edit</button>`;
         document.getElementById('weight-edit-card-btn').onclick = () => openWeightModal();
       } else {
@@ -1850,8 +1850,8 @@
       const css = getComputedStyle(document.documentElement);
       const accent = css.getPropertyValue('--accent').trim() || '#6c63ff';
       const coral = css.getPropertyValue('--coral').trim() || '#ff6b6b';
-      const textDim = css.getPropertyValue('--text-dim').trim() || '#3a3a58';
       const textSecondary = css.getPropertyValue('--text-secondary').trim() || '#6a6a90';
+      const textPrimary = css.getPropertyValue('--text-primary').trim() || '#e4e4f4';
       const border = css.getPropertyValue('--border').trim() || '#222235';
 
       weightChart = new window.Chart(canvas, {
@@ -1881,8 +1881,8 @@
             {
               label: 'Trend',
               data: trendValues,
-              borderColor: textSecondary,
-              backgroundColor: textSecondary,
+              borderColor: textPrimary,
+              backgroundColor: textPrimary,
               borderWidth: 2,
               pointRadius: 0,
               pointHitRadius: 12,
@@ -1920,7 +1920,7 @@
               grid: { display: false },
               border: { color: border },
               ticks: {
-                color: textDim,
+                color: textSecondary,
                 autoSkip: true,
                 maxTicksLimit: 5,
                 maxRotation: 0,
@@ -1932,7 +1932,7 @@
               grid: { color: border },
               border: { color: border },
               ticks: {
-                color: textDim,
+                color: textSecondary,
                 maxTicksLimit: 5,
               },
             },
@@ -2047,7 +2047,9 @@
       // "Other" = real workout entries whose type isn't one of the 5 rotation types.
       // These are free-form activities logged via Log Other Activity or backfill.
       // The human-readable label is stored in e.note; fall back to 'Other activity'.
-      const otherEntries = rangeEntries.filter(e => !ROTATION_TYPE_IDS.has(e.type));
+      const otherEntries = rangeEntries
+        .filter(e => !ROTATION_TYPE_IDS.has(e.type))
+        .sort((a, b) => b.date.localeCompare(a.date));
       const otherCount   = otherEntries.length;
 
       // Scale all bars (including Other) relative to the overall max.
@@ -2081,8 +2083,10 @@
               <div class="stats-bar-fill" style="width:${otherPct}%"></div>
             </div>
           </div>
-          <div class="stats-type-count">${otherCount}</div>
-          <i data-lucide="chevron-down" class="stats-other-chevron"></i>
+          <div class="stats-other-meta">
+            <i data-lucide="chevron-down" class="stats-other-chevron"></i>
+            <div class="stats-type-count">${otherCount}</div>
+          </div>
         </div>
         <div class="stats-other-list" id="stats-other-list" hidden>
           ${otherEntries.map(e => `
@@ -2272,11 +2276,17 @@
     document.getElementById('nav-settings-btn').onclick = () => switchMainTab('settings');
 
     document.getElementById('sync-btn').onclick = async () => {
+      const syncBtn = document.getElementById('sync-btn');
+      if (syncBtn.classList.contains('is-syncing')) return;
+
+      syncBtn.classList.add('is-syncing');
       try {
         await syncAllData();
         showToast('Synced ✓');
       } catch {
         showToast('Sync failed — check your connection');
+      } finally {
+        syncBtn.classList.remove('is-syncing');
       }
     };
     document.getElementById('htab-calendar').onclick   = () => switchHistorySubTab('calendar');
@@ -2371,7 +2381,7 @@
       document.getElementById('suggestion-eyebrow').textContent =
         heroState === 'done'    ? 'Completed'      :
         heroState === 'skipped' ? 'Day Off'        :
-        heroState === 'other'   ? 'Other Activity' : 'Next Up';
+        heroState === 'other'   ? 'Other Activity' : 'Next Up Workout';
 
       // Icon — rebuild the inner element so lucide picks up the change each render
       const heroIconWrap = document.getElementById('hero-icon-wrap');
@@ -2436,6 +2446,8 @@
       // Non-advancing action (skip/other/chooser): rotationIndex unchanged, so ROTATION[idx]
       //   is still today's scheduled workout, which is also tomorrow's (rotation didn't move).
       // No action yet today: rotationIndex points to today, so tomorrow is idx + 1.
+      const tomorrowPreviewEl = document.getElementById('tomorrow-preview');
+      tomorrowPreviewEl.hidden = heroState === 'default';
       const rotIdx = data.rotationIndex || 0;
       const tomorrowWorkout = actionTakenToday
         ? WORKOUTS.find(w => w.id === ROTATION[rotIdx % ROTATION.length])
