@@ -1916,7 +1916,7 @@
     .settings-account-email {
       font-size: 0.98rem;
       color: var(--text-primary);
-      word-break: break-word;
+      overflow-wrap: anywhere;
     }
 
     .settings-form-grid {

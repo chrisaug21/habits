@@ -2,7 +2,7 @@
 
 A mobile-first PWA for daily habits — workout tracking, journaling, and intention-setting.
 
-**Current version: 1.5.2**
+**Current version: 1.5.3**
 
 Live at: https://habits.chrisaug.com
 
@@ -144,17 +144,17 @@ create policy "allow all" on weight for all using (true) with check (true);
 
 | Key | Type | Description |
 |---|---|---|
-| `habits_v1` | JSON object | Full workout state: `rotationIndex`, `actionDate`, `history[]`, last-completion dates per workout type, `_maxSeq` |
-| `habits_other_activities` | `string[]` | Up to 10 most-recently used other activity names |
-| `habits_v1_skip_reasons` | `string[]` | Up to 10 most-recently used skip reasons |
-| `habits_journal` | `array` | Journal entries as `[{ date, intention, gratitude, one_thing }]`, newest first |
-| `habits_weight` | `array` | Weight entries as `[{ date, value_lbs }]`, newest first |
+| `<user-id>:habits_v1` | JSON object | Full workout state: `rotationIndex`, `actionDate`, `history[]`, last-completion dates per workout type, `_maxSeq` |
+| `<user-id>:habits_other_activities` | `string[]` | Up to 10 most-recently used other activity names |
+| `<user-id>:habits_v1_skip_reasons` | `string[]` | Up to 10 most-recently used skip reasons |
+| `<user-id>:habits_journal` | `array` | Journal entries as `[{ date, intention, gratitude, one_thing }]`, newest first |
+| `<user-id>:habits_weight` | `array` | Weight entries as `[{ date, value_lbs }]`, newest first |
 
-**localStorage migration:** On first load after this release, the app automatically migrates `wmw_v1` → `habits_v1` and `wmw_other_activities` → `habits_other_activities`, then deletes the old keys.
+**localStorage migration:** On first load after this release, the app automatically migrates legacy shared keys like `wmw_v1`, `habits_v1`, and `habits_journal` into the signed-in user's namespaced keys, then deletes the old shared key.
 
 ### Test-mode localStorage keys
 
-When test mode is active (`?test=true` in the URL), the app writes to isolated keys (`habits_test`, `habits_test_other_activities`, `habits_test_skip_reasons`, `habits_test_journal`, `habits_test_weight`) and skips all Supabase calls. All test data is wiped by the Reset button in the test banner.
+When test mode is active (`?test=true` in the URL), the app writes to isolated per-user keys (`<user-id>:habits_test`, `<user-id>:habits_test_other_activities`, `<user-id>:habits_test_skip_reasons`, `<user-id>:habits_test_journal`, `<user-id>:habits_test_weight`) and skips all Supabase calls. All test data is wiped by the Reset button in the test banner.
 
 ## File structure
 

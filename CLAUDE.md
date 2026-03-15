@@ -15,6 +15,7 @@ intentionally simple. Live at https://habits.chrisaug.com.
 ## Architecture rules
 - Supabase is the source of truth for all writes — do not revert to localStorage
 - localStorage is read-only cache only
+- localStorage cache keys must be scoped per user ID to prevent cache bleed between accounts on the same device
 - If Supabase is unreachable, show an error toast — do not attempt offline writes
 - Do not introduce frameworks or additional dependencies without explicit approval
 

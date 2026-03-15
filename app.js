@@ -34,40 +34,69 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.5.2';
+    const VERSION = '1.5.3';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
-    const STORAGE_KEY = TEST_MODE ? 'habits_test' : 'habits_v1';
+    const BASE_STORAGE_KEY = TEST_MODE ? 'habits_test' : 'habits_v1';
+    const BASE_OTHER_ACTIVITIES_KEY = TEST_MODE ? 'habits_test_other_activities' : 'habits_other_activities';
+    const BASE_SKIP_REASONS_KEY = `${BASE_STORAGE_KEY}_skip_reasons`;
+    const BASE_JOURNAL_KEY = TEST_MODE ? 'habits_test_journal' : 'habits_journal';
+    const BASE_WEIGHT_KEY = TEST_MODE ? 'habits_test_weight' : 'habits_weight';
     // ────────────────────────────────────────────────────────────────────────
 
-    // ── localStorage key migration (wmw_ → habits_) ──────────────────────────
-    // One-time migration: if habits_v1 doesn't exist yet but wmw_v1 does,
-    // copy the data over and delete the old key. Same for other_activities.
-    if (!TEST_MODE) {
-      const migrateKey = (oldKey, newKey) => {
-        if (localStorage.getItem(newKey) === null) {
-          const old = localStorage.getItem(oldKey);
-          if (old !== null) {
-            localStorage.setItem(newKey, old);
-            localStorage.removeItem(oldKey);
-          }
-        }
-      };
-      migrateKey('wmw_v1',              'habits_v1');
-      migrateKey('wmw_other_activities', 'habits_other_activities');
+    function getScopedStorageKey(baseKey) {
+      const userId = currentUser?.id;
+      return userId ? `${userId}:${baseKey}` : null;
     }
-    // ────────────────────────────────────────────────────────────────────────
+
+    function readCachedJSON(baseKey, fallback) {
+      const key = getScopedStorageKey(baseKey);
+      if (!key) return fallback;
+      try { return JSON.parse(localStorage.getItem(key)) || fallback; }
+      catch { return fallback; }
+    }
+
+    function writeCachedJSON(baseKey, value) {
+      const key = getScopedStorageKey(baseKey);
+      if (!key) return;
+      localStorage.setItem(key, JSON.stringify(value));
+    }
+
+    function removeCachedValue(baseKey) {
+      const key = getScopedStorageKey(baseKey);
+      if (!key) return;
+      localStorage.removeItem(key);
+    }
+
+    // One-time migration from legacy shared keys to user-scoped keys.
+    function migrateLegacyCacheKeys() {
+      if (TEST_MODE) return;
+      const migrateKey = (oldKey, baseKey) => {
+        const newKey = getScopedStorageKey(baseKey);
+        if (!newKey) return;
+        if (localStorage.getItem(newKey) !== null) return;
+        const old = localStorage.getItem(oldKey);
+        if (old === null) return;
+        localStorage.setItem(newKey, old);
+        localStorage.removeItem(oldKey);
+      };
+      migrateKey('wmw_v1', 'habits_v1');
+      migrateKey('wmw_other_activities', 'habits_other_activities');
+      migrateKey('habits_v1', 'habits_v1');
+      migrateKey('habits_other_activities', 'habits_other_activities');
+      migrateKey('habits_v1_skip_reasons', 'habits_v1_skip_reasons');
+      migrateKey('habits_journal', 'habits_journal');
+      migrateKey('habits_weight', 'habits_weight');
+    }
 
     async function loadData() {
       if (!sb || TEST_MODE) {
-        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
-        catch { return {}; }
+        return readCachedJSON(BASE_STORAGE_KEY, {});
       }
       try {
         const userId = currentUser?.id;
-        let local = {};
-        try { local = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch {}
+        const local = readCachedJSON(BASE_STORAGE_KEY, {});
 
         const [stateRes, historyRes] = await Promise.all([
           // order + limit(1) so duplicate rows (same user_id) never cause
@@ -144,21 +173,20 @@
         lastSyncedAt = Date.now();
         syncOffline  = false;
         updateSyncStamp();
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); // keep local cache fresh
+        writeCachedJSON(BASE_STORAGE_KEY, data); // keep local cache fresh
         return data;
       } catch (err) {
         console.warn('Supabase read failed, falling back to localStorage:', err);
         syncOffline = true;
         updateSyncStamp();
-        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
-        catch { return {}; }
+        return readCachedJSON(BASE_STORAGE_KEY, {});
       }
     }
 
     async function saveData(data, deletedSid = null) {
       if (TEST_MODE) {
         // Test mode — write to localStorage only, no Supabase
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        writeCachedJSON(BASE_STORAGE_KEY, data);
         return;
       }
       if (!sb) throw new Error('Supabase client not available');
@@ -214,7 +242,7 @@
       lastSyncedAt = Date.now();
       syncOffline  = false;
       updateSyncStamp();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      writeCachedJSON(BASE_STORAGE_KEY, data);
     }
 
     function todayStr() {
@@ -601,14 +629,9 @@
     }
 
     // ── Other Activity helpers ───────────────────────────────────────────────
-    const OTHER_ACTIVITIES_KEY = TEST_MODE ? 'habits_test_other_activities' : 'habits_other_activities';
-    const SKIP_REASONS_KEY = STORAGE_KEY + '_skip_reasons';
-    const JOURNAL_KEY = TEST_MODE ? 'habits_test_journal' : 'habits_journal';
-    const WEIGHT_KEY  = TEST_MODE ? 'habits_test_weight'  : 'habits_weight';
-
     function loadOtherActivities() {
       try {
-        const parsed = JSON.parse(localStorage.getItem(OTHER_ACTIVITIES_KEY));
+        const parsed = readCachedJSON(BASE_OTHER_ACTIVITIES_KEY, []);
         if (typeof parsed === 'string') return [parsed];
         if (Array.isArray(parsed)) return parsed.filter(a => typeof a === 'string');
         return [];
@@ -620,12 +643,12 @@
       const nameLower = name.toLowerCase();
       // Remove any existing entry that matches case-insensitively, then prepend
       const deduped = existing.filter(a => a.toLowerCase() !== nameLower);
-      localStorage.setItem(OTHER_ACTIVITIES_KEY, JSON.stringify([name, ...deduped].slice(0, 10)));
+      writeCachedJSON(BASE_OTHER_ACTIVITIES_KEY, [name, ...deduped].slice(0, 10));
     }
 
     function loadSkipReasons() {
       try {
-        const parsed = JSON.parse(localStorage.getItem(SKIP_REASONS_KEY));
+        const parsed = readCachedJSON(BASE_SKIP_REASONS_KEY, []);
         if (typeof parsed === 'string') return [parsed];
         if (Array.isArray(parsed)) return parsed.filter(r => typeof r === 'string');
         return [];
@@ -636,7 +659,7 @@
       const existing = loadSkipReasons();
       const reasonLower = reason.toLowerCase();
       const deduped = existing.filter(r => r.toLowerCase() !== reasonLower);
-      localStorage.setItem(SKIP_REASONS_KEY, JSON.stringify([reason, ...deduped].slice(0, 10)));
+      writeCachedJSON(BASE_SKIP_REASONS_KEY, [reason, ...deduped].slice(0, 10));
     }
 
     function openOtherActivityModal() {
@@ -1113,15 +1136,13 @@
     // Used by calendar rendering so dots appear without waiting for a Supabase call.
     function getJournalSync() {
       if (cachedJournal !== null) return cachedJournal;
-      try { cachedJournal = JSON.parse(localStorage.getItem(JOURNAL_KEY)) || []; }
-      catch { cachedJournal = []; }
+      cachedJournal = readCachedJSON(BASE_JOURNAL_KEY, []);
       return cachedJournal;
     }
 
     // Load journal from Supabase, cache to localStorage, update cachedJournal.
     async function loadJournal() {
-      let local = [];
-      try { local = JSON.parse(localStorage.getItem(JOURNAL_KEY)) || []; } catch {}
+      const local = readCachedJSON(BASE_JOURNAL_KEY, []);
       if (!sb || TEST_MODE) {
         cachedJournal = local;
         return local;
@@ -1136,7 +1157,7 @@
           gratitude:  r.gratitude  || '',
           one_thing:  r.one_thing  || '',
         }));
-        localStorage.setItem(JOURNAL_KEY, JSON.stringify(journal));
+        writeCachedJSON(BASE_JOURNAL_KEY, journal);
         cachedJournal = journal;
         return journal;
       } catch (err) {
@@ -1153,7 +1174,7 @@
         const idx = journal.findIndex(e => e.date === entry.date);
         if (idx !== -1) { journal[idx] = entry; } else { journal.unshift(entry); }
         cachedJournal = journal;
-        localStorage.setItem(JOURNAL_KEY, JSON.stringify(journal));
+        writeCachedJSON(BASE_JOURNAL_KEY, journal);
         return;
       }
       if (!sb) throw new Error('Supabase client not available');
@@ -1173,7 +1194,7 @@
       const idx = journal.findIndex(e => e.date === entry.date);
       if (idx !== -1) { journal[idx] = entry; } else { journal.unshift(entry); }
       cachedJournal = journal;
-      localStorage.setItem(JOURNAL_KEY, JSON.stringify(journal));
+      writeCachedJSON(BASE_JOURNAL_KEY, journal);
     }
 
     // Returns true if newGratitude is a substring (or superset) of any gratitude
@@ -1347,21 +1368,19 @@
     // ── Weight modal + card ─────────────────────────────────────────────────
     function getWeightSync() {
       if (cachedWeight !== null) return cachedWeight;
-      try { cachedWeight = JSON.parse(localStorage.getItem(WEIGHT_KEY)) || []; }
-      catch { cachedWeight = []; }
+      cachedWeight = readCachedJSON(BASE_WEIGHT_KEY, []);
       return cachedWeight;
     }
 
     async function loadWeight() {
-      let local = [];
-      try { local = JSON.parse(localStorage.getItem(WEIGHT_KEY)) || []; } catch {}
+      const local = readCachedJSON(BASE_WEIGHT_KEY, []);
       if (!sb || TEST_MODE) { cachedWeight = local; return local; }
       try {
         const { data, error } = await sb.from('weight').select('date, value_lbs').eq('user_id', currentUser?.id)
           .order('date', { ascending: false });
         if (error) throw error;
         const rows = (data || []).map(r => ({ date: r.date, value_lbs: parseFloat(r.value_lbs) }));
-        localStorage.setItem(WEIGHT_KEY, JSON.stringify(rows));
+        writeCachedJSON(BASE_WEIGHT_KEY, rows);
         cachedWeight = rows;
         return rows;
       } catch (err) {
@@ -1394,8 +1413,8 @@
         date: r.date, intention: r.intention || '', gratitude: r.gratitude || '', one_thing: r.one_thing || '',
       }));
       cachedWeight = (weightRes.data || []).map(r => ({ date: r.date, value_lbs: parseFloat(r.value_lbs) }));
-      localStorage.setItem(JOURNAL_KEY, JSON.stringify(cachedJournal));
-      localStorage.setItem(WEIGHT_KEY,  JSON.stringify(cachedWeight));
+      writeCachedJSON(BASE_JOURNAL_KEY, cachedJournal);
+      writeCachedJSON(BASE_WEIGHT_KEY, cachedWeight);
       // render() calls loadData() internally for state+history (preserves offline-sync logic)
       await render();
     }
@@ -1407,7 +1426,7 @@
         const entry = { date, value_lbs: valueLbs };
         if (idx !== -1) { rows[idx] = entry; } else { rows.unshift(entry); }
         cachedWeight = rows;
-        localStorage.setItem(WEIGHT_KEY, JSON.stringify(rows));
+        writeCachedJSON(BASE_WEIGHT_KEY, rows);
         return;
       }
       if (!sb) throw new Error('Supabase client not available');
@@ -1422,7 +1441,7 @@
       const entry = { date, value_lbs: valueLbs };
       if (idx !== -1) { rows[idx] = entry; } else { rows.unshift(entry); }
       cachedWeight = rows;
-      localStorage.setItem(WEIGHT_KEY, JSON.stringify(rows));
+      writeCachedJSON(BASE_WEIGHT_KEY, rows);
     }
 
     function openWeightModal(dateStr = todayStr(), options = {}) {
@@ -2537,11 +2556,11 @@
     if (TEST_MODE) {
       document.getElementById('test-banner').hidden = false;
       document.getElementById('test-reset-btn').onclick = () => {
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem(OTHER_ACTIVITIES_KEY);
-        localStorage.removeItem(SKIP_REASONS_KEY);
-        localStorage.removeItem(JOURNAL_KEY);
-        localStorage.removeItem(WEIGHT_KEY);
+        removeCachedValue(BASE_STORAGE_KEY);
+        removeCachedValue(BASE_OTHER_ACTIVITIES_KEY);
+        removeCachedValue(BASE_SKIP_REASONS_KEY);
+        removeCachedValue(BASE_JOURNAL_KEY);
+        removeCachedValue(BASE_WEIGHT_KEY);
         cachedJournal = null;
         cachedWeight  = null;
         render();
@@ -2768,11 +2787,11 @@
         cachedData = null;
         cachedJournal = null;
         cachedWeight = null;
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem(JOURNAL_KEY);
-        localStorage.removeItem(WEIGHT_KEY);
-        localStorage.removeItem(OTHER_ACTIVITIES_KEY);
-        localStorage.removeItem(SKIP_REASONS_KEY);
+        removeCachedValue(BASE_STORAGE_KEY);
+        removeCachedValue(BASE_JOURNAL_KEY);
+        removeCachedValue(BASE_WEIGHT_KEY);
+        removeCachedValue(BASE_OTHER_ACTIVITIES_KEY);
+        removeCachedValue(BASE_SKIP_REASONS_KEY);
         showToast(usedFallback ? 'Goodbye - account flagged for deletion' : 'Goodbye');
         setTimeout(() => {
           sb.auth.signOut();
@@ -2830,6 +2849,7 @@
 
     // ── Auth helpers ─────────────────────────────────────────────────────────
     function showApp() {
+      migrateLegacyCacheKeys();
       document.getElementById('auth-screen').hidden = true;
       document.getElementById('app-container').hidden = false;
       document.getElementById('bottom-nav').hidden = false;
