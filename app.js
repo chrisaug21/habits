@@ -33,7 +33,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.4.59';
+    const VERSION = '1.4.60';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -2272,11 +2272,17 @@
     document.getElementById('nav-settings-btn').onclick = () => switchMainTab('settings');
 
     document.getElementById('sync-btn').onclick = async () => {
+      const syncBtn = document.getElementById('sync-btn');
+      if (syncBtn.classList.contains('is-syncing')) return;
+
+      syncBtn.classList.add('is-syncing');
       try {
         await syncAllData();
         showToast('Synced ✓');
       } catch {
         showToast('Sync failed — check your connection');
+      } finally {
+        syncBtn.classList.remove('is-syncing');
       }
     };
     document.getElementById('htab-calendar').onclick   = () => switchHistorySubTab('calendar');
