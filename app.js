@@ -2570,6 +2570,7 @@
 
     // Bundles the three calls that kick off the main app after auth is confirmed.
     function initApp() {
+      switchMainTab('today');
       render();
       loadJournal().then(() => {
         renderJournalCard();
