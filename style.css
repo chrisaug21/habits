@@ -1891,3 +1891,182 @@
       from { transform: rotate(0deg); }
       to { transform: rotate(360deg); }
     }
+
+    /* ── Auth Screen ──────────────────────────────────────────────────────── */
+    #auth-screen {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 300;
+      overflow-y: auto;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: calc(env(safe-area-inset-top, 0px) + 48px) 20px
+               calc(env(safe-area-inset-bottom, 0px) + 48px);
+    }
+
+    .auth-panel {
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .auth-app-name {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      text-align: center;
+      letter-spacing: -0.02em;
+    }
+
+    .auth-description {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      text-align: center;
+      line-height: 1.55;
+    }
+
+    .auth-features {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 0;
+      margin: 0;
+    }
+
+    .auth-features li {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      padding-left: 22px;
+      position: relative;
+      line-height: 1.45;
+    }
+
+    .auth-features li::before {
+      content: '→';
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+    }
+
+    .auth-form {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .auth-input {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-size: 1rem;
+      color: var(--text-primary);
+      width: 100%;
+      outline: none;
+      -webkit-appearance: none;
+      font-family: inherit;
+    }
+
+    .auth-input:focus {
+      border-color: var(--border-active);
+    }
+
+    .auth-input::placeholder {
+      color: var(--text-dim);
+    }
+
+    .auth-primary-btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      padding: 16px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+      min-height: 52px;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      font-family: inherit;
+      margin-top: 4px;
+      transition: background 0.15s, opacity 0.15s;
+    }
+
+    .auth-primary-btn:active {
+      background: var(--accent-dark);
+    }
+
+    .auth-primary-btn:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    .auth-error {
+      font-size: 0.85rem;
+      color: var(--red);
+      text-align: center;
+      line-height: 1.4;
+    }
+
+    .auth-field-error {
+      font-size: 0.8rem;
+      color: var(--red);
+      margin-top: -4px;
+    }
+
+    .auth-switch {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      text-align: center;
+      margin: 0;
+    }
+
+    .auth-link-btn {
+      background: none;
+      border: none;
+      color: var(--accent);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 0;
+      font-family: inherit;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .auth-link-btn:active {
+      opacity: 0.7;
+    }
+
+    /* Sign-out button in settings */
+    .settings-signout-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: transparent;
+      color: var(--red);
+      border: 1px solid var(--red);
+      border-radius: 12px;
+      padding: 14px 28px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      min-height: 48px;
+      font-family: inherit;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      transition: background 0.15s;
+    }
+
+    .settings-signout-btn:active {
+      background: rgba(255, 85, 85, 0.1);
+    }

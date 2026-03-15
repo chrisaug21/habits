@@ -25,6 +25,51 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
+  <!-- ── Auth Screen ────────────────────────────────────────────────────── -->
+  <div id="auth-screen">
+
+    <!-- Login Panel -->
+    <div id="login-panel" class="auth-panel">
+      <h1 class="auth-app-name">Habits</h1>
+      <div class="auth-form">
+        <input class="auth-input" id="login-email" type="email"
+               placeholder="Email" autocomplete="email" inputmode="email">
+        <input class="auth-input" id="login-password" type="password"
+               placeholder="Password" autocomplete="current-password">
+        <div class="auth-error" id="login-error" hidden></div>
+        <button class="auth-primary-btn" id="login-btn">Sign in</button>
+        <p class="auth-switch">Don't have an account?
+          <button class="auth-link-btn" id="show-signup-btn">Sign up</button>
+        </p>
+      </div>
+    </div>
+
+    <!-- Signup Panel -->
+    <div id="signup-panel" class="auth-panel" hidden>
+      <h1 class="auth-app-name">Habits</h1>
+      <p class="auth-description">A personal daily habits tracker for workout rotation, weight logging, and daily journaling.</p>
+      <ul class="auth-features">
+        <li>Smart workout rotation that tells you what to do each day</li>
+        <li>Daily weight tracking with trend chart</li>
+        <li>Morning journal for intention, gratitude, and focus</li>
+      </ul>
+      <div class="auth-form">
+        <input class="auth-input" id="signup-email" type="email"
+               placeholder="Email" autocomplete="email" inputmode="email">
+        <input class="auth-input" id="signup-password" type="password"
+               placeholder="Password (min 8 characters)" autocomplete="new-password">
+        <div class="auth-field-error" id="signup-password-error" hidden>Password must be at least 8 characters</div>
+        <div class="auth-error" id="signup-error" hidden></div>
+        <button class="auth-primary-btn" id="signup-btn">Create account</button>
+        <p class="auth-switch">Already have an account?
+          <button class="auth-link-btn" id="show-login-btn">Sign in</button>
+        </p>
+      </div>
+    </div>
+
+  </div>
+
   <!-- ── Test Mode Banner ────────────────────────────────────────────────── -->
   <div class="test-banner" id="test-banner" hidden>
     TEST MODE — no real data affected
@@ -32,7 +77,7 @@
     <button class="test-reset-btn" id="test-exit-btn">Exit</button>
   </div>
 
-  <div class="container">
+  <div class="container" id="app-container" hidden>
     <header>
       <h1>Habits</h1>
       <div class="date-label" id="date-label"></div>
@@ -265,7 +310,7 @@
   </div>
 
   <!-- ── Bottom Navigation ──────────────────────────────────────────────── -->
-  <nav class="bottom-nav">
+  <nav class="bottom-nav" id="bottom-nav" hidden>
     <button class="nav-btn active" id="nav-today-btn">
       <i data-lucide="dumbbell"></i>
       <span>Today</span>

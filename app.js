@@ -8,6 +8,7 @@
     const SUPABASE_URL = '%%SUPABASE_URL%%';
     const SUPABASE_KEY = '%%SUPABASE_KEY%%';
     let sb = null;
+    let currentUser = null; // set after successful auth, used by all write operations
     try {
       sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     } catch (e) {
@@ -2536,29 +2537,142 @@
     });
     // ──────────────────────────────────────────────────────────────────────────
 
-    render();
+    // ── Auth panel navigation ────────────────────────────────────────────────
+    document.getElementById('show-signup-btn').onclick = () => {
+      document.getElementById('login-panel').hidden = true;
+      document.getElementById('signup-panel').hidden = false;
+    };
+    document.getElementById('show-login-btn').onclick = () => {
+      document.getElementById('signup-panel').hidden = true;
+      document.getElementById('login-panel').hidden = false;
+    };
+    // ────────────────────────────────────────────────────────────────────────
 
-    // Load journal data from Supabase at startup so calendar dots and the
-    // Backfill modal journal section are populated even if the user never
-    // opens the Journal tab. getJournalSync() already provides an instant
-    // localStorage render; this call refreshes the cache from Supabase and
-    // re-renders the calendar if the Log view is already visible.
-    loadJournal().then(() => {
-      renderJournalCard();
-      if (historyViewActive && historySubTab === 'calendar' && cachedData) {
-        renderCalendar(cachedData);
-      }
-    });
+    // ── Auth helpers ─────────────────────────────────────────────────────────
+    function showApp() {
+      document.getElementById('auth-screen').hidden = true;
+      document.getElementById('app-container').hidden = false;
+      document.getElementById('bottom-nav').hidden = false;
+    }
 
-    loadWeight().then(() => {
-      renderWeightCard();
-      if (historyViewActive && historySubTab === 'calendar' && cachedData) {
-        renderCalendar(cachedData);
+    function showAuthScreen() {
+      document.getElementById('auth-screen').hidden = false;
+      document.getElementById('app-container').hidden = true;
+      document.getElementById('bottom-nav').hidden = true;
+    }
+
+    function authErrorMessage(err) {
+      const msg = (err?.message || '').toLowerCase();
+      if (msg.includes('invalid login') || msg.includes('invalid credentials') || msg.includes('wrong password')) {
+        return 'Incorrect email or password';
       }
-      if (statsViewActive && cachedData) {
-        renderStatsView(cachedData);
+      if (msg.includes('already registered') || msg.includes('user already exists') || msg.includes('already been registered')) {
+        return 'An account with this email already exists';
       }
-    });
+      if (msg.includes('password') && (msg.includes('character') || msg.includes('short'))) {
+        return 'Password must be at least 8 characters';
+      }
+      return 'Something went wrong. Please try again.';
+    }
+
+    // Bundles the three calls that kick off the main app after auth is confirmed.
+    function initApp() {
+      render();
+      loadJournal().then(() => {
+        renderJournalCard();
+        if (historyViewActive && historySubTab === 'calendar' && cachedData) {
+          renderCalendar(cachedData);
+        }
+      });
+      loadWeight().then(() => {
+        renderWeightCard();
+        if (historyViewActive && historySubTab === 'calendar' && cachedData) {
+          renderCalendar(cachedData);
+        }
+        if (statsViewActive && cachedData) {
+          renderStatsView(cachedData);
+        }
+      });
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // ── Sign In button ────────────────────────────────────────────────────────
+    document.getElementById('login-btn').onclick = async () => {
+      const email    = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      const errorEl  = document.getElementById('login-error');
+      errorEl.hidden = true;
+      const btn = document.getElementById('login-btn');
+      btn.disabled = true;
+      try {
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        currentUser = data.user;
+        showApp();
+        initApp();
+      } catch (err) {
+        errorEl.textContent = authErrorMessage(err);
+        errorEl.hidden = false;
+      } finally {
+        btn.disabled = false;
+      }
+    };
+
+    // ── Create Account button ─────────────────────────────────────────────────
+    document.getElementById('signup-btn').onclick = async () => {
+      const email    = document.getElementById('signup-email').value.trim();
+      const password = document.getElementById('signup-password').value;
+      const errorEl  = document.getElementById('signup-error');
+      const pwErrEl  = document.getElementById('signup-password-error');
+      pwErrEl.hidden = true;
+      errorEl.hidden = true;
+      if (password.length < 8) {
+        pwErrEl.hidden = false;
+        return;
+      }
+      const btn = document.getElementById('signup-btn');
+      btn.disabled = true;
+      try {
+        const { data, error } = await sb.auth.signUp({ email, password });
+        if (error) throw error;
+        currentUser = data.user;
+        showApp();
+        initApp();
+      } catch (err) {
+        errorEl.textContent = authErrorMessage(err);
+        errorEl.hidden = false;
+      } finally {
+        btn.disabled = false;
+      }
+    };
+
+    // ── Startup auth check ────────────────────────────────────────────────────
+    // onAuthStateChange handles session expiry → show login screen.
+    // The startup getSession() check handles returning users on reload.
+    if (sb) {
+      sb.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_OUT') {
+          currentUser = null;
+          showAuthScreen();
+        } else if (session) {
+          currentUser = session.user;
+        }
+      });
+
+      (async () => {
+        const { data: { session } } = await sb.auth.getSession();
+        if (session) {
+          currentUser = session.user;
+          showApp();
+          initApp();
+        }
+        // No session → auth screen stays visible (already shown by default)
+      })();
+    } else {
+      // Supabase client unavailable — auth is not possible, leave login screen visible
+      document.getElementById('login-error').textContent = 'Could not connect to the server. Please try again later.';
+      document.getElementById('login-error').hidden = false;
+    }
 
   }); // end DOMContentLoaded
 
