@@ -33,7 +33,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.4.60';
+    const VERSION = '1.4.61';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -2047,7 +2047,9 @@
       // "Other" = real workout entries whose type isn't one of the 5 rotation types.
       // These are free-form activities logged via Log Other Activity or backfill.
       // The human-readable label is stored in e.note; fall back to 'Other activity'.
-      const otherEntries = rangeEntries.filter(e => !ROTATION_TYPE_IDS.has(e.type));
+      const otherEntries = rangeEntries
+        .filter(e => !ROTATION_TYPE_IDS.has(e.type))
+        .sort((a, b) => b.date.localeCompare(a.date));
       const otherCount   = otherEntries.length;
 
       // Scale all bars (including Other) relative to the overall max.
@@ -2081,8 +2083,10 @@
               <div class="stats-bar-fill" style="width:${otherPct}%"></div>
             </div>
           </div>
-          <div class="stats-type-count">${otherCount}</div>
-          <i data-lucide="chevron-down" class="stats-other-chevron"></i>
+          <div class="stats-other-meta">
+            <i data-lucide="chevron-down" class="stats-other-chevron"></i>
+            <div class="stats-type-count">${otherCount}</div>
+          </div>
         </div>
         <div class="stats-other-list" id="stats-other-list" hidden>
           ${otherEntries.map(e => `

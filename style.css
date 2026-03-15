@@ -1333,7 +1333,7 @@
       text-align: right;
     }
 
-    /* Other row — tappable, chevron on the right */
+    /* Other row — tappable, chevron just left of the count */
     .stats-other-row {
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
@@ -1345,12 +1345,20 @@
       border-radius: 8px;
     }
 
+    .stats-other-meta {
+      flex-shrink: 0;
+      min-width: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 2px;
+    }
+
     .stats-other-chevron {
       flex-shrink: 0;
       width: 15px;
       height: 15px;
       color: var(--text-dim);
-      margin-left: 4px;
     }
 
     /* Expandable list of other-activity entries */
