@@ -8,6 +8,7 @@
     const SUPABASE_URL = '%%SUPABASE_URL%%';
     const SUPABASE_KEY = '%%SUPABASE_KEY%%';
     let sb = null;
+    let currentUser = null; // set after successful auth, used by all write operations
     try {
       sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     } catch (e) {
@@ -33,7 +34,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.4.61';
+    const VERSION = '1.5.1';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -64,69 +65,15 @@
         catch { return {}; }
       }
       try {
-        // ── Offline sync ────────────────────────────────────────────────────────
-        // Entries written while offline have no _sid — they were saved to
-        // localStorage only. Push them to Supabase before the normal read so
-        // they are not silently overwritten by stale remote state.
+        const userId = currentUser?.id;
         let local = {};
         try { local = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch {}
-        const unsynced = (local.history || []).filter(e => !e._sid);
-        if (unsynced.length) {
-          // Check whether local state (rotation / actionDate) is ahead of Supabase
-          const { data: remoteState, error: stateReadErr } = await sb.from('state')
-            .select('rotation_index,action_date').eq('id', 1).maybeSingle();
-          if (stateReadErr) throw stateReadErr;
-          // Upsert local state when the remote row is missing (null = fresh DB)
-          // OR when local is ahead — rotationIndex is the primary tie-breaker.
-          const localRotation  = local.rotationIndex ?? 0;
-          const remoteRotation = remoteState ? (remoteState.rotation_index ?? 0) : -1;
-          const localAhead =
-            !remoteState ||
-            localRotation > remoteRotation ||
-            (localRotation === remoteRotation &&
-             (local.actionDate || '') > (remoteState.action_date || ''));
-          if (localAhead) {
-            const { error: upsertErr } = await sb.from('state').upsert({
-              id: 1,
-              rotation_index: local.rotationIndex ?? 0,
-              action_date:    local.actionDate    ?? null,
-            });
-            if (upsertErr) throw upsertErr;
-          }
-          // Insert the unsynced history entries.
-          // Query the current max sequence first so offline rows never collide
-          // with gaps left by undo deletions (same fix as in saveData).
-          const { data: maxSeqRow, error: maxSeqErr } = await sb.from('history')
-            .select('sequence').order('sequence', { ascending: false }).limit(1).maybeSingle();
-          if (maxSeqErr) throw maxSeqErr;
-          const offlineBase = (maxSeqRow?.sequence ?? -1) + 1;
-          const offlineRows = unsynced.map((e, i) => ({
-            type:     e.type,
-            date:     e.date,
-            advanced: e.advanced ?? true,
-            note:     e.note ?? null,
-            sequence: offlineBase + i,
-          }));
-          console.log('[loadData] Offline sync — inserting unsynced rows:', offlineRows.map(r => ({ type: r.type, date: r.date, sequence: r.sequence })));
-          const { data: inserted, error: insErr } = await sb.from('history')
-            .insert(offlineRows).select('id, sequence');
-          if (insErr) {
-            console.error('[loadData] Offline sync INSERT failed:', insErr, 'rows attempted:', offlineRows.map(r => ({ type: r.type, date: r.date, sequence: r.sequence })));
-            throw insErr;
-          }
-          console.log('[loadData] Offline sync INSERT succeeded:', inserted);
-          // Match by sequence rather than array position — insert order is not
-          // guaranteed to be preserved in the returned rows.
-          inserted.forEach(row => {
-            const match = unsynced.find((_, i) => offlineRows[i].sequence === row.sequence);
-            if (match) match._sid = row.id;
-          });
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(local));
-        }
-        // ────────────────────────────────────────────────────────────────────────
 
         const [stateRes, historyRes] = await Promise.all([
-          sb.from('state').select('*').eq('id', 1).maybeSingle(),
+          // order + limit(1) so duplicate rows (same user_id) never cause
+          // maybeSingle() to error — we always get the most-recently inserted row.
+          sb.from('state').select('*').eq('user_id', userId)
+            .order('id', { ascending: false }).limit(1).maybeSingle(),
           // Order by sequence (explicit insert order) rather than created_at so that
           // batch re-inserts — which share the same timestamp — come back in the
           // correct order.
@@ -135,7 +82,27 @@
         if (stateRes.error) throw stateRes.error;
         if (historyRes.error) throw historyRes.error;
 
-        const state = stateRes.data || {};
+        // New user — no state row exists yet, insert defaults.
+        // The state table's primary key sequence was never auto-incremented
+        // (original code always upserted with explicit id:1), so nextval()
+        // returns 1 and collides with the existing row. We fetch the current
+        // max id first and insert with max+1 to safely advance past it.
+        // If the insert fails (e.g. RLS policy on anon key), log it and fall
+        // through with rotation_index:0 so new users never see stale state.
+        let stateRow = stateRes.data;
+        if (!stateRow) {
+          const { data: maxRow } = await sb.from('state')
+            .select('id').order('id', { ascending: false }).limit(1).maybeSingle();
+          const safeId = (maxRow?.id ?? 0) + 1;
+          const { data: newState, error: insertErr } = await sb.from('state')
+            .insert({ id: safeId, rotation_index: 0, action_date: null, user_id: userId })
+            .select().single();
+          if (insertErr) {
+            console.warn('[loadData] State row insert failed:', insertErr);
+          }
+          stateRow = newState ?? { rotation_index: 0, action_date: null };
+        }
+
         const historyRows = historyRes.data || [];
 
         // _maxSeq must be the true highest sequence in Supabase so new inserts
@@ -146,8 +113,8 @@
         const localMaxSeq    = typeof local._maxSeq === 'number' ? local._maxSeq : -1;
 
         const data = {
-          rotationIndex: state.rotation_index ?? 0,
-          actionDate:    state.action_date   ?? null,
+          rotationIndex: stateRow.rotation_index ?? 0,
+          actionDate:    stateRow.action_date    ?? null,
           _maxSeq: Math.max(supabaseMaxSeq, localMaxSeq),
           history: historyRows.map(r => ({ type: r.type, date: r.date, advanced: r.advanced, note: r.note ?? undefined, _sid: r.id })),
         };
@@ -214,6 +181,7 @@
           advanced: e.advanced ?? true,
           note: e.note ?? null,
           sequence: baseSeq + i,
+          user_id: currentUser?.id,
         }));
         console.log('[saveData] Inserting rows into Supabase:', rows.map(r => ({ type: r.type, date: r.date, sequence: r.sequence })));
         const { data: inserted, error: insErr } = await sb.from('history').insert(rows).select('id, sequence');
@@ -233,12 +201,12 @@
         data._maxSeq = baseSeq + newEntries.length - 1;
       }
 
-      // State upsert runs AFTER history succeeds — no partial commit
-      const { error: stateErr } = await sb.from('state').upsert({
-        id: 1,
+      // State update runs AFTER history succeeds — no partial commit.
+      // The row was created by loadData() on first login, so UPDATE is sufficient.
+      const { error: stateErr } = await sb.from('state').update({
         rotation_index: data.rotationIndex ?? 0,
         action_date:    data.actionDate    ?? null,
-      });
+      }).eq('user_id', currentUser?.id);
       if (stateErr) throw stateErr;
 
       // Supabase confirmed — update localStorage as read cache only
@@ -1151,7 +1119,8 @@
         intention: entry.intention || null,
         gratitude: entry.gratitude || null,
         one_thing: entry.one_thing || null,
-      }, { onConflict: 'date' });
+        user_id:   currentUser?.id,
+      }, { onConflict: ['date', 'user_id'] });
       if (error) throw error;
 
       // Supabase confirmed — update cache
@@ -1394,7 +1363,7 @@
       if (!sb) throw new Error('Supabase client not available');
 
       // Write to Supabase FIRST — throws on failure so caller can show error
-      const { error } = await sb.from('weight').upsert({ date, value_lbs: valueLbs }, { onConflict: 'date' });
+      const { error } = await sb.from('weight').upsert({ date, value_lbs: valueLbs, user_id: currentUser?.id }, { onConflict: ['date', 'user_id'] });
       if (error) throw error;
 
       // Supabase confirmed — update cache
@@ -1700,7 +1669,7 @@
         }
         html += '</div>';
       } else {
-        html += '<div class="hlist-empty">No workouts logged yet.</div>';
+        html += '<div class="hlist-empty">No data yet.</div>';
       }
 
       container.innerHTML = html;
@@ -1966,7 +1935,7 @@
 
       // ── Empty state ───────────────────────────────────────────────────────
       if (realWorkouts.length === 0) {
-        container.innerHTML = '<div class="stats-empty">No workouts logged yet</div>';
+        container.innerHTML = '<div class="stats-empty">No data yet.</div>';
         if (typeof lucide !== 'undefined') lucide.createIcons();
         return;
       }
@@ -2289,6 +2258,19 @@
         syncBtn.classList.remove('is-syncing');
       }
     };
+    document.getElementById('signout-btn').onclick = async () => {
+      if (!confirm('Are you sure you want to sign out?')) return;
+      try {
+        await sb.auth.signOut();
+        cachedData    = null;
+        cachedJournal = null;
+        cachedWeight  = null;
+        showAuthScreen();
+      } catch {
+        showToast('Sign out failed — check your connection');
+      }
+    };
+
     document.getElementById('htab-calendar').onclick   = () => switchHistorySubTab('calendar');
     document.getElementById('htab-list').onclick       = () => switchHistorySubTab('list');
     document.getElementById('htab-schedule').onclick   = () => switchHistorySubTab('schedule');
@@ -2460,6 +2442,12 @@
       tomorrowNameEl.appendChild(tomorrowIconEl);
       tomorrowNameEl.appendChild(document.createTextNode(tomorrowWorkout.name));
 
+      // First-use prompt — shown only to new users who have no history yet
+      const firstUsePrompt = document.getElementById('first-use-prompt');
+      if (firstUsePrompt) {
+        firstUsePrompt.hidden = !(history.length === 0 && heroState === 'default');
+      }
+
       // Update Today tab cards
       renderJournalCard();
       renderWeightCard();
@@ -2536,29 +2524,181 @@
     });
     // ──────────────────────────────────────────────────────────────────────────
 
-    render();
+    // ── Auth panel navigation ────────────────────────────────────────────────
+    document.getElementById('show-signup-btn').onclick = () => {
+      document.getElementById('login-panel').hidden = true;
+      document.getElementById('signup-panel').hidden = false;
+    };
+    document.getElementById('show-login-btn').onclick = () => {
+      document.getElementById('signup-panel').hidden = true;
+      document.getElementById('login-panel').hidden = false;
+    };
+    // ────────────────────────────────────────────────────────────────────────
 
-    // Load journal data from Supabase at startup so calendar dots and the
-    // Backfill modal journal section are populated even if the user never
-    // opens the Journal tab. getJournalSync() already provides an instant
-    // localStorage render; this call refreshes the cache from Supabase and
-    // re-renders the calendar if the Log view is already visible.
-    loadJournal().then(() => {
-      renderJournalCard();
-      if (historyViewActive && historySubTab === 'calendar' && cachedData) {
-        renderCalendar(cachedData);
-      }
-    });
+    // ── Auth helpers ─────────────────────────────────────────────────────────
+    function showApp() {
+      document.getElementById('auth-screen').hidden = true;
+      document.getElementById('app-container').hidden = false;
+      document.getElementById('bottom-nav').hidden = false;
+    }
 
-    loadWeight().then(() => {
-      renderWeightCard();
-      if (historyViewActive && historySubTab === 'calendar' && cachedData) {
-        renderCalendar(cachedData);
+    function showAuthScreen() {
+      cachedData    = null;
+      cachedJournal = null;
+      cachedWeight  = null;
+      document.getElementById('auth-screen').hidden = false;
+      document.getElementById('app-container').hidden = true;
+      document.getElementById('bottom-nav').hidden = true;
+      // Reset both panels to a clean state
+      document.getElementById('login-email').value    = '';
+      document.getElementById('login-password').value = '';
+      document.getElementById('login-error').hidden   = true;
+      document.getElementById('signup-email').value    = '';
+      document.getElementById('signup-password').value = '';
+      document.getElementById('signup-error').hidden          = true;
+      document.getElementById('signup-password-error').hidden = true;
+      // Always land on the login panel
+      document.getElementById('login-panel').hidden  = false;
+      document.getElementById('signup-panel').hidden = true;
+    }
+
+    function authErrorMessage(err) {
+      const msg = (err?.message || '').toLowerCase();
+      if (msg.includes('invalid login') || msg.includes('invalid credentials') || msg.includes('wrong password')) {
+        return 'Incorrect email or password';
       }
-      if (statsViewActive && cachedData) {
-        renderStatsView(cachedData);
+      if (msg.includes('already registered') || msg.includes('user already exists') || msg.includes('already been registered')) {
+        return 'An account with this email already exists';
       }
+      if (msg.includes('password') && (msg.includes('character') || msg.includes('short'))) {
+        return 'Password must be at least 8 characters';
+      }
+      if (msg.includes('rate limit') || msg.includes('too many') || msg.includes('email send rate')) {
+        return 'Too many attempts. Please wait a moment and try again.';
+      }
+      console.error('[auth] Unhandled Supabase error:', err);
+      return 'Something went wrong. Please try again.';
+    }
+
+    // Bundles the three calls that kick off the main app after auth is confirmed.
+    function initApp() {
+      switchMainTab('today');
+      render();
+      loadJournal().then(() => {
+        renderJournalCard();
+        if (historyViewActive && historySubTab === 'calendar' && cachedData) {
+          renderCalendar(cachedData);
+        }
+      });
+      loadWeight().then(() => {
+        renderWeightCard();
+        if (historyViewActive && historySubTab === 'calendar' && cachedData) {
+          renderCalendar(cachedData);
+        }
+        if (statsViewActive && cachedData) {
+          renderStatsView(cachedData);
+        }
+      });
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // ── Auth input Enter-key handlers ────────────────────────────────────────
+    ['login-email', 'login-password'].forEach(id => {
+      document.getElementById(id).addEventListener('keydown', e => {
+        if (e.key === 'Enter') document.getElementById('login-btn').click();
+      });
     });
+    ['signup-email', 'signup-password'].forEach(id => {
+      document.getElementById(id).addEventListener('keydown', e => {
+        if (e.key === 'Enter') document.getElementById('signup-btn').click();
+      });
+    });
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // ── Sign In button ────────────────────────────────────────────────────────
+    document.getElementById('login-btn').onclick = async () => {
+      const email    = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      const errorEl  = document.getElementById('login-error');
+      errorEl.hidden = true;
+      const btn = document.getElementById('login-btn');
+      btn.disabled = true;
+      try {
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        currentUser = data.user;
+        showApp();
+        initApp();
+      } catch (err) {
+        errorEl.textContent = authErrorMessage(err);
+        errorEl.hidden = false;
+      } finally {
+        btn.disabled = false;
+      }
+    };
+
+    // ── Create Account button ─────────────────────────────────────────────────
+    document.getElementById('signup-btn').onclick = async () => {
+      const email    = document.getElementById('signup-email').value.trim();
+      const password = document.getElementById('signup-password').value;
+      const errorEl  = document.getElementById('signup-error');
+      const pwErrEl  = document.getElementById('signup-password-error');
+      pwErrEl.hidden = true;
+      errorEl.hidden = true;
+      if (password.length < 8) {
+        pwErrEl.hidden = false;
+        return;
+      }
+      const btn = document.getElementById('signup-btn');
+      btn.disabled = true;
+      try {
+        const { data, error } = await sb.auth.signUp({ email, password });
+        if (error) throw error;
+        if (!data.session) {
+          // Supabase email confirmation is enabled — account created but not yet
+          // confirmed. Do not unlock the app; prompt the user to check their inbox.
+          errorEl.textContent = 'Account created! Check your email to confirm before signing in.';
+          errorEl.hidden = false;
+          return;
+        }
+        currentUser = data.user;
+        showApp();
+        initApp();
+      } catch (err) {
+        errorEl.textContent = authErrorMessage(err);
+        errorEl.hidden = false;
+      } finally {
+        btn.disabled = false;
+      }
+    };
+
+    // ── Startup auth check ────────────────────────────────────────────────────
+    // onAuthStateChange handles session expiry → show login screen.
+    // The startup getSession() check handles returning users on reload.
+    if (sb) {
+      sb.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_OUT') {
+          currentUser = null;
+          showAuthScreen();
+        } else if (session) {
+          currentUser = session.user;
+        }
+      });
+
+      (async () => {
+        const { data: { session } } = await sb.auth.getSession();
+        if (session) {
+          currentUser = session.user;
+          showApp();
+          initApp();
+        }
+        // No session → auth screen stays visible (already shown by default)
+      })();
+    } else {
+      // Supabase client unavailable — auth is not possible, leave login screen visible
+      document.getElementById('login-error').textContent = 'Could not connect to the server. Please try again later.';
+      document.getElementById('login-error').hidden = false;
+    }
 
   }); // end DOMContentLoaded
 
