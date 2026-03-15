@@ -34,7 +34,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.5.1';
+    const VERSION = '1.5.2';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -77,7 +77,8 @@
           // Order by sequence (explicit insert order) rather than created_at so that
           // batch re-inserts — which share the same timestamp — come back in the
           // correct order.
-          sb.from('history').select('*').order('sequence', { ascending: true, nullsFirst: true }),
+          sb.from('history').select('*').eq('user_id', userId)
+            .order('sequence', { ascending: true, nullsFirst: true }),
         ]);
         if (stateRes.error) throw stateRes.error;
         if (historyRes.error) throw historyRes.error;
@@ -288,6 +289,33 @@
       el.classList.add('show');
       clearTimeout(toastTimer);
       toastTimer = setTimeout(() => el.classList.remove('show'), 1800);
+    }
+
+    function getUserEmail() {
+      return currentUser?.email || '';
+    }
+
+    function getUserMetadata() {
+      return currentUser?.user_metadata || {};
+    }
+
+    function getUserDisplayName() {
+      const meta = getUserMetadata();
+      const firstName = (meta.first_name || '').trim();
+      const lastName = (meta.last_name || '').trim();
+      return [firstName, lastName].filter(Boolean).join(' ');
+    }
+
+    function getUserFeedbackIdentity() {
+      const name = getUserDisplayName();
+      const email = getUserEmail();
+      if (name && email) return `${name} <${email}>`;
+      return name || email || 'Unknown user';
+    }
+
+    function getUserInitial() {
+      const email = getUserEmail().trim();
+      return (email.charAt(0) || '?').toUpperCase();
     }
 
     // ── Double-tap guard ─────────────────────────────────────────────────────
@@ -1083,7 +1111,8 @@
         return local;
       }
       try {
-        const { data, error } = await sb.from('journal').select('*').order('date', { ascending: false });
+        const { data, error } = await sb.from('journal').select('*').eq('user_id', currentUser?.id)
+          .order('date', { ascending: false });
         if (error) throw error;
         const journal = (data || []).map(r => ({
           date:       r.date,
@@ -1312,7 +1341,8 @@
       try { local = JSON.parse(localStorage.getItem(WEIGHT_KEY)) || []; } catch {}
       if (!sb || TEST_MODE) { cachedWeight = local; return local; }
       try {
-        const { data, error } = await sb.from('weight').select('date, value_lbs').order('date', { ascending: false });
+        const { data, error } = await sb.from('weight').select('date, value_lbs').eq('user_id', currentUser?.id)
+          .order('date', { ascending: false });
         if (error) throw error;
         const rows = (data || []).map(r => ({ date: r.date, value_lbs: parseFloat(r.value_lbs) }));
         localStorage.setItem(WEIGHT_KEY, JSON.stringify(rows));
@@ -1330,10 +1360,14 @@
     async function syncAllData() {
       if (!sb) throw new Error('No Supabase connection');
       const [stateRes, historyRes, journalRes, weightRes] = await Promise.all([
-        sb.from('state').select('*').eq('id', 1).maybeSingle(),
-        sb.from('history').select('*').order('sequence', { ascending: true, nullsFirst: true }),
-        sb.from('journal').select('*').order('date', { ascending: false }),
-        sb.from('weight').select('date, value_lbs').order('date', { ascending: false }),
+        sb.from('state').select('*').eq('user_id', currentUser?.id)
+          .order('id', { ascending: false }).limit(1).maybeSingle(),
+        sb.from('history').select('*').eq('user_id', currentUser?.id)
+          .order('sequence', { ascending: true, nullsFirst: true }),
+        sb.from('journal').select('*').eq('user_id', currentUser?.id)
+          .order('date', { ascending: false }),
+        sb.from('weight').select('date, value_lbs').eq('user_id', currentUser?.id)
+          .order('date', { ascending: false }),
       ]);
       if (stateRes.error)   throw stateRes.error;
       if (historyRes.error) throw historyRes.error;
@@ -2244,6 +2278,7 @@
     document.getElementById('nav-stats-btn').onclick    = () => switchMainTab('stats');
     document.getElementById('nav-settings-btn').onclick = () => switchMainTab('settings');
 
+    document.getElementById('save-profile-btn').onclick = () => saveProfile();
     document.getElementById('sync-btn').onclick = async () => {
       const syncBtn = document.getElementById('sync-btn');
       if (syncBtn.classList.contains('is-syncing')) return;
@@ -2258,6 +2293,8 @@
         syncBtn.classList.remove('is-syncing');
       }
     };
+    document.getElementById('change-password-btn').onclick = () => openPasswordModal();
+    document.getElementById('feedback-btn').onclick = () => openFeedbackModal();
     document.getElementById('signout-btn').onclick = async () => {
       if (!confirm('Are you sure you want to sign out?')) return;
       try {
@@ -2270,6 +2307,25 @@
         showToast('Sign out failed — check your connection');
       }
     };
+    document.getElementById('delete-account-btn').onclick = () => openDeleteAccountModal();
+    document.getElementById('feedback-cancel-btn').onclick = () => closeFeedbackModal();
+    document.getElementById('feedback-send-btn').onclick = () => sendFeedback();
+    document.getElementById('feedback-input').addEventListener('input', e => {
+      document.getElementById('feedback-send-btn').disabled = e.target.value.trim() === '';
+    });
+    document.getElementById('feedback-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('feedback-modal')) closeFeedbackModal();
+    });
+    document.getElementById('password-cancel-btn').onclick = () => closePasswordModal();
+    document.getElementById('password-save-btn').onclick = () => changePassword();
+    document.getElementById('password-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('password-modal')) closePasswordModal();
+    });
+    document.getElementById('delete-account-cancel-btn').onclick = () => closeDeleteAccountModal();
+    document.getElementById('delete-account-confirm-btn').onclick = () => deleteAccount();
+    document.getElementById('delete-account-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('delete-account-modal')) closeDeleteAccountModal();
+    });
 
     document.getElementById('htab-calendar').onclick   = () => switchHistorySubTab('calendar');
     document.getElementById('htab-list').onclick       = () => switchHistorySubTab('list');
@@ -2480,7 +2536,6 @@
 
     // ── Version stamp + sync status ───────────────────────────────────────────
     function updateSyncStamp() {
-      const el = document.getElementById('version-stamp');
       let status = '';
       if (syncOffline) {
         status = 'offline';
@@ -2488,10 +2543,208 @@
         const secsAgo = Math.floor((Date.now() - lastSyncedAt) / 1000);
         status = secsAgo < 60 ? 'synced just now' : `synced ${Math.floor(secsAgo / 60)}m ago`;
       }
-      el.textContent = status ? `v${VERSION} · ${status}` : `v${VERSION}`;
+      const stamp = status ? `v${VERSION} · ${status}` : `v${VERSION}`;
+      document.getElementById('version-stamp').textContent = stamp;
+      document.getElementById('settings-version-stamp').textContent = stamp;
     }
     updateSyncStamp();
     setInterval(updateSyncStamp, 30_000);
+
+    function renderSettingsAccount() {
+      const email = getUserEmail();
+      const meta = getUserMetadata();
+      document.getElementById('settings-email').textContent = email || 'No email found';
+      document.getElementById('settings-avatar').textContent = getUserInitial();
+      document.getElementById('settings-first-name').value = meta.first_name || '';
+      document.getElementById('settings-last-name').value = meta.last_name || '';
+    }
+
+    function openFeedbackModal() {
+      document.getElementById('feedback-input').value = '';
+      document.getElementById('feedback-send-btn').disabled = true;
+      document.getElementById('feedback-modal').hidden = false;
+      document.getElementById('feedback-input').focus();
+    }
+
+    function closeFeedbackModal() {
+      document.getElementById('feedback-modal').hidden = true;
+    }
+
+    function openPasswordModal() {
+      document.getElementById('new-password-input').value = '';
+      document.getElementById('password-error').hidden = true;
+      document.getElementById('password-modal').hidden = false;
+      document.getElementById('new-password-input').focus();
+    }
+
+    function closePasswordModal() {
+      document.getElementById('password-modal').hidden = true;
+    }
+
+    function openDeleteAccountModal() {
+      document.getElementById('delete-account-modal').hidden = false;
+    }
+
+    function closeDeleteAccountModal() {
+      document.getElementById('delete-account-modal').hidden = true;
+    }
+
+    async function saveProfile() {
+      if (!sb) {
+        showToast('Could not connect to the server');
+        return;
+      }
+      const btn = document.getElementById('save-profile-btn');
+      const firstName = document.getElementById('settings-first-name').value.trim();
+      const lastName = document.getElementById('settings-last-name').value.trim();
+      btn.disabled = true;
+      try {
+        const { data, error } = await sb.auth.updateUser({
+          data: {
+            ...getUserMetadata(),
+            first_name: firstName || null,
+            last_name: lastName || null,
+          },
+        });
+        if (error) throw error;
+        currentUser = data.user || currentUser;
+        renderSettingsAccount();
+        showToast('Profile saved');
+      } catch (err) {
+        console.error('[profile] update failed:', err);
+        showToast('Could not save profile');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function sendPasswordReset() {
+      if (!sb) {
+        document.getElementById('login-error').textContent = 'Could not connect to the server. Please try again later.';
+        document.getElementById('login-error').hidden = false;
+        return;
+      }
+      const email = document.getElementById('login-email').value.trim();
+      const errorEl = document.getElementById('login-error');
+      errorEl.hidden = true;
+      if (!email) {
+        errorEl.textContent = 'Enter your email first';
+        errorEl.hidden = false;
+        return;
+      }
+      try {
+        const { error } = await sb.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}${window.location.pathname}`,
+        });
+        if (error) throw error;
+        showToast('Password reset email sent');
+      } catch (err) {
+        errorEl.textContent = authErrorMessage(err);
+        errorEl.hidden = false;
+      }
+    }
+
+    async function changePassword() {
+      if (!sb) {
+        document.getElementById('password-error').textContent = 'Could not connect to the server. Please try again later.';
+        document.getElementById('password-error').hidden = false;
+        return;
+      }
+      const password = document.getElementById('new-password-input').value;
+      const errorEl = document.getElementById('password-error');
+      errorEl.hidden = true;
+      if (password.length < 8) {
+        errorEl.textContent = 'Password must be at least 8 characters';
+        errorEl.hidden = false;
+        return;
+      }
+      const btn = document.getElementById('password-save-btn');
+      btn.disabled = true;
+      try {
+        const { data, error } = await sb.auth.updateUser({ password });
+        if (error) throw error;
+        currentUser = data.user || currentUser;
+        closePasswordModal();
+        showToast('Password updated');
+      } catch (err) {
+        console.error('[auth] password update failed:', err);
+        errorEl.textContent = authErrorMessage(err);
+        errorEl.hidden = false;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function sendFeedback() {
+      const body = document.getElementById('feedback-input').value.trim();
+      if (!body) return;
+      const subject = encodeURIComponent('Habits App Feedback');
+      const content = encodeURIComponent(
+        `From: ${getUserFeedbackIdentity()}\n\n${body}`
+      );
+      window.location.href = `mailto:chris@chrisaug.com?subject=${subject}&body=${content}`;
+      closeFeedbackModal();
+      showToast('Opened email draft');
+    }
+
+    async function deleteAccount() {
+      if (!sb) {
+        showToast('Could not connect to the server');
+        return;
+      }
+      const btn = document.getElementById('delete-account-confirm-btn');
+      btn.disabled = true;
+      const userId = currentUser?.id;
+      const deletionRequestedAt = new Date().toISOString();
+      try {
+        const [historyRes, journalRes, weightRes, stateRes] = await Promise.all([
+          sb.from('history').delete().eq('user_id', userId),
+          sb.from('journal').delete().eq('user_id', userId),
+          sb.from('weight').delete().eq('user_id', userId),
+          sb.from('state').delete().eq('user_id', userId),
+        ]);
+        [historyRes, journalRes, weightRes, stateRes].forEach(res => {
+          if (res.error) throw res.error;
+        });
+
+        let usedFallback = false;
+        try {
+          const { error } = await sb.auth.admin.deleteUser(userId);
+          if (error) throw error;
+        } catch (adminErr) {
+          usedFallback = true;
+          console.warn('[account-delete] admin delete unavailable, flagging account instead:', adminErr);
+          const { error } = await sb.auth.updateUser({
+            data: {
+              ...getUserMetadata(),
+              deletion_requested_at: deletionRequestedAt,
+              deletion_requested_email: getUserEmail(),
+              deletion_requested_name: getUserDisplayName() || null,
+            },
+          });
+          if (error) throw error;
+        }
+
+        closeDeleteAccountModal();
+        cachedData = null;
+        cachedJournal = null;
+        cachedWeight = null;
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(JOURNAL_KEY);
+        localStorage.removeItem(WEIGHT_KEY);
+        localStorage.removeItem(OTHER_ACTIVITIES_KEY);
+        localStorage.removeItem(SKIP_REASONS_KEY);
+        showToast(usedFallback ? 'Goodbye - account flagged for deletion' : 'Goodbye');
+        setTimeout(() => {
+          sb.auth.signOut();
+        }, 1200);
+      } catch (err) {
+        console.error('[account-delete] failed:', err);
+        showToast('Could not delete account');
+      } finally {
+        btn.disabled = false;
+      }
+    }
 
     function toggleTestMode() {
       const url = new URL(window.location.href);
@@ -2533,6 +2786,7 @@
       document.getElementById('signup-panel').hidden = true;
       document.getElementById('login-panel').hidden = false;
     };
+    document.getElementById('forgot-password-btn').onclick = () => sendPasswordReset();
     // ────────────────────────────────────────────────────────────────────────
 
     // ── Auth helpers ─────────────────────────────────────────────────────────
@@ -2540,6 +2794,7 @@
       document.getElementById('auth-screen').hidden = true;
       document.getElementById('app-container').hidden = false;
       document.getElementById('bottom-nav').hidden = false;
+      renderSettingsAccount();
     }
 
     function showAuthScreen() {
@@ -2557,6 +2812,9 @@
       document.getElementById('signup-password').value = '';
       document.getElementById('signup-error').hidden          = true;
       document.getElementById('signup-password-error').hidden = true;
+      document.getElementById('feedback-modal').hidden = true;
+      document.getElementById('password-modal').hidden = true;
+      document.getElementById('delete-account-modal').hidden = true;
       // Always land on the login panel
       document.getElementById('login-panel').hidden  = false;
       document.getElementById('signup-panel').hidden = true;
@@ -2583,6 +2841,7 @@
     // Bundles the three calls that kick off the main app after auth is confirmed.
     function initApp() {
       switchMainTab('today');
+      renderSettingsAccount();
       render();
       loadJournal().then(() => {
         renderJournalCard();
@@ -2612,6 +2871,9 @@
       document.getElementById(id).addEventListener('keydown', e => {
         if (e.key === 'Enter') document.getElementById('signup-btn').click();
       });
+    });
+    document.getElementById('new-password-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('password-save-btn').click();
     });
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -2680,6 +2942,12 @@
         if (event === 'SIGNED_OUT') {
           currentUser = null;
           showAuthScreen();
+        } else if (event === 'PASSWORD_RECOVERY' && session) {
+          currentUser = session.user;
+          showApp();
+          initApp();
+          openPasswordModal();
+          showToast('Choose a new password');
         } else if (session) {
           currentUser = session.user;
         }
