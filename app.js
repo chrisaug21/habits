@@ -34,7 +34,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.4.61';
+    const VERSION = '1.5.0';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -174,6 +174,7 @@
           advanced: e.advanced ?? true,
           note: e.note ?? null,
           sequence: baseSeq + i,
+          user_id: currentUser?.id,
         }));
         console.log('[saveData] Inserting rows into Supabase:', rows.map(r => ({ type: r.type, date: r.date, sequence: r.sequence })));
         const { data: inserted, error: insErr } = await sb.from('history').insert(rows).select('id, sequence');
@@ -1111,6 +1112,7 @@
         intention: entry.intention || null,
         gratitude: entry.gratitude || null,
         one_thing: entry.one_thing || null,
+        user_id:   currentUser?.id,
       }, { onConflict: 'date' });
       if (error) throw error;
 
@@ -1354,7 +1356,7 @@
       if (!sb) throw new Error('Supabase client not available');
 
       // Write to Supabase FIRST — throws on failure so caller can show error
-      const { error } = await sb.from('weight').upsert({ date, value_lbs: valueLbs }, { onConflict: 'date' });
+      const { error } = await sb.from('weight').upsert({ date, value_lbs: valueLbs, user_id: currentUser?.id }, { onConflict: 'date' });
       if (error) throw error;
 
       // Supabase confirmed — update cache
@@ -2249,6 +2251,19 @@
         syncBtn.classList.remove('is-syncing');
       }
     };
+    document.getElementById('signout-btn').onclick = async () => {
+      if (!confirm('Are you sure you want to sign out?')) return;
+      try {
+        await sb.auth.signOut();
+        cachedData    = null;
+        cachedJournal = null;
+        cachedWeight  = null;
+        showAuthScreen();
+      } catch {
+        showToast('Sign out failed — check your connection');
+      }
+    };
+
     document.getElementById('htab-calendar').onclick   = () => switchHistorySubTab('calendar');
     document.getElementById('htab-list').onclick       = () => switchHistorySubTab('list');
     document.getElementById('htab-schedule').onclick   = () => switchHistorySubTab('schedule');
@@ -2614,7 +2629,6 @@
     // The startup getSession() check handles returning users on reload.
     if (sb) {
       sb.auth.onAuthStateChange((event, session) => {
-        console.log('[auth] onAuthStateChange:', event, session ? 'session present' : 'no session');
         if (event === 'SIGNED_OUT') {
           currentUser = null;
           showAuthScreen();
@@ -2624,21 +2638,16 @@
       });
 
       (async () => {
-        console.log('[auth] calling getSession...');
-        const { data: { session }, error } = await sb.auth.getSession();
-        console.log('[auth] getSession result — session:', session ? 'present' : 'null', 'error:', error);
+        const { data: { session } } = await sb.auth.getSession();
         if (session) {
-          console.log('[auth] existing session found, showing app');
           currentUser = session.user;
           showApp();
           initApp();
-        } else {
-          console.log('[auth] no session, login screen should be visible');
         }
+        // No session → auth screen stays visible (already shown by default)
       })();
     } else {
       // Supabase client unavailable — auth is not possible, leave login screen visible
-      console.log('[auth] sb is null — Supabase client failed to initialize');
       document.getElementById('login-error').textContent = 'Could not connect to the server. Please try again later.';
       document.getElementById('login-error').hidden = false;
     }
