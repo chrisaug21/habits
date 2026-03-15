@@ -2607,6 +2607,7 @@
     // The startup getSession() check handles returning users on reload.
     if (sb) {
       sb.auth.onAuthStateChange((event, session) => {
+        console.log('[auth] onAuthStateChange:', event, session ? 'session present' : 'no session');
         if (event === 'SIGNED_OUT') {
           currentUser = null;
           showAuthScreen();
@@ -2616,16 +2617,21 @@
       });
 
       (async () => {
-        const { data: { session } } = await sb.auth.getSession();
+        console.log('[auth] calling getSession...');
+        const { data: { session }, error } = await sb.auth.getSession();
+        console.log('[auth] getSession result — session:', session ? 'present' : 'null', 'error:', error);
         if (session) {
+          console.log('[auth] existing session found, showing app');
           currentUser = session.user;
           showApp();
           initApp();
+        } else {
+          console.log('[auth] no session, login screen should be visible');
         }
-        // No session → auth screen stays visible (already shown by default)
       })();
     } else {
       // Supabase client unavailable — auth is not possible, leave login screen visible
+      console.log('[auth] sb is null — Supabase client failed to initialize');
       document.getElementById('login-error').textContent = 'Could not connect to the server. Please try again later.';
       document.getElementById('login-error').hidden = false;
     }
