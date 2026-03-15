@@ -79,11 +79,18 @@
         if (stateRes.error) throw stateRes.error;
         if (historyRes.error) throw historyRes.error;
 
-        // New user — no state row exists yet, insert defaults
+        // New user — no state row exists yet, insert defaults.
+        // The state table's primary key sequence was never auto-incremented
+        // (original code always upserted with explicit id:1), so nextval()
+        // returns 1 and collides with the existing row. We fetch the current
+        // max id first and insert with max+1 to safely advance past it.
         let stateRow = stateRes.data;
         if (!stateRow) {
+          const { data: maxRow } = await sb.from('state')
+            .select('id').order('id', { ascending: false }).limit(1).maybeSingle();
+          const safeId = (maxRow?.id ?? 0) + 1;
           const { data: newState, error: insertErr } = await sb.from('state')
-            .insert({ rotation_index: 0, action_date: null, user_id: userId })
+            .insert({ id: safeId, rotation_index: 0, action_date: null, user_id: userId })
             .select().single();
           if (insertErr) throw insertErr;
           stateRow = newState;
