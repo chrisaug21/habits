@@ -1120,7 +1120,7 @@
         gratitude: entry.gratitude || null,
         one_thing: entry.one_thing || null,
         user_id:   currentUser?.id,
-      }, { onConflict: 'date' });
+      }, { onConflict: ['date', 'user_id'] });
       if (error) throw error;
 
       // Supabase confirmed — update cache
@@ -1363,7 +1363,7 @@
       if (!sb) throw new Error('Supabase client not available');
 
       // Write to Supabase FIRST — throws on failure so caller can show error
-      const { error } = await sb.from('weight').upsert({ date, value_lbs: valueLbs, user_id: currentUser?.id }, { onConflict: 'date' });
+      const { error } = await sb.from('weight').upsert({ date, value_lbs: valueLbs, user_id: currentUser?.id }, { onConflict: ['date', 'user_id'] });
       if (error) throw error;
 
       // Supabase confirmed — update cache
@@ -2543,6 +2543,9 @@
     }
 
     function showAuthScreen() {
+      cachedData    = null;
+      cachedJournal = null;
+      cachedWeight  = null;
       document.getElementById('auth-screen').hidden = false;
       document.getElementById('app-container').hidden = true;
       document.getElementById('bottom-nav').hidden = true;
@@ -2651,6 +2654,13 @@
       try {
         const { data, error } = await sb.auth.signUp({ email, password });
         if (error) throw error;
+        if (!data.session) {
+          // Supabase email confirmation is enabled — account created but not yet
+          // confirmed. Do not unlock the app; prompt the user to check their inbox.
+          errorEl.textContent = 'Account created! Check your email to confirm before signing in.';
+          errorEl.hidden = false;
+          return;
+        }
         currentUser = data.user;
         showApp();
         initApp();
