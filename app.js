@@ -1850,8 +1850,8 @@
       const css = getComputedStyle(document.documentElement);
       const accent = css.getPropertyValue('--accent').trim() || '#6c63ff';
       const coral = css.getPropertyValue('--coral').trim() || '#ff6b6b';
-      const textDim = css.getPropertyValue('--text-dim').trim() || '#3a3a58';
       const textSecondary = css.getPropertyValue('--text-secondary').trim() || '#6a6a90';
+      const textPrimary = css.getPropertyValue('--text-primary').trim() || '#e4e4f4';
       const border = css.getPropertyValue('--border').trim() || '#222235';
 
       weightChart = new window.Chart(canvas, {
@@ -1881,8 +1881,8 @@
             {
               label: 'Trend',
               data: trendValues,
-              borderColor: textSecondary,
-              backgroundColor: textSecondary,
+              borderColor: textPrimary,
+              backgroundColor: textPrimary,
               borderWidth: 2,
               pointRadius: 0,
               pointHitRadius: 12,
@@ -1920,7 +1920,7 @@
               grid: { display: false },
               border: { color: border },
               ticks: {
-                color: textDim,
+                color: textSecondary,
                 autoSkip: true,
                 maxTicksLimit: 5,
                 maxRotation: 0,
@@ -1932,7 +1932,7 @@
               grid: { color: border },
               border: { color: border },
               ticks: {
-                color: textDim,
+                color: textSecondary,
                 maxTicksLimit: 5,
               },
             },
