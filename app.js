@@ -70,7 +70,10 @@
         try { local = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch {}
 
         const [stateRes, historyRes] = await Promise.all([
-          sb.from('state').select('*').eq('user_id', userId).maybeSingle(),
+          // order + limit(1) so duplicate rows (same user_id) never cause
+          // maybeSingle() to error — we always get the most-recently inserted row.
+          sb.from('state').select('*').eq('user_id', userId)
+            .order('id', { ascending: false }).limit(1).maybeSingle(),
           // Order by sequence (explicit insert order) rather than created_at so that
           // batch re-inserts — which share the same timestamp — come back in the
           // correct order.
