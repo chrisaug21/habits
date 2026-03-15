@@ -77,7 +77,7 @@ The Today tab is a daily habit dashboard with three cards. All entry happens via
 
 ### Other
 - Offline-capable PWA, installable on iPhone home screen; entries logged while offline are automatically synced to Supabase the next time the app loads with a connection
-- **Account + Settings** — Settings shows the signed-in email, avatar initial, optional first/last name fields stored in Supabase auth metadata, Sync now, Change password, Send feedback, Sign out, and a Danger Zone delete-account flow
+- **Account + Settings** — Settings shows the signed-in email, avatar initial, optional first/last name fields stored in Supabase auth metadata, Sync data now, Change password, Send feedback, Sign out, and a Danger Zone delete-account flow
 - **Auth recovery** — login includes a Forgot password link that sends a Supabase password reset email; recovery links open the app and prompt for a new password
 - **Test mode** — hidden feature; triple-tap the version stamp (bottom of Today screen) or press Alt+Shift+T to toggle; shows an amber banner confirming no real data is affected; uses isolated localStorage keys (`habits_test`, `habits_test_other_activities`, `habits_test_journal`) and skips all Supabase calls
 - **Sync status** — the version stamp at the bottom of the Today screen shows `synced just now` / `synced Xm ago` / `offline`; updates after every successful or failed Supabase read/write
@@ -192,6 +192,10 @@ For local testing, temporarily replace the placeholder tokens in `app.js` with y
 ### Keep-alive function
 
 `netlify/functions/keep-alive.js` is a Netlify scheduled function that runs once daily (configured via `netlify.toml`). It makes a lightweight read against the Supabase `state` table using the same `SUPABASE_URL` and `SUPABASE_KEY` environment variables, preventing the free-tier Supabase project from pausing due to inactivity. No additional setup is required — it runs automatically on a daily cron schedule.
+
+### Feedback form
+
+Settings feedback submits through a hidden Netlify form named `feedback` using a standard POST from the app. To have submissions forwarded to your inbox, configure a Netlify email notification for that form in the Netlify dashboard after the first deploy that includes it.
 
 ## PWA
 

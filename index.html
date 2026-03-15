@@ -167,7 +167,7 @@
         <div class="settings-card">
           <button class="settings-primary-btn" id="sync-btn">
             <i data-lucide="refresh-cw"></i>
-            Sync now
+            Sync data now
           </button>
           <button class="settings-secondary-btn" id="change-password-btn">
             <i data-lucide="key"></i>
@@ -277,6 +277,12 @@
 
   <div class="toast" id="toast"></div>
 
+  <form name="feedback" netlify hidden>
+    <input type="text" name="name">
+    <input type="email" name="email">
+    <textarea name="message"></textarea>
+  </form>
+
   <div class="modal-overlay" id="feedback-modal" hidden role="dialog" aria-modal="true" aria-labelledby="feedback-modal-title">
     <div class="modal-sheet">
       <div class="modal-title" id="feedback-modal-title">Send feedback</div>
@@ -286,7 +292,7 @@
       </div>
       <div class="modal-actions">
         <button class="modal-cancel-btn" id="feedback-cancel-btn">Cancel</button>
-        <button class="modal-confirm-btn" id="feedback-send-btn" disabled>Open email</button>
+        <button class="modal-confirm-btn" id="feedback-send-btn" disabled>Send feedback</button>
       </div>
     </div>
   </div>

@@ -1954,6 +1954,12 @@
       color: var(--text-dim);
     }
 
+    .settings-input.is-readonly {
+      color: var(--text-secondary);
+      background: rgba(26, 26, 40, 0.55);
+      border-color: rgba(34, 34, 53, 0.8);
+    }
+
     .settings-primary-btn,
     .settings-secondary-btn,
     .settings-signout-btn,

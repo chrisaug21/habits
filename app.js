@@ -318,6 +318,22 @@
       return (email.charAt(0) || '?').toUpperCase();
     }
 
+    let settingsProfileEditing = true;
+
+    function hasSavedProfileName(meta = getUserMetadata()) {
+      return !!((meta.first_name || '').trim() || (meta.last_name || '').trim());
+    }
+
+    function setProfileEditing(isEditing) {
+      settingsProfileEditing = isEditing;
+      ['settings-first-name', 'settings-last-name'].forEach(id => {
+        const input = document.getElementById(id);
+        input.readOnly = !isEditing;
+        input.classList.toggle('is-readonly', !isEditing);
+      });
+      document.getElementById('save-profile-btn').textContent = isEditing ? 'Save profile' : 'Edit profile';
+    }
+
     // ── Double-tap guard ─────────────────────────────────────────────────────
     // Each action function sets this true at the start and false when complete
     // (via try/finally). Any tap that arrives during a network round-trip hits
@@ -2557,6 +2573,7 @@
       document.getElementById('settings-avatar').textContent = getUserInitial();
       document.getElementById('settings-first-name').value = meta.first_name || '';
       document.getElementById('settings-last-name').value = meta.last_name || '';
+      setProfileEditing(!hasSavedProfileName(meta));
     }
 
     function openFeedbackModal() {
@@ -2595,6 +2612,11 @@
         return;
       }
       const btn = document.getElementById('save-profile-btn');
+      if (!settingsProfileEditing) {
+        setProfileEditing(true);
+        document.getElementById('settings-first-name').focus();
+        return;
+      }
       const firstName = document.getElementById('settings-first-name').value.trim();
       const lastName = document.getElementById('settings-last-name').value.trim();
       btn.disabled = true;
@@ -2609,6 +2631,7 @@
         if (error) throw error;
         currentUser = data.user || currentUser;
         renderSettingsAccount();
+        setProfileEditing(!(firstName || lastName));
         showToast('Profile saved');
       } catch (err) {
         console.error('[profile] update failed:', err);
@@ -2675,16 +2698,32 @@
       }
     }
 
-    function sendFeedback() {
+    async function sendFeedback() {
       const body = document.getElementById('feedback-input').value.trim();
       if (!body) return;
-      const subject = encodeURIComponent('Habits App Feedback');
-      const content = encodeURIComponent(
-        `From: ${getUserFeedbackIdentity()}\n\n${body}`
-      );
-      window.location.href = `mailto:chris@chrisaug.com?subject=${subject}&body=${content}`;
-      closeFeedbackModal();
-      showToast('Opened email draft');
+      const btn = document.getElementById('feedback-send-btn');
+      btn.disabled = true;
+      try {
+        const payload = new URLSearchParams({
+          'form-name': 'feedback',
+          name: getUserDisplayName() || getUserEmail() || 'Unknown user',
+          email: getUserEmail() || '',
+          message: `Habits App Feedback\nFrom: ${getUserFeedbackIdentity()}\n\n${body}`,
+        });
+        const res = await fetch('/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: payload.toString(),
+        });
+        if (!res.ok) throw new Error(`Feedback submit failed: ${res.status}`);
+        closeFeedbackModal();
+        showToast('Feedback sent');
+      } catch (err) {
+        console.error('[feedback] submit failed:', err);
+        showToast('Could not send feedback');
+      } finally {
+        btn.disabled = false;
+      }
     }
 
     async function deleteAccount() {
