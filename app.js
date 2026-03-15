@@ -84,6 +84,8 @@
         // (original code always upserted with explicit id:1), so nextval()
         // returns 1 and collides with the existing row. We fetch the current
         // max id first and insert with max+1 to safely advance past it.
+        // If the insert fails (e.g. RLS policy on anon key), log it and fall
+        // through with rotation_index:0 so new users never see stale state.
         let stateRow = stateRes.data;
         if (!stateRow) {
           const { data: maxRow } = await sb.from('state')
@@ -92,8 +94,10 @@
           const { data: newState, error: insertErr } = await sb.from('state')
             .insert({ id: safeId, rotation_index: 0, action_date: null, user_id: userId })
             .select().single();
-          if (insertErr) throw insertErr;
-          stateRow = newState;
+          if (insertErr) {
+            console.warn('[loadData] State row insert failed:', insertErr);
+          }
+          stateRow = newState ?? { rotation_index: 0, action_date: null };
         }
 
         const historyRows = historyRes.data || [];
@@ -2533,6 +2537,17 @@
       document.getElementById('auth-screen').hidden = false;
       document.getElementById('app-container').hidden = true;
       document.getElementById('bottom-nav').hidden = true;
+      // Reset both panels to a clean state
+      document.getElementById('login-email').value    = '';
+      document.getElementById('login-password').value = '';
+      document.getElementById('login-error').hidden   = true;
+      document.getElementById('signup-email').value    = '';
+      document.getElementById('signup-password').value = '';
+      document.getElementById('signup-error').hidden          = true;
+      document.getElementById('signup-password-error').hidden = true;
+      // Always land on the login panel
+      document.getElementById('login-panel').hidden  = false;
+      document.getElementById('signup-panel').hidden = true;
     }
 
     function authErrorMessage(err) {
@@ -2572,6 +2587,19 @@
         }
       });
     }
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // ── Auth input Enter-key handlers ────────────────────────────────────────
+    ['login-email', 'login-password'].forEach(id => {
+      document.getElementById(id).addEventListener('keydown', e => {
+        if (e.key === 'Enter') document.getElementById('login-btn').click();
+      });
+    });
+    ['signup-email', 'signup-password'].forEach(id => {
+      document.getElementById(id).addEventListener('keydown', e => {
+        if (e.key === 'Enter') document.getElementById('signup-btn').click();
+      });
+    });
     // ─────────────────────────────────────────────────────────────────────────
 
     // ── Sign In button ────────────────────────────────────────────────────────
