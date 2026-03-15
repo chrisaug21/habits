@@ -1736,7 +1736,7 @@
     }
 
     .log-activity-option--other {
-      color: var(--text-secondary);
+      color: var(--text-primary);
     }
 
     /* Journal card completed state */
