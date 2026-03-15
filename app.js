@@ -34,7 +34,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.5.0';
+    const VERSION = '1.5.1';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -1669,7 +1669,7 @@
         }
         html += '</div>';
       } else {
-        html += '<div class="hlist-empty">No workouts logged yet.</div>';
+        html += '<div class="hlist-empty">No data yet.</div>';
       }
 
       container.innerHTML = html;
@@ -1935,7 +1935,7 @@
 
       // ── Empty state ───────────────────────────────────────────────────────
       if (realWorkouts.length === 0) {
-        container.innerHTML = '<div class="stats-empty">No workouts logged yet</div>';
+        container.innerHTML = '<div class="stats-empty">No data yet.</div>';
         if (typeof lucide !== 'undefined') lucide.createIcons();
         return;
       }
@@ -2441,6 +2441,12 @@
       tomorrowIconEl.className = 'tomorrow-icon';
       tomorrowNameEl.appendChild(tomorrowIconEl);
       tomorrowNameEl.appendChild(document.createTextNode(tomorrowWorkout.name));
+
+      // First-use prompt — shown only to new users who have no history yet
+      const firstUsePrompt = document.getElementById('first-use-prompt');
+      if (firstUsePrompt) {
+        firstUsePrompt.hidden = !(history.length === 0 && heroState === 'default');
+      }
 
       // Update Today tab cards
       renderJournalCard();

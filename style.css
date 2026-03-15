@@ -375,6 +375,13 @@
     }
 
     /* Tomorrow preview */
+    .first-use-prompt {
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      padding: 4px 0 16px;
+    }
+
     .tomorrow-preview {
       background: var(--surface);
       border: 1px solid var(--border);
