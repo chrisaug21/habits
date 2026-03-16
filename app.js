@@ -34,7 +34,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.5.5';
+    const VERSION = '1.5.6';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -2326,6 +2326,7 @@
     document.getElementById('nav-stats-btn').onclick    = () => switchMainTab('stats');
     document.getElementById('nav-settings-btn').onclick = () => switchMainTab('settings');
     document.getElementById('welcome-continue-btn').onclick = () => closeWelcomeScreen();
+    document.getElementById('tutorial-btn').onclick = () => openWelcomeScreen();
 
     document.getElementById('save-profile-btn').onclick = () => saveProfile();
     document.getElementById('sync-btn').onclick = async () => {

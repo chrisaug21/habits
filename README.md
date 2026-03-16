@@ -2,7 +2,7 @@
 
 A mobile-first PWA for daily habits — workout tracking, journaling, and intention-setting.
 
-**Current version: 1.5.5**
+**Current version: 1.5.6**
 
 Live at: https://habits.chrisaug.com
 
@@ -77,7 +77,7 @@ The Today tab is a daily habit dashboard with three cards. All entry happens via
 
 ### Other
 - Offline-capable PWA, installable on iPhone home screen; entries logged while offline are automatically synced to Supabase the next time the app loads with a connection
-- **Account + Settings** — Settings shows the signed-in email, avatar initial, optional first/last name fields stored in Supabase auth metadata, Sync data now, Change password, Send feedback, Sign out, and a Danger Zone delete-account flow
+- **Account + Settings** — Settings shows the signed-in email, avatar initial, optional first/last name fields stored in Supabase auth metadata, a Tutorial shortcut, Sync data now, Change password, Send feedback, Sign out, and a Danger Zone delete-account flow
 - **Auth recovery** — login includes a Forgot password link that sends a Supabase password reset email; recovery links open the app and prompt for a new password
 - **First-time welcome screen** — brand-new signups see a one-time welcome overlay before the Today tab, with a quick walkthrough of workouts, journaling, weight tracking, and settings; dismiss state is stored per user in localStorage
 - **Test mode** — hidden feature; triple-tap the version stamp (bottom of Today screen) or press Alt+Shift+T to toggle; shows an amber banner confirming no real data is affected; uses isolated localStorage keys (`habits_test`, `habits_test_other_activities`, `habits_test_journal`) and skips all Supabase calls
