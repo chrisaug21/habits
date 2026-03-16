@@ -71,6 +71,55 @@
 
   </div>
 
+  <div id="welcome-screen" hidden role="dialog" aria-modal="true" aria-labelledby="welcome-title">
+    <div class="welcome-card">
+      <div class="welcome-badge">
+        <i data-lucide="sparkles"></i>
+        Welcome
+      </div>
+      <h2 class="welcome-title" id="welcome-title">Welcome to Habits</h2>
+      <div class="welcome-section">
+        <p class="welcome-copy">Habits is a simple daily tracker built around three things:
+tracking workouts (with suggestions!), tracking your weight (optionally), and completing your morning journal for better mindfulness.</p>
+      </div>
+      <div class="welcome-section">
+        <div class="welcome-section-head">
+          <i data-lucide="repeat"></i>
+          <span>Your workout rotation</span>
+        </div>
+        <p class="welcome-copy">The app suggests workouts each day based on a rotation, including
+cycling, strength circuits (upper body push workouts, upper body pull workouts, lower body workouts), as well as yoga. Just tap Done when you finish, or Log activity if you did something else. The rotation picks back up the next day. You can also add custom workouts if you did something else (like Zumba, pickleball or even snow shoveling!).</p>
+      </div>
+      <div class="welcome-section">
+        <div class="welcome-section-head">
+          <i data-lucide="book-open"></i>
+          <span>Daily journal</span>
+        </div>
+        <p class="welcome-copy">Each day has a short journal with three prompts: your intention for
+the day, something you're grateful for, and one thing you want to
+focus on. Takes about 60 seconds and helps ground you in being mindful and present each day.</p>
+      </div>
+      <div class="welcome-section">
+        <div class="welcome-section-head">
+          <i data-lucide="scale"></i>
+          <span>Weight tracking</span>
+        </div>
+        <p class="welcome-copy">Log your weight each morning from the Today tab. Whether your goal is losing, gaining or maintaining, tracking your weight regularly helps achieve results! Over time you'll see a trend chart on the Stats tab showing your progress.</p>
+      </div>
+      <div class="welcome-section">
+        <div class="welcome-section-head">
+          <i data-lucide="settings"></i>
+          <span>Settings</span>
+        </div>
+        <p class="welcome-copy">Use the Settings panel to manage your account details, change your password, send feedback, reopen this tutorial, sync data, or sign out.</p>
+      </div>
+      <button class="welcome-cta" id="welcome-continue-btn">
+        <span>Got it, let's go</span>
+        <i data-lucide="arrow-right"></i>
+      </button>
+    </div>
+  </div>
+
   <!-- ── Test Mode Banner ────────────────────────────────────────────────── -->
   <div class="test-banner" id="test-banner" hidden>
     TEST MODE — no real data affected
@@ -165,7 +214,11 @@
       <div class="settings-section">
         <div class="settings-section-title">App</div>
         <div class="settings-card">
-          <button class="settings-primary-btn" id="sync-btn">
+          <button class="settings-secondary-btn" id="tutorial-btn">
+            <i data-lucide="book-marked"></i>
+            Tutorial
+          </button>
+          <button class="settings-secondary-btn" id="sync-btn">
             <i data-lucide="refresh-cw"></i>
             Sync data now
           </button>

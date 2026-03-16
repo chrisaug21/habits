@@ -34,7 +34,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.5.3';
+    const VERSION = '1.5.7';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -43,11 +43,15 @@
     const BASE_SKIP_REASONS_KEY = `${BASE_STORAGE_KEY}_skip_reasons`;
     const BASE_JOURNAL_KEY = TEST_MODE ? 'habits_test_journal' : 'habits_journal';
     const BASE_WEIGHT_KEY = TEST_MODE ? 'habits_test_weight' : 'habits_weight';
+    const BASE_WELCOMED_KEY = 'habits_welcomed';
     // ────────────────────────────────────────────────────────────────────────
 
-    function getScopedStorageKey(baseKey) {
-      const userId = currentUser?.id;
+    function getScopedStorageKeyForUser(baseKey, userId = currentUser?.id) {
       return userId ? `${userId}:${baseKey}` : null;
+    }
+
+    function getScopedStorageKey(baseKey) {
+      return getScopedStorageKeyForUser(baseKey);
     }
 
     function readCachedJSON(baseKey, fallback) {
@@ -67,6 +71,31 @@
       const key = getScopedStorageKey(baseKey);
       if (!key) return;
       localStorage.removeItem(key);
+    }
+
+    function getWelcomeState(userId = currentUser?.id) {
+      const key = getScopedStorageKeyForUser(BASE_WELCOMED_KEY, userId);
+      return key ? localStorage.getItem(key) : null;
+    }
+
+    function hasPendingWelcome(userId = currentUser?.id) {
+      return getWelcomeState(userId) === 'pending';
+    }
+
+    function hasDismissedWelcome(userId = currentUser?.id) {
+      return getWelcomeState(userId) === '1';
+    }
+
+    function markWelcomePending(userId = currentUser?.id) {
+      const key = getScopedStorageKeyForUser(BASE_WELCOMED_KEY, userId);
+      if (!key) return;
+      localStorage.setItem(key, 'pending');
+    }
+
+    function markWelcomeDismissed() {
+      const key = getScopedStorageKey(BASE_WELCOMED_KEY);
+      if (!key) return;
+      localStorage.setItem(key, '1');
     }
 
     // One-time migration from legacy shared keys to user-scoped keys.
@@ -347,6 +376,7 @@
     }
 
     let settingsProfileEditing = true;
+    let lastFocusedBeforeWelcome = null;
 
     function hasSavedProfileName(meta = getUserMetadata()) {
       return !!((meta.first_name || '').trim() || (meta.last_name || '').trim());
@@ -2312,6 +2342,8 @@
     document.getElementById('nav-history-btn').onclick  = () => switchMainTab('history');
     document.getElementById('nav-stats-btn').onclick    = () => switchMainTab('stats');
     document.getElementById('nav-settings-btn').onclick = () => switchMainTab('settings');
+    document.getElementById('welcome-continue-btn').onclick = () => closeWelcomeScreen();
+    document.getElementById('tutorial-btn').onclick = () => openWelcomeScreen();
 
     document.getElementById('save-profile-btn').onclick = () => saveProfile();
     document.getElementById('sync-btn').onclick = async () => {
@@ -2595,6 +2627,28 @@
       setProfileEditing(!hasSavedProfileName(meta));
     }
 
+    function openWelcomeScreen() {
+      const screen = document.getElementById('welcome-screen');
+      lastFocusedBeforeWelcome = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      screen.hidden = false;
+      document.getElementById('app-container').inert = true;
+      document.getElementById('bottom-nav').inert = true;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+      document.getElementById('welcome-continue-btn').focus();
+    }
+
+    function closeWelcomeScreen() {
+      markWelcomeDismissed();
+      const screen = document.getElementById('welcome-screen');
+      screen.hidden = true;
+      document.getElementById('app-container').inert = false;
+      document.getElementById('bottom-nav').inert = false;
+      if (lastFocusedBeforeWelcome && typeof lastFocusedBeforeWelcome.focus === 'function') {
+        lastFocusedBeforeWelcome.focus();
+      }
+      lastFocusedBeforeWelcome = null;
+    }
+
     function openFeedbackModal() {
       document.getElementById('feedback-input').value = '';
       document.getElementById('feedback-send-btn').disabled = true;
@@ -2874,6 +2928,10 @@
       document.getElementById('feedback-modal').hidden = true;
       document.getElementById('password-modal').hidden = true;
       document.getElementById('delete-account-modal').hidden = true;
+      document.getElementById('welcome-screen').hidden = true;
+      document.getElementById('app-container').inert = false;
+      document.getElementById('bottom-nav').inert = false;
+      lastFocusedBeforeWelcome = null;
       // Always land on the login panel
       document.getElementById('login-panel').hidden  = false;
       document.getElementById('signup-panel').hidden = true;
@@ -2902,6 +2960,9 @@
       switchMainTab('today');
       renderSettingsAccount();
       render();
+      if (hasPendingWelcome() && !hasDismissedWelcome()) {
+        openWelcomeScreen();
+      }
       loadJournal().then(() => {
         renderJournalCard();
         if (historyViewActive && historySubTab === 'calendar' && cachedData) {
@@ -2975,6 +3036,7 @@
       try {
         const { data, error } = await sb.auth.signUp({ email, password });
         if (error) throw error;
+        markWelcomePending(data.user?.id);
         if (!data.session) {
           // Supabase email confirmation is enabled — account created but not yet
           // confirmed. Do not unlock the app; prompt the user to check their inbox.
