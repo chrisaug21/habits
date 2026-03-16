@@ -2,7 +2,7 @@
 
 A mobile-first PWA for daily habits — workout tracking, journaling, and intention-setting.
 
-**Current version: 1.4.58**
+**Current version: 1.5.3**
 
 Live at: https://habits.chrisaug.com
 
@@ -77,6 +77,8 @@ The Today tab is a daily habit dashboard with three cards. All entry happens via
 
 ### Other
 - Offline-capable PWA, installable on iPhone home screen; entries logged while offline are automatically synced to Supabase the next time the app loads with a connection
+- **Account + Settings** — Settings shows the signed-in email, avatar initial, optional first/last name fields stored in Supabase auth metadata, Sync data now, Change password, Send feedback, Sign out, and a Danger Zone delete-account flow
+- **Auth recovery** — login includes a Forgot password link that sends a Supabase password reset email; recovery links open the app and prompt for a new password
 - **Test mode** — hidden feature; triple-tap the version stamp (bottom of Today screen) or press Alt+Shift+T to toggle; shows an amber banner confirming no real data is affected; uses isolated localStorage keys (`habits_test`, `habits_test_other_activities`, `habits_test_journal`) and skips all Supabase calls
 - **Sync status** — the version stamp at the bottom of the Today screen shows `synced just now` / `synced Xm ago` / `offline`; updates after every successful or failed Supabase read/write
 
@@ -142,17 +144,17 @@ create policy "allow all" on weight for all using (true) with check (true);
 
 | Key | Type | Description |
 |---|---|---|
-| `habits_v1` | JSON object | Full workout state: `rotationIndex`, `actionDate`, `history[]`, last-completion dates per workout type, `_maxSeq` |
-| `habits_other_activities` | `string[]` | Up to 10 most-recently used other activity names |
-| `habits_v1_skip_reasons` | `string[]` | Up to 10 most-recently used skip reasons |
-| `habits_journal` | `array` | Journal entries as `[{ date, intention, gratitude, one_thing }]`, newest first |
-| `habits_weight` | `array` | Weight entries as `[{ date, value_lbs }]`, newest first |
+| `<user-id>:habits_v1` | JSON object | Full workout state: `rotationIndex`, `actionDate`, `history[]`, last-completion dates per workout type, `_maxSeq` |
+| `<user-id>:habits_other_activities` | `string[]` | Up to 10 most-recently used other activity names |
+| `<user-id>:habits_v1_skip_reasons` | `string[]` | Up to 10 most-recently used skip reasons |
+| `<user-id>:habits_journal` | `array` | Journal entries as `[{ date, intention, gratitude, one_thing }]`, newest first |
+| `<user-id>:habits_weight` | `array` | Weight entries as `[{ date, value_lbs }]`, newest first |
 
-**localStorage migration:** On first load after this release, the app automatically migrates `wmw_v1` → `habits_v1` and `wmw_other_activities` → `habits_other_activities`, then deletes the old keys.
+**localStorage migration:** On first load after this release, the app automatically migrates legacy shared keys like `wmw_v1`, `habits_v1`, and `habits_journal` into the signed-in user's namespaced keys, then deletes the old shared key.
 
 ### Test-mode localStorage keys
 
-When test mode is active (`?test=true` in the URL), the app writes to isolated keys (`habits_test`, `habits_test_other_activities`, `habits_test_skip_reasons`, `habits_test_journal`, `habits_test_weight`) and skips all Supabase calls. All test data is wiped by the Reset button in the test banner.
+When test mode is active (`?test=true` in the URL), the app writes to isolated per-user keys (`<user-id>:habits_test`, `<user-id>:habits_test_other_activities`, `<user-id>:habits_test_skip_reasons`, `<user-id>:habits_test_journal`, `<user-id>:habits_test_weight`) and skips all Supabase calls. All test data is wiped by the Reset button in the test banner.
 
 ## File structure
 
@@ -190,6 +192,10 @@ For local testing, temporarily replace the placeholder tokens in `app.js` with y
 ### Keep-alive function
 
 `netlify/functions/keep-alive.js` is a Netlify scheduled function that runs once daily (configured via `netlify.toml`). It makes a lightweight read against the Supabase `state` table using the same `SUPABASE_URL` and `SUPABASE_KEY` environment variables, preventing the free-tier Supabase project from pausing due to inactivity. No additional setup is required — it runs automatically on a daily cron schedule.
+
+### Feedback form
+
+Settings feedback submits through a hidden Netlify form named `feedback` using a standard POST from the app. To have submissions forwarded to your inbox, configure a Netlify email notification for that form in the Netlify dashboard after the first deploy that includes it.
 
 ## PWA
 

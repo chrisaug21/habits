@@ -37,6 +37,7 @@
                placeholder="Email" autocomplete="email" inputmode="email">
         <input class="auth-input" id="login-password" type="password"
                placeholder="Password" autocomplete="current-password">
+        <button class="auth-link-btn auth-inline-link" id="forgot-password-btn" type="button">Forgot password?</button>
         <div class="auth-error" id="login-error" hidden></div>
         <button class="auth-primary-btn" id="login-btn">Sign in</button>
         <p class="auth-switch">Don't have an account?
@@ -139,17 +140,60 @@
     <div id="view-settings" hidden>
       <h2 class="settings-heading">Settings</h2>
       <div class="settings-section">
-        <button class="settings-sync-btn" id="sync-btn">
-          <i data-lucide="refresh-cw"></i>
-          Sync now
-        </button>
+        <div class="settings-section-title">Account</div>
+        <div class="settings-card">
+          <div class="settings-account-row">
+            <div class="settings-avatar" id="settings-avatar">A</div>
+            <div class="settings-account-copy">
+              <div class="settings-account-label">Signed in as</div>
+              <div class="settings-account-email" id="settings-email">-</div>
+            </div>
+          </div>
+          <div class="settings-form-grid">
+            <label class="settings-field">
+              <span>First name</span>
+              <input class="settings-input" id="settings-first-name" type="text" maxlength="60" autocomplete="given-name" placeholder="Optional">
+            </label>
+            <label class="settings-field">
+              <span>Last name</span>
+              <input class="settings-input" id="settings-last-name" type="text" maxlength="60" autocomplete="family-name" placeholder="Optional">
+            </label>
+          </div>
+          <button class="settings-primary-btn" id="save-profile-btn">Save profile</button>
+        </div>
       </div>
       <div class="settings-section">
-        <button class="settings-signout-btn" id="signout-btn">
-          <i data-lucide="log-out"></i>
-          Sign out
-        </button>
+        <div class="settings-section-title">App</div>
+        <div class="settings-card">
+          <button class="settings-primary-btn" id="sync-btn">
+            <i data-lucide="refresh-cw"></i>
+            Sync data now
+          </button>
+          <button class="settings-secondary-btn" id="change-password-btn">
+            <i data-lucide="key"></i>
+            Change password
+          </button>
+          <button class="settings-secondary-btn" id="feedback-btn">
+            <i data-lucide="message-square"></i>
+            Send feedback
+          </button>
+          <button class="settings-signout-btn" id="signout-btn">
+            <i data-lucide="log-out"></i>
+            Sign out
+          </button>
+        </div>
       </div>
+      <div class="settings-section settings-danger-section">
+        <div class="settings-section-title settings-danger-title">Danger Zone</div>
+        <div class="settings-card settings-danger-card">
+          <div class="settings-danger-copy">Delete your account and all saved data permanently.</div>
+          <button class="settings-delete-btn" id="delete-account-btn">
+            <i data-lucide="trash-2"></i>
+            Delete my account
+          </button>
+        </div>
+      </div>
+      <div class="settings-footer" id="settings-version-stamp"></div>
     </div>
 
     <!-- ── Stats view ─────────────────────────────────────────────────────── -->
@@ -232,6 +276,54 @@
   </div>
 
   <div class="toast" id="toast"></div>
+
+  <form name="feedback" method="POST" data-netlify="true" hidden>
+    <input type="text" name="name">
+    <input type="email" name="email">
+    <textarea name="message"></textarea>
+  </form>
+
+  <div class="modal-overlay" id="feedback-modal" hidden role="dialog" aria-modal="true" aria-labelledby="feedback-modal-title">
+    <div class="modal-sheet">
+      <div class="modal-title" id="feedback-modal-title">Send feedback</div>
+      <div class="journal-field">
+        <label class="journal-field-label" for="feedback-input">What should I know?</label>
+        <textarea class="journal-textarea" id="feedback-input" placeholder="Share an idea, bug, or rough edge..." rows="6"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-cancel-btn" id="feedback-cancel-btn">Cancel</button>
+        <button class="modal-confirm-btn" id="feedback-send-btn" disabled>Send feedback</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="password-modal" hidden role="dialog" aria-modal="true" aria-labelledby="password-modal-title">
+    <div class="modal-sheet">
+      <div class="modal-title" id="password-modal-title">Change password</div>
+      <div class="settings-form-grid">
+        <label class="settings-field">
+          <span>New password</span>
+          <input class="settings-input" id="new-password-input" type="password" minlength="8" autocomplete="new-password" placeholder="At least 8 characters">
+        </label>
+      </div>
+      <div class="auth-field-error" id="password-error" hidden>Password must be at least 8 characters</div>
+      <div class="modal-actions">
+        <button class="modal-cancel-btn" id="password-cancel-btn">Cancel</button>
+        <button class="modal-confirm-btn" id="password-save-btn">Update password</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="delete-account-modal" hidden role="dialog" aria-modal="true" aria-labelledby="delete-account-modal-title">
+    <div class="modal-sheet">
+      <div class="modal-title" id="delete-account-modal-title">Delete account?</div>
+      <p class="settings-delete-warning">This will permanently delete all your data. This cannot be undone.</p>
+      <div class="modal-actions">
+        <button class="modal-cancel-btn" id="delete-account-cancel-btn">Cancel</button>
+        <button class="modal-confirm-btn modal-danger-btn" id="delete-account-confirm-btn">Yes, delete everything</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ── Log Activity Chooser Modal ─────────────────────────────────────── -->
   <div class="modal-overlay" id="log-activity-modal" hidden role="dialog" aria-modal="true" aria-labelledby="log-activity-modal-title">

@@ -34,40 +34,69 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.5.1';
+    const VERSION = '1.5.3';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
-    const STORAGE_KEY = TEST_MODE ? 'habits_test' : 'habits_v1';
+    const BASE_STORAGE_KEY = TEST_MODE ? 'habits_test' : 'habits_v1';
+    const BASE_OTHER_ACTIVITIES_KEY = TEST_MODE ? 'habits_test_other_activities' : 'habits_other_activities';
+    const BASE_SKIP_REASONS_KEY = `${BASE_STORAGE_KEY}_skip_reasons`;
+    const BASE_JOURNAL_KEY = TEST_MODE ? 'habits_test_journal' : 'habits_journal';
+    const BASE_WEIGHT_KEY = TEST_MODE ? 'habits_test_weight' : 'habits_weight';
     // ────────────────────────────────────────────────────────────────────────
 
-    // ── localStorage key migration (wmw_ → habits_) ──────────────────────────
-    // One-time migration: if habits_v1 doesn't exist yet but wmw_v1 does,
-    // copy the data over and delete the old key. Same for other_activities.
-    if (!TEST_MODE) {
-      const migrateKey = (oldKey, newKey) => {
-        if (localStorage.getItem(newKey) === null) {
-          const old = localStorage.getItem(oldKey);
-          if (old !== null) {
-            localStorage.setItem(newKey, old);
-            localStorage.removeItem(oldKey);
-          }
-        }
-      };
-      migrateKey('wmw_v1',              'habits_v1');
-      migrateKey('wmw_other_activities', 'habits_other_activities');
+    function getScopedStorageKey(baseKey) {
+      const userId = currentUser?.id;
+      return userId ? `${userId}:${baseKey}` : null;
     }
-    // ────────────────────────────────────────────────────────────────────────
+
+    function readCachedJSON(baseKey, fallback) {
+      const key = getScopedStorageKey(baseKey);
+      if (!key) return fallback;
+      try { return JSON.parse(localStorage.getItem(key)) || fallback; }
+      catch { return fallback; }
+    }
+
+    function writeCachedJSON(baseKey, value) {
+      const key = getScopedStorageKey(baseKey);
+      if (!key) return;
+      localStorage.setItem(key, JSON.stringify(value));
+    }
+
+    function removeCachedValue(baseKey) {
+      const key = getScopedStorageKey(baseKey);
+      if (!key) return;
+      localStorage.removeItem(key);
+    }
+
+    // One-time migration from legacy shared keys to user-scoped keys.
+    function migrateLegacyCacheKeys() {
+      if (TEST_MODE) return;
+      const migrateKey = (oldKey, baseKey) => {
+        const newKey = getScopedStorageKey(baseKey);
+        if (!newKey) return;
+        if (localStorage.getItem(newKey) !== null) return;
+        const old = localStorage.getItem(oldKey);
+        if (old === null) return;
+        localStorage.setItem(newKey, old);
+        localStorage.removeItem(oldKey);
+      };
+      migrateKey('wmw_v1', 'habits_v1');
+      migrateKey('wmw_other_activities', 'habits_other_activities');
+      migrateKey('habits_v1', 'habits_v1');
+      migrateKey('habits_other_activities', 'habits_other_activities');
+      migrateKey('habits_v1_skip_reasons', 'habits_v1_skip_reasons');
+      migrateKey('habits_journal', 'habits_journal');
+      migrateKey('habits_weight', 'habits_weight');
+    }
 
     async function loadData() {
       if (!sb || TEST_MODE) {
-        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
-        catch { return {}; }
+        return readCachedJSON(BASE_STORAGE_KEY, {});
       }
       try {
         const userId = currentUser?.id;
-        let local = {};
-        try { local = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch {}
+        const local = readCachedJSON(BASE_STORAGE_KEY, {});
 
         const [stateRes, historyRes] = await Promise.all([
           // order + limit(1) so duplicate rows (same user_id) never cause
@@ -77,7 +106,8 @@
           // Order by sequence (explicit insert order) rather than created_at so that
           // batch re-inserts — which share the same timestamp — come back in the
           // correct order.
-          sb.from('history').select('*').order('sequence', { ascending: true, nullsFirst: true }),
+          sb.from('history').select('*').eq('user_id', userId)
+            .order('sequence', { ascending: true, nullsFirst: true }),
         ]);
         if (stateRes.error) throw stateRes.error;
         if (historyRes.error) throw historyRes.error;
@@ -143,21 +173,20 @@
         lastSyncedAt = Date.now();
         syncOffline  = false;
         updateSyncStamp();
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); // keep local cache fresh
+        writeCachedJSON(BASE_STORAGE_KEY, data); // keep local cache fresh
         return data;
       } catch (err) {
         console.warn('Supabase read failed, falling back to localStorage:', err);
         syncOffline = true;
         updateSyncStamp();
-        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
-        catch { return {}; }
+        return readCachedJSON(BASE_STORAGE_KEY, {});
       }
     }
 
     async function saveData(data, deletedSid = null) {
       if (TEST_MODE) {
         // Test mode — write to localStorage only, no Supabase
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        writeCachedJSON(BASE_STORAGE_KEY, data);
         return;
       }
       if (!sb) throw new Error('Supabase client not available');
@@ -213,7 +242,7 @@
       lastSyncedAt = Date.now();
       syncOffline  = false;
       updateSyncStamp();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      writeCachedJSON(BASE_STORAGE_KEY, data);
     }
 
     function todayStr() {
@@ -288,6 +317,49 @@
       el.classList.add('show');
       clearTimeout(toastTimer);
       toastTimer = setTimeout(() => el.classList.remove('show'), 1800);
+    }
+
+    function getUserEmail() {
+      return currentUser?.email || '';
+    }
+
+    function getUserMetadata() {
+      return currentUser?.user_metadata || {};
+    }
+
+    function getUserDisplayName() {
+      const meta = getUserMetadata();
+      const firstName = (meta.first_name || '').trim();
+      const lastName = (meta.last_name || '').trim();
+      return [firstName, lastName].filter(Boolean).join(' ');
+    }
+
+    function getUserFeedbackIdentity() {
+      const name = getUserDisplayName();
+      const email = getUserEmail();
+      if (name && email) return `${name} <${email}>`;
+      return name || email || 'Unknown user';
+    }
+
+    function getUserInitial() {
+      const email = getUserEmail().trim();
+      return (email.charAt(0) || '?').toUpperCase();
+    }
+
+    let settingsProfileEditing = true;
+
+    function hasSavedProfileName(meta = getUserMetadata()) {
+      return !!((meta.first_name || '').trim() || (meta.last_name || '').trim());
+    }
+
+    function setProfileEditing(isEditing) {
+      settingsProfileEditing = isEditing;
+      ['settings-first-name', 'settings-last-name'].forEach(id => {
+        const input = document.getElementById(id);
+        input.readOnly = !isEditing;
+        input.classList.toggle('is-readonly', !isEditing);
+      });
+      document.getElementById('save-profile-btn').textContent = isEditing ? 'Save profile' : 'Edit profile';
     }
 
     // ── Double-tap guard ─────────────────────────────────────────────────────
@@ -557,14 +629,9 @@
     }
 
     // ── Other Activity helpers ───────────────────────────────────────────────
-    const OTHER_ACTIVITIES_KEY = TEST_MODE ? 'habits_test_other_activities' : 'habits_other_activities';
-    const SKIP_REASONS_KEY = STORAGE_KEY + '_skip_reasons';
-    const JOURNAL_KEY = TEST_MODE ? 'habits_test_journal' : 'habits_journal';
-    const WEIGHT_KEY  = TEST_MODE ? 'habits_test_weight'  : 'habits_weight';
-
     function loadOtherActivities() {
       try {
-        const parsed = JSON.parse(localStorage.getItem(OTHER_ACTIVITIES_KEY));
+        const parsed = readCachedJSON(BASE_OTHER_ACTIVITIES_KEY, []);
         if (typeof parsed === 'string') return [parsed];
         if (Array.isArray(parsed)) return parsed.filter(a => typeof a === 'string');
         return [];
@@ -576,12 +643,12 @@
       const nameLower = name.toLowerCase();
       // Remove any existing entry that matches case-insensitively, then prepend
       const deduped = existing.filter(a => a.toLowerCase() !== nameLower);
-      localStorage.setItem(OTHER_ACTIVITIES_KEY, JSON.stringify([name, ...deduped].slice(0, 10)));
+      writeCachedJSON(BASE_OTHER_ACTIVITIES_KEY, [name, ...deduped].slice(0, 10));
     }
 
     function loadSkipReasons() {
       try {
-        const parsed = JSON.parse(localStorage.getItem(SKIP_REASONS_KEY));
+        const parsed = readCachedJSON(BASE_SKIP_REASONS_KEY, []);
         if (typeof parsed === 'string') return [parsed];
         if (Array.isArray(parsed)) return parsed.filter(r => typeof r === 'string');
         return [];
@@ -592,7 +659,7 @@
       const existing = loadSkipReasons();
       const reasonLower = reason.toLowerCase();
       const deduped = existing.filter(r => r.toLowerCase() !== reasonLower);
-      localStorage.setItem(SKIP_REASONS_KEY, JSON.stringify([reason, ...deduped].slice(0, 10)));
+      writeCachedJSON(BASE_SKIP_REASONS_KEY, [reason, ...deduped].slice(0, 10));
     }
 
     function openOtherActivityModal() {
@@ -1069,21 +1136,20 @@
     // Used by calendar rendering so dots appear without waiting for a Supabase call.
     function getJournalSync() {
       if (cachedJournal !== null) return cachedJournal;
-      try { cachedJournal = JSON.parse(localStorage.getItem(JOURNAL_KEY)) || []; }
-      catch { cachedJournal = []; }
+      cachedJournal = readCachedJSON(BASE_JOURNAL_KEY, []);
       return cachedJournal;
     }
 
     // Load journal from Supabase, cache to localStorage, update cachedJournal.
     async function loadJournal() {
-      let local = [];
-      try { local = JSON.parse(localStorage.getItem(JOURNAL_KEY)) || []; } catch {}
+      const local = readCachedJSON(BASE_JOURNAL_KEY, []);
       if (!sb || TEST_MODE) {
         cachedJournal = local;
         return local;
       }
       try {
-        const { data, error } = await sb.from('journal').select('*').order('date', { ascending: false });
+        const { data, error } = await sb.from('journal').select('*').eq('user_id', currentUser?.id)
+          .order('date', { ascending: false });
         if (error) throw error;
         const journal = (data || []).map(r => ({
           date:       r.date,
@@ -1091,7 +1157,7 @@
           gratitude:  r.gratitude  || '',
           one_thing:  r.one_thing  || '',
         }));
-        localStorage.setItem(JOURNAL_KEY, JSON.stringify(journal));
+        writeCachedJSON(BASE_JOURNAL_KEY, journal);
         cachedJournal = journal;
         return journal;
       } catch (err) {
@@ -1108,7 +1174,7 @@
         const idx = journal.findIndex(e => e.date === entry.date);
         if (idx !== -1) { journal[idx] = entry; } else { journal.unshift(entry); }
         cachedJournal = journal;
-        localStorage.setItem(JOURNAL_KEY, JSON.stringify(journal));
+        writeCachedJSON(BASE_JOURNAL_KEY, journal);
         return;
       }
       if (!sb) throw new Error('Supabase client not available');
@@ -1128,7 +1194,7 @@
       const idx = journal.findIndex(e => e.date === entry.date);
       if (idx !== -1) { journal[idx] = entry; } else { journal.unshift(entry); }
       cachedJournal = journal;
-      localStorage.setItem(JOURNAL_KEY, JSON.stringify(journal));
+      writeCachedJSON(BASE_JOURNAL_KEY, journal);
     }
 
     // Returns true if newGratitude is a substring (or superset) of any gratitude
@@ -1302,20 +1368,19 @@
     // ── Weight modal + card ─────────────────────────────────────────────────
     function getWeightSync() {
       if (cachedWeight !== null) return cachedWeight;
-      try { cachedWeight = JSON.parse(localStorage.getItem(WEIGHT_KEY)) || []; }
-      catch { cachedWeight = []; }
+      cachedWeight = readCachedJSON(BASE_WEIGHT_KEY, []);
       return cachedWeight;
     }
 
     async function loadWeight() {
-      let local = [];
-      try { local = JSON.parse(localStorage.getItem(WEIGHT_KEY)) || []; } catch {}
+      const local = readCachedJSON(BASE_WEIGHT_KEY, []);
       if (!sb || TEST_MODE) { cachedWeight = local; return local; }
       try {
-        const { data, error } = await sb.from('weight').select('date, value_lbs').order('date', { ascending: false });
+        const { data, error } = await sb.from('weight').select('date, value_lbs').eq('user_id', currentUser?.id)
+          .order('date', { ascending: false });
         if (error) throw error;
         const rows = (data || []).map(r => ({ date: r.date, value_lbs: parseFloat(r.value_lbs) }));
-        localStorage.setItem(WEIGHT_KEY, JSON.stringify(rows));
+        writeCachedJSON(BASE_WEIGHT_KEY, rows);
         cachedWeight = rows;
         return rows;
       } catch (err) {
@@ -1330,10 +1395,14 @@
     async function syncAllData() {
       if (!sb) throw new Error('No Supabase connection');
       const [stateRes, historyRes, journalRes, weightRes] = await Promise.all([
-        sb.from('state').select('*').eq('id', 1).maybeSingle(),
-        sb.from('history').select('*').order('sequence', { ascending: true, nullsFirst: true }),
-        sb.from('journal').select('*').order('date', { ascending: false }),
-        sb.from('weight').select('date, value_lbs').order('date', { ascending: false }),
+        sb.from('state').select('*').eq('user_id', currentUser?.id)
+          .order('id', { ascending: false }).limit(1).maybeSingle(),
+        sb.from('history').select('*').eq('user_id', currentUser?.id)
+          .order('sequence', { ascending: true, nullsFirst: true }),
+        sb.from('journal').select('*').eq('user_id', currentUser?.id)
+          .order('date', { ascending: false }),
+        sb.from('weight').select('date, value_lbs').eq('user_id', currentUser?.id)
+          .order('date', { ascending: false }),
       ]);
       if (stateRes.error)   throw stateRes.error;
       if (historyRes.error) throw historyRes.error;
@@ -1344,8 +1413,8 @@
         date: r.date, intention: r.intention || '', gratitude: r.gratitude || '', one_thing: r.one_thing || '',
       }));
       cachedWeight = (weightRes.data || []).map(r => ({ date: r.date, value_lbs: parseFloat(r.value_lbs) }));
-      localStorage.setItem(JOURNAL_KEY, JSON.stringify(cachedJournal));
-      localStorage.setItem(WEIGHT_KEY,  JSON.stringify(cachedWeight));
+      writeCachedJSON(BASE_JOURNAL_KEY, cachedJournal);
+      writeCachedJSON(BASE_WEIGHT_KEY, cachedWeight);
       // render() calls loadData() internally for state+history (preserves offline-sync logic)
       await render();
     }
@@ -1357,7 +1426,7 @@
         const entry = { date, value_lbs: valueLbs };
         if (idx !== -1) { rows[idx] = entry; } else { rows.unshift(entry); }
         cachedWeight = rows;
-        localStorage.setItem(WEIGHT_KEY, JSON.stringify(rows));
+        writeCachedJSON(BASE_WEIGHT_KEY, rows);
         return;
       }
       if (!sb) throw new Error('Supabase client not available');
@@ -1372,7 +1441,7 @@
       const entry = { date, value_lbs: valueLbs };
       if (idx !== -1) { rows[idx] = entry; } else { rows.unshift(entry); }
       cachedWeight = rows;
-      localStorage.setItem(WEIGHT_KEY, JSON.stringify(rows));
+      writeCachedJSON(BASE_WEIGHT_KEY, rows);
     }
 
     function openWeightModal(dateStr = todayStr(), options = {}) {
@@ -2244,6 +2313,7 @@
     document.getElementById('nav-stats-btn').onclick    = () => switchMainTab('stats');
     document.getElementById('nav-settings-btn').onclick = () => switchMainTab('settings');
 
+    document.getElementById('save-profile-btn').onclick = () => saveProfile();
     document.getElementById('sync-btn').onclick = async () => {
       const syncBtn = document.getElementById('sync-btn');
       if (syncBtn.classList.contains('is-syncing')) return;
@@ -2258,6 +2328,8 @@
         syncBtn.classList.remove('is-syncing');
       }
     };
+    document.getElementById('change-password-btn').onclick = () => openPasswordModal();
+    document.getElementById('feedback-btn').onclick = () => openFeedbackModal();
     document.getElementById('signout-btn').onclick = async () => {
       if (!confirm('Are you sure you want to sign out?')) return;
       try {
@@ -2270,6 +2342,25 @@
         showToast('Sign out failed — check your connection');
       }
     };
+    document.getElementById('delete-account-btn').onclick = () => openDeleteAccountModal();
+    document.getElementById('feedback-cancel-btn').onclick = () => closeFeedbackModal();
+    document.getElementById('feedback-send-btn').onclick = () => sendFeedback();
+    document.getElementById('feedback-input').addEventListener('input', e => {
+      document.getElementById('feedback-send-btn').disabled = e.target.value.trim() === '';
+    });
+    document.getElementById('feedback-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('feedback-modal')) closeFeedbackModal();
+    });
+    document.getElementById('password-cancel-btn').onclick = () => closePasswordModal();
+    document.getElementById('password-save-btn').onclick = () => changePassword();
+    document.getElementById('password-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('password-modal')) closePasswordModal();
+    });
+    document.getElementById('delete-account-cancel-btn').onclick = () => closeDeleteAccountModal();
+    document.getElementById('delete-account-confirm-btn').onclick = () => deleteAccount();
+    document.getElementById('delete-account-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('delete-account-modal')) closeDeleteAccountModal();
+    });
 
     document.getElementById('htab-calendar').onclick   = () => switchHistorySubTab('calendar');
     document.getElementById('htab-list').onclick       = () => switchHistorySubTab('list');
@@ -2465,11 +2556,11 @@
     if (TEST_MODE) {
       document.getElementById('test-banner').hidden = false;
       document.getElementById('test-reset-btn').onclick = () => {
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem(OTHER_ACTIVITIES_KEY);
-        localStorage.removeItem(SKIP_REASONS_KEY);
-        localStorage.removeItem(JOURNAL_KEY);
-        localStorage.removeItem(WEIGHT_KEY);
+        removeCachedValue(BASE_STORAGE_KEY);
+        removeCachedValue(BASE_OTHER_ACTIVITIES_KEY);
+        removeCachedValue(BASE_SKIP_REASONS_KEY);
+        removeCachedValue(BASE_JOURNAL_KEY);
+        removeCachedValue(BASE_WEIGHT_KEY);
         cachedJournal = null;
         cachedWeight  = null;
         render();
@@ -2480,7 +2571,6 @@
 
     // ── Version stamp + sync status ───────────────────────────────────────────
     function updateSyncStamp() {
-      const el = document.getElementById('version-stamp');
       let status = '';
       if (syncOffline) {
         status = 'offline';
@@ -2488,10 +2578,231 @@
         const secsAgo = Math.floor((Date.now() - lastSyncedAt) / 1000);
         status = secsAgo < 60 ? 'synced just now' : `synced ${Math.floor(secsAgo / 60)}m ago`;
       }
-      el.textContent = status ? `v${VERSION} · ${status}` : `v${VERSION}`;
+      const stamp = status ? `v${VERSION} · ${status}` : `v${VERSION}`;
+      document.getElementById('version-stamp').textContent = stamp;
+      document.getElementById('settings-version-stamp').textContent = stamp;
     }
     updateSyncStamp();
     setInterval(updateSyncStamp, 30_000);
+
+    function renderSettingsAccount() {
+      const email = getUserEmail();
+      const meta = getUserMetadata();
+      document.getElementById('settings-email').textContent = email || 'No email found';
+      document.getElementById('settings-avatar').textContent = getUserInitial();
+      document.getElementById('settings-first-name').value = meta.first_name || '';
+      document.getElementById('settings-last-name').value = meta.last_name || '';
+      setProfileEditing(!hasSavedProfileName(meta));
+    }
+
+    function openFeedbackModal() {
+      document.getElementById('feedback-input').value = '';
+      document.getElementById('feedback-send-btn').disabled = true;
+      document.getElementById('feedback-modal').hidden = false;
+      document.getElementById('feedback-input').focus();
+    }
+
+    function closeFeedbackModal() {
+      document.getElementById('feedback-modal').hidden = true;
+    }
+
+    function openPasswordModal() {
+      document.getElementById('new-password-input').value = '';
+      document.getElementById('password-error').hidden = true;
+      document.getElementById('password-modal').hidden = false;
+      document.getElementById('new-password-input').focus();
+    }
+
+    function closePasswordModal() {
+      document.getElementById('password-modal').hidden = true;
+    }
+
+    function openDeleteAccountModal() {
+      document.getElementById('delete-account-modal').hidden = false;
+    }
+
+    function closeDeleteAccountModal() {
+      document.getElementById('delete-account-modal').hidden = true;
+    }
+
+    async function saveProfile() {
+      if (!sb) {
+        showToast('Could not connect to the server');
+        return;
+      }
+      const btn = document.getElementById('save-profile-btn');
+      if (!settingsProfileEditing) {
+        setProfileEditing(true);
+        document.getElementById('settings-first-name').focus();
+        return;
+      }
+      const firstName = document.getElementById('settings-first-name').value.trim();
+      const lastName = document.getElementById('settings-last-name').value.trim();
+      btn.disabled = true;
+      try {
+        const { data, error } = await sb.auth.updateUser({
+          data: {
+            ...getUserMetadata(),
+            first_name: firstName || null,
+            last_name: lastName || null,
+          },
+        });
+        if (error) throw error;
+        currentUser = data.user || currentUser;
+        renderSettingsAccount();
+        setProfileEditing(!(firstName || lastName));
+        showToast('Profile saved');
+      } catch (err) {
+        console.error('[profile] update failed:', err);
+        showToast('Could not save profile');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function sendPasswordReset() {
+      if (!sb) {
+        document.getElementById('login-error').textContent = 'Could not connect to the server. Please try again later.';
+        document.getElementById('login-error').hidden = false;
+        return;
+      }
+      const email = document.getElementById('login-email').value.trim();
+      const errorEl = document.getElementById('login-error');
+      errorEl.hidden = true;
+      if (!email) {
+        errorEl.textContent = 'Enter your email first';
+        errorEl.hidden = false;
+        return;
+      }
+      try {
+        const { error } = await sb.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}${window.location.pathname}`,
+        });
+        if (error) throw error;
+        showToast('Password reset email sent');
+      } catch (err) {
+        errorEl.textContent = authErrorMessage(err);
+        errorEl.hidden = false;
+      }
+    }
+
+    async function changePassword() {
+      if (!sb) {
+        document.getElementById('password-error').textContent = 'Could not connect to the server. Please try again later.';
+        document.getElementById('password-error').hidden = false;
+        return;
+      }
+      const password = document.getElementById('new-password-input').value;
+      const errorEl = document.getElementById('password-error');
+      errorEl.hidden = true;
+      if (password.length < 8) {
+        errorEl.textContent = 'Password must be at least 8 characters';
+        errorEl.hidden = false;
+        return;
+      }
+      const btn = document.getElementById('password-save-btn');
+      btn.disabled = true;
+      try {
+        const { data, error } = await sb.auth.updateUser({ password });
+        if (error) throw error;
+        currentUser = data.user || currentUser;
+        closePasswordModal();
+        showToast('Password updated');
+      } catch (err) {
+        console.error('[auth] password update failed:', err);
+        errorEl.textContent = authErrorMessage(err);
+        errorEl.hidden = false;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function sendFeedback() {
+      const body = document.getElementById('feedback-input').value.trim();
+      if (!body) return;
+      const btn = document.getElementById('feedback-send-btn');
+      btn.disabled = true;
+      try {
+        const payload = new URLSearchParams({
+          'form-name': 'feedback',
+          name: getUserDisplayName() || getUserEmail() || 'Unknown user',
+          email: getUserEmail() || '',
+          message: `Habits App Feedback\nFrom: ${getUserFeedbackIdentity()}\n\n${body}`,
+        });
+        const res = await fetch('/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: payload.toString(),
+        });
+        if (!res.ok) throw new Error(`Feedback submit failed: ${res.status}`);
+        closeFeedbackModal();
+        showToast('Feedback sent');
+      } catch (err) {
+        console.error('[feedback] submit failed:', err);
+        showToast('Could not send feedback');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function deleteAccount() {
+      if (!sb) {
+        showToast('Could not connect to the server');
+        return;
+      }
+      const btn = document.getElementById('delete-account-confirm-btn');
+      btn.disabled = true;
+      const userId = currentUser?.id;
+      const deletionRequestedAt = new Date().toISOString();
+      try {
+        const [historyRes, journalRes, weightRes, stateRes] = await Promise.all([
+          sb.from('history').delete().eq('user_id', userId),
+          sb.from('journal').delete().eq('user_id', userId),
+          sb.from('weight').delete().eq('user_id', userId),
+          sb.from('state').delete().eq('user_id', userId),
+        ]);
+        [historyRes, journalRes, weightRes, stateRes].forEach(res => {
+          if (res.error) throw res.error;
+        });
+
+        let usedFallback = false;
+        try {
+          const { error } = await sb.auth.admin.deleteUser(userId);
+          if (error) throw error;
+        } catch (adminErr) {
+          usedFallback = true;
+          console.warn('[account-delete] admin delete unavailable, flagging account instead:', adminErr);
+          const { error } = await sb.auth.updateUser({
+            data: {
+              ...getUserMetadata(),
+              deletion_requested_at: deletionRequestedAt,
+              deletion_requested_email: getUserEmail(),
+              deletion_requested_name: getUserDisplayName() || null,
+            },
+          });
+          if (error) throw error;
+        }
+
+        closeDeleteAccountModal();
+        cachedData = null;
+        cachedJournal = null;
+        cachedWeight = null;
+        removeCachedValue(BASE_STORAGE_KEY);
+        removeCachedValue(BASE_JOURNAL_KEY);
+        removeCachedValue(BASE_WEIGHT_KEY);
+        removeCachedValue(BASE_OTHER_ACTIVITIES_KEY);
+        removeCachedValue(BASE_SKIP_REASONS_KEY);
+        showToast(usedFallback ? 'Goodbye - account flagged for deletion' : 'Goodbye');
+        setTimeout(() => {
+          sb.auth.signOut();
+        }, 1200);
+      } catch (err) {
+        console.error('[account-delete] failed:', err);
+        showToast('Could not delete account');
+      } finally {
+        btn.disabled = false;
+      }
+    }
 
     function toggleTestMode() {
       const url = new URL(window.location.href);
@@ -2533,13 +2844,16 @@
       document.getElementById('signup-panel').hidden = true;
       document.getElementById('login-panel').hidden = false;
     };
+    document.getElementById('forgot-password-btn').onclick = () => sendPasswordReset();
     // ────────────────────────────────────────────────────────────────────────
 
     // ── Auth helpers ─────────────────────────────────────────────────────────
     function showApp() {
+      migrateLegacyCacheKeys();
       document.getElementById('auth-screen').hidden = true;
       document.getElementById('app-container').hidden = false;
       document.getElementById('bottom-nav').hidden = false;
+      renderSettingsAccount();
     }
 
     function showAuthScreen() {
@@ -2557,6 +2871,9 @@
       document.getElementById('signup-password').value = '';
       document.getElementById('signup-error').hidden          = true;
       document.getElementById('signup-password-error').hidden = true;
+      document.getElementById('feedback-modal').hidden = true;
+      document.getElementById('password-modal').hidden = true;
+      document.getElementById('delete-account-modal').hidden = true;
       // Always land on the login panel
       document.getElementById('login-panel').hidden  = false;
       document.getElementById('signup-panel').hidden = true;
@@ -2583,6 +2900,7 @@
     // Bundles the three calls that kick off the main app after auth is confirmed.
     function initApp() {
       switchMainTab('today');
+      renderSettingsAccount();
       render();
       loadJournal().then(() => {
         renderJournalCard();
@@ -2612,6 +2930,9 @@
       document.getElementById(id).addEventListener('keydown', e => {
         if (e.key === 'Enter') document.getElementById('signup-btn').click();
       });
+    });
+    document.getElementById('new-password-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('password-save-btn').click();
     });
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -2680,6 +3001,12 @@
         if (event === 'SIGNED_OUT') {
           currentUser = null;
           showAuthScreen();
+        } else if (event === 'PASSWORD_RECOVERY' && session) {
+          currentUser = session.user;
+          showApp();
+          initApp();
+          openPasswordModal();
+          showToast('Choose a new password');
         } else if (session) {
           currentUser = session.user;
         }

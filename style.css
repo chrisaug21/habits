@@ -1861,37 +1861,159 @@
     .settings-section {
       display: flex;
       flex-direction: column;
-      align-items: center;
+      gap: 10px;
       padding: 8px 0;
     }
 
-    .settings-sync-btn {
+    .settings-section-title {
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      font-weight: 700;
+      padding: 0 4px;
+    }
+
+    .settings-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .settings-account-row {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 12px;
+    }
+
+    .settings-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 999px;
       background: var(--accent);
       color: #fff;
-      border: none;
+      display: grid;
+      place-items: center;
+      font-size: 1rem;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .settings-account-copy {
+      min-width: 0;
+    }
+
+    .settings-account-label {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .settings-account-email {
+      font-size: 0.98rem;
+      color: var(--text-primary);
+      overflow-wrap: anywhere;
+    }
+
+    .settings-form-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .settings-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+    }
+
+    .settings-input {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-size: 1rem;
+      color: var(--text-primary);
+      outline: none;
+      -webkit-appearance: none;
+      font-family: inherit;
+      width: 100%;
+    }
+
+    .settings-input:focus {
+      border-color: var(--border-active);
+    }
+
+    .settings-input::placeholder {
+      color: var(--text-dim);
+    }
+
+    .settings-input.is-readonly {
+      color: var(--text-secondary);
+      background: rgba(26, 26, 40, 0.55);
+      border-color: rgba(34, 34, 53, 0.8);
+    }
+
+    .settings-primary-btn,
+    .settings-secondary-btn,
+    .settings-signout-btn,
+    .settings-delete-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
       border-radius: 12px;
-      padding: 14px 28px;
+      padding: 14px 16px;
       font-size: 1rem;
       font-weight: 600;
       cursor: pointer;
       min-height: 48px;
+      font-family: inherit;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      transition: background 0.15s, opacity 0.15s, border-color 0.15s;
     }
 
-    .settings-sync-btn i,
-    .settings-sync-btn svg {
+    .settings-primary-btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+    }
+
+    .settings-primary-btn:active {
+      background: var(--accent-dark);
+    }
+
+    .settings-primary-btn i,
+    .settings-primary-btn svg,
+    .settings-secondary-btn i,
+    .settings-secondary-btn svg,
+    .settings-signout-btn i,
+    .settings-signout-btn svg,
+    .settings-delete-btn i,
+    .settings-delete-btn svg {
       flex-shrink: 0;
     }
 
-    .settings-sync-btn.is-syncing i,
-    .settings-sync-btn.is-syncing svg {
+    .settings-primary-btn.is-syncing i,
+    .settings-primary-btn.is-syncing svg {
       animation: settings-sync-spin 0.8s linear infinite;
     }
 
-    .settings-sync-btn:active {
-      opacity: 0.8;
+    .settings-secondary-btn {
+      background: var(--surface2);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+
+    .settings-secondary-btn:active {
+      background: #232339;
     }
 
     @keyframes settings-sync-spin {
@@ -2050,30 +2172,72 @@
       -webkit-tap-highlight-color: transparent;
     }
 
+    .auth-inline-link {
+      align-self: flex-end;
+      margin-top: -4px;
+    }
+
     .auth-link-btn:active {
       opacity: 0.7;
     }
 
-    /* Sign-out button in settings */
     .settings-signout-btn {
-      display: flex;
-      align-items: center;
-      gap: 8px;
       background: transparent;
       color: var(--red);
       border: 1px solid var(--red);
-      border-radius: 12px;
-      padding: 14px 28px;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      min-height: 48px;
-      font-family: inherit;
-      -webkit-tap-highlight-color: transparent;
-      touch-action: manipulation;
-      transition: background 0.15s;
     }
 
     .settings-signout-btn:active {
       background: rgba(255, 85, 85, 0.1);
+    }
+
+    .settings-danger-section {
+      margin-top: 8px;
+    }
+
+    .settings-danger-title {
+      color: #ff9b9b;
+    }
+
+    .settings-danger-card {
+      border-color: rgba(255, 85, 85, 0.35);
+      background: linear-gradient(180deg, rgba(255, 85, 85, 0.08), rgba(19, 19, 30, 0.96));
+    }
+
+    .settings-danger-copy {
+      font-size: 0.92rem;
+      color: #ffd1d1;
+      line-height: 1.5;
+    }
+
+    .settings-delete-btn {
+      background: var(--red);
+      color: #fff;
+      border: none;
+    }
+
+    .settings-delete-btn:active {
+      opacity: 0.85;
+    }
+
+    .settings-delete-warning {
+      font-size: 0.95rem;
+      line-height: 1.55;
+      color: var(--text-primary);
+      margin: 10px 0 0;
+    }
+
+    .modal-danger-btn {
+      background: var(--red);
+    }
+
+    .modal-danger-btn:active:not(:disabled) {
+      background: #d54545;
+    }
+
+    .settings-footer {
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      margin: 12px 0 4px;
     }
