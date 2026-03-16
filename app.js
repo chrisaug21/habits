@@ -34,7 +34,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.5.6';
+    const VERSION = '1.5.7';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -46,9 +46,12 @@
     const BASE_WELCOMED_KEY = 'habits_welcomed';
     // ────────────────────────────────────────────────────────────────────────
 
-    function getScopedStorageKey(baseKey) {
-      const userId = currentUser?.id;
+    function getScopedStorageKeyForUser(baseKey, userId = currentUser?.id) {
       return userId ? `${userId}:${baseKey}` : null;
+    }
+
+    function getScopedStorageKey(baseKey) {
+      return getScopedStorageKeyForUser(baseKey);
     }
 
     function readCachedJSON(baseKey, fallback) {
@@ -70,9 +73,23 @@
       localStorage.removeItem(key);
     }
 
-    function hasDismissedWelcome() {
-      const key = getScopedStorageKey(BASE_WELCOMED_KEY);
-      return key ? localStorage.getItem(key) === '1' : false;
+    function getWelcomeState(userId = currentUser?.id) {
+      const key = getScopedStorageKeyForUser(BASE_WELCOMED_KEY, userId);
+      return key ? localStorage.getItem(key) : null;
+    }
+
+    function hasPendingWelcome(userId = currentUser?.id) {
+      return getWelcomeState(userId) === 'pending';
+    }
+
+    function hasDismissedWelcome(userId = currentUser?.id) {
+      return getWelcomeState(userId) === '1';
+    }
+
+    function markWelcomePending(userId = currentUser?.id) {
+      const key = getScopedStorageKeyForUser(BASE_WELCOMED_KEY, userId);
+      if (!key) return;
+      localStorage.setItem(key, 'pending');
     }
 
     function markWelcomeDismissed() {
@@ -359,7 +376,7 @@
     }
 
     let settingsProfileEditing = true;
-    let shouldShowWelcomeScreen = false;
+    let lastFocusedBeforeWelcome = null;
 
     function hasSavedProfileName(meta = getUserMetadata()) {
       return !!((meta.first_name || '').trim() || (meta.last_name || '').trim());
@@ -2611,14 +2628,25 @@
     }
 
     function openWelcomeScreen() {
-      document.getElementById('welcome-screen').hidden = false;
+      const screen = document.getElementById('welcome-screen');
+      lastFocusedBeforeWelcome = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      screen.hidden = false;
+      document.getElementById('app-container').inert = true;
+      document.getElementById('bottom-nav').inert = true;
       if (typeof lucide !== 'undefined') lucide.createIcons();
+      document.getElementById('welcome-continue-btn').focus();
     }
 
     function closeWelcomeScreen() {
       markWelcomeDismissed();
-      shouldShowWelcomeScreen = false;
-      document.getElementById('welcome-screen').hidden = true;
+      const screen = document.getElementById('welcome-screen');
+      screen.hidden = true;
+      document.getElementById('app-container').inert = false;
+      document.getElementById('bottom-nav').inert = false;
+      if (lastFocusedBeforeWelcome && typeof lastFocusedBeforeWelcome.focus === 'function') {
+        lastFocusedBeforeWelcome.focus();
+      }
+      lastFocusedBeforeWelcome = null;
     }
 
     function openFeedbackModal() {
@@ -2901,6 +2929,9 @@
       document.getElementById('password-modal').hidden = true;
       document.getElementById('delete-account-modal').hidden = true;
       document.getElementById('welcome-screen').hidden = true;
+      document.getElementById('app-container').inert = false;
+      document.getElementById('bottom-nav').inert = false;
+      lastFocusedBeforeWelcome = null;
       // Always land on the login panel
       document.getElementById('login-panel').hidden  = false;
       document.getElementById('signup-panel').hidden = true;
@@ -2929,7 +2960,7 @@
       switchMainTab('today');
       renderSettingsAccount();
       render();
-      if (shouldShowWelcomeScreen && !hasDismissedWelcome()) {
+      if (hasPendingWelcome() && !hasDismissedWelcome()) {
         openWelcomeScreen();
       }
       loadJournal().then(() => {
@@ -3005,6 +3036,7 @@
       try {
         const { data, error } = await sb.auth.signUp({ email, password });
         if (error) throw error;
+        markWelcomePending(data.user?.id);
         if (!data.session) {
           // Supabase email confirmation is enabled — account created but not yet
           // confirmed. Do not unlock the app; prompt the user to check their inbox.
@@ -3013,7 +3045,6 @@
           return;
         }
         currentUser = data.user;
-        shouldShowWelcomeScreen = true;
         showApp();
         initApp();
       } catch (err) {

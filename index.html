@@ -71,13 +71,13 @@
 
   </div>
 
-  <div id="welcome-screen" hidden>
+  <div id="welcome-screen" hidden role="dialog" aria-modal="true" aria-labelledby="welcome-title">
     <div class="welcome-card">
       <div class="welcome-badge">
         <i data-lucide="sparkles"></i>
         Welcome
       </div>
-      <h2 class="welcome-title">Welcome to Habits</h2>
+      <h2 class="welcome-title" id="welcome-title">Welcome to Habits</h2>
       <div class="welcome-section">
         <p class="welcome-copy">Habits is a simple daily tracker built around three things:
 tracking workouts (with suggestions!), tracking your weight (optionally), and completing your morning journal for better mindfulness.</p>
@@ -88,7 +88,7 @@ tracking workouts (with suggestions!), tracking your weight (optionally), and co
           <span>Your workout rotation</span>
         </div>
         <p class="welcome-copy">The app suggests workouts each day based on a rotation, including
-cycling, strength circuits (upper body push workouts, upper body pull workouts, lower body workouts), as well as yoga. Just tap Done when you finish, or Skip Today if you're taking a rest day. The rotation picks back up the next day. You can also add custom workouts if you did something else (like Zumba, pickleball or even snow shoveling!).</p>
+cycling, strength circuits (upper body push workouts, upper body pull workouts, lower body workouts), as well as yoga. Just tap Done when you finish, or Log activity if you did something else. The rotation picks back up the next day. You can also add custom workouts if you did something else (like Zumba, pickleball or even snow shoveling!).</p>
       </div>
       <div class="welcome-section">
         <div class="welcome-section-head">
@@ -109,9 +109,9 @@ focus on. Takes about 60 seconds and helps ground you in being mindful and prese
       <div class="welcome-section">
         <div class="welcome-section-head">
           <i data-lucide="settings"></i>
-          <span>User Preferences</span>
+          <span>Settings</span>
         </div>
-        <p class="welcome-copy">Choose which habits are enabled from the settings panel -- if you're not interested in building habits around journaling or tracking your weight, you can turn then off!</p>
+        <p class="welcome-copy">Use the Settings panel to manage your account details, change your password, send feedback, reopen this tutorial, sync data, or sign out.</p>
       </div>
       <button class="welcome-cta" id="welcome-continue-btn">
         <span>Got it, let's go</span>
