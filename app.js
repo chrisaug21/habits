@@ -34,7 +34,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.5.3';
+    const VERSION = '1.5.4';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -43,6 +43,7 @@
     const BASE_SKIP_REASONS_KEY = `${BASE_STORAGE_KEY}_skip_reasons`;
     const BASE_JOURNAL_KEY = TEST_MODE ? 'habits_test_journal' : 'habits_journal';
     const BASE_WEIGHT_KEY = TEST_MODE ? 'habits_test_weight' : 'habits_weight';
+    const BASE_WELCOMED_KEY = 'habits_welcomed';
     // ────────────────────────────────────────────────────────────────────────
 
     function getScopedStorageKey(baseKey) {
@@ -67,6 +68,17 @@
       const key = getScopedStorageKey(baseKey);
       if (!key) return;
       localStorage.removeItem(key);
+    }
+
+    function hasDismissedWelcome() {
+      const key = getScopedStorageKey(BASE_WELCOMED_KEY);
+      return key ? localStorage.getItem(key) === '1' : false;
+    }
+
+    function markWelcomeDismissed() {
+      const key = getScopedStorageKey(BASE_WELCOMED_KEY);
+      if (!key) return;
+      localStorage.setItem(key, '1');
     }
 
     // One-time migration from legacy shared keys to user-scoped keys.
@@ -347,6 +359,7 @@
     }
 
     let settingsProfileEditing = true;
+    let shouldShowWelcomeScreen = false;
 
     function hasSavedProfileName(meta = getUserMetadata()) {
       return !!((meta.first_name || '').trim() || (meta.last_name || '').trim());
@@ -2312,6 +2325,7 @@
     document.getElementById('nav-history-btn').onclick  = () => switchMainTab('history');
     document.getElementById('nav-stats-btn').onclick    = () => switchMainTab('stats');
     document.getElementById('nav-settings-btn').onclick = () => switchMainTab('settings');
+    document.getElementById('welcome-continue-btn').onclick = () => closeWelcomeScreen();
 
     document.getElementById('save-profile-btn').onclick = () => saveProfile();
     document.getElementById('sync-btn').onclick = async () => {
@@ -2595,6 +2609,17 @@
       setProfileEditing(!hasSavedProfileName(meta));
     }
 
+    function openWelcomeScreen() {
+      document.getElementById('welcome-screen').hidden = false;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    function closeWelcomeScreen() {
+      markWelcomeDismissed();
+      shouldShowWelcomeScreen = false;
+      document.getElementById('welcome-screen').hidden = true;
+    }
+
     function openFeedbackModal() {
       document.getElementById('feedback-input').value = '';
       document.getElementById('feedback-send-btn').disabled = true;
@@ -2874,6 +2899,7 @@
       document.getElementById('feedback-modal').hidden = true;
       document.getElementById('password-modal').hidden = true;
       document.getElementById('delete-account-modal').hidden = true;
+      document.getElementById('welcome-screen').hidden = true;
       // Always land on the login panel
       document.getElementById('login-panel').hidden  = false;
       document.getElementById('signup-panel').hidden = true;
@@ -2902,6 +2928,9 @@
       switchMainTab('today');
       renderSettingsAccount();
       render();
+      if (shouldShowWelcomeScreen && !hasDismissedWelcome()) {
+        openWelcomeScreen();
+      }
       loadJournal().then(() => {
         renderJournalCard();
         if (historyViewActive && historySubTab === 'calendar' && cachedData) {
@@ -2983,6 +3012,7 @@
           return;
         }
         currentUser = data.user;
+        shouldShowWelcomeScreen = true;
         showApp();
         initApp();
       } catch (err) {

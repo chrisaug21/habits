@@ -2,7 +2,7 @@
 
 A mobile-first PWA for daily habits — workout tracking, journaling, and intention-setting.
 
-**Current version: 1.5.3**
+**Current version: 1.5.4**
 
 Live at: https://habits.chrisaug.com
 
@@ -79,6 +79,7 @@ The Today tab is a daily habit dashboard with three cards. All entry happens via
 - Offline-capable PWA, installable on iPhone home screen; entries logged while offline are automatically synced to Supabase the next time the app loads with a connection
 - **Account + Settings** — Settings shows the signed-in email, avatar initial, optional first/last name fields stored in Supabase auth metadata, Sync data now, Change password, Send feedback, Sign out, and a Danger Zone delete-account flow
 - **Auth recovery** — login includes a Forgot password link that sends a Supabase password reset email; recovery links open the app and prompt for a new password
+- **First-time welcome screen** — brand-new signups see a one-time welcome overlay before the Today tab, with a quick walkthrough of workouts, journaling, weight tracking, and settings; dismiss state is stored per user in localStorage
 - **Test mode** — hidden feature; triple-tap the version stamp (bottom of Today screen) or press Alt+Shift+T to toggle; shows an amber banner confirming no real data is affected; uses isolated localStorage keys (`habits_test`, `habits_test_other_activities`, `habits_test_journal`) and skips all Supabase calls
 - **Sync status** — the version stamp at the bottom of the Today screen shows `synced just now` / `synced Xm ago` / `offline`; updates after every successful or failed Supabase read/write
 
@@ -149,6 +150,7 @@ create policy "allow all" on weight for all using (true) with check (true);
 | `<user-id>:habits_v1_skip_reasons` | `string[]` | Up to 10 most-recently used skip reasons |
 | `<user-id>:habits_journal` | `array` | Journal entries as `[{ date, intention, gratitude, one_thing }]`, newest first |
 | `<user-id>:habits_weight` | `array` | Weight entries as `[{ date, value_lbs }]`, newest first |
+| `<user-id>:habits_welcomed` | `string` | One-time dismissal flag for the welcome screen (`'1'` after the user closes it) |
 
 **localStorage migration:** On first load after this release, the app automatically migrates legacy shared keys like `wmw_v1`, `habits_v1`, and `habits_journal` into the signed-in user's namespaced keys, then deletes the old shared key.
 

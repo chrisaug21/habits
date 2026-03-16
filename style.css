@@ -382,6 +382,118 @@
       padding: 4px 0 16px;
     }
 
+    #welcome-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 320;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: calc(env(safe-area-inset-top, 0px) + 20px) 16px
+               calc(env(safe-area-inset-bottom, 0px) + 20px);
+      background:
+        radial-gradient(circle at top, rgba(108, 99, 255, 0.22), transparent 38%),
+        rgba(13, 13, 20, 0.92);
+      backdrop-filter: blur(10px);
+      overflow-y: auto;
+    }
+
+    .welcome-card {
+      width: min(100%, 460px);
+      background: linear-gradient(180deg, rgba(26, 26, 40, 0.98), rgba(19, 19, 30, 0.98));
+      border: 1px solid rgba(108, 99, 255, 0.2);
+      border-radius: 28px;
+      padding: 24px 20px;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .welcome-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      align-self: flex-start;
+      border-radius: 999px;
+      background: rgba(108, 99, 255, 0.14);
+      color: #c8c4ff;
+      padding: 8px 12px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .welcome-title {
+      font-size: 1.8rem;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      color: var(--text-primary);
+    }
+
+    .welcome-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .welcome-section:last-of-type {
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+
+    .welcome-section-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-primary);
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .welcome-section-head i,
+    .welcome-section-head svg,
+    .welcome-badge i,
+    .welcome-badge svg,
+    .welcome-cta i,
+    .welcome-cta svg {
+      flex-shrink: 0;
+    }
+
+    .welcome-copy {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    .welcome-cta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      min-height: 54px;
+      border: none;
+      border-radius: 16px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      transition: background 0.15s, transform 0.15s;
+    }
+
+    .welcome-cta:active {
+      background: var(--accent-dark);
+      transform: translateY(1px);
+    }
+
     .tomorrow-preview {
       background: var(--surface);
       border: 1px solid var(--border);
