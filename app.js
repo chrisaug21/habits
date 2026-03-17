@@ -34,7 +34,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.5.13';
+    const VERSION = '1.5.14';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -2062,6 +2062,8 @@
       // ── Empty state ───────────────────────────────────────────────────────
       if (realWorkouts.length === 0) {
         container.innerHTML = '<div class="stats-empty">No data yet.</div>';
+        document.getElementById('view-stats').appendChild(document.getElementById('weight-chart-section'));
+        renderWeightChart();
         if (typeof lucide !== 'undefined') lucide.createIcons();
         return;
       }
