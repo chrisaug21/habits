@@ -2,7 +2,7 @@
 
 A mobile-first PWA for daily habits — workout tracking, journaling, and intention-setting.
 
-**Current version: 1.5.14**
+**Current version: 1.5.15**
 
 Live at: https://habits.chrisaug.com
 
@@ -41,7 +41,7 @@ The rotation is position-based, not time-based — it always picks up where it l
 Bottom nav: **Today · Log · Stats** (three tabs)
 
 ### Today tab
-The Today tab is a daily habit dashboard with three cards. All entry happens via modals — the tab itself is read-only with action buttons.
+The Today tab is a daily habit dashboard with customizable cards. All entry happens via modals — the tab itself is read-only with action buttons.
 
 **Workout card**
 - Shows today's suggested workout (Next Up) with rotation, Done!, and Undo logic unchanged
@@ -61,6 +61,10 @@ The Today tab is a daily habit dashboard with three cards. All entry happens via
 - Complete state: shows logged weight in lbs + Done ✓ badge + Edit button
 - Weight modal — large number input (lbs, step 0.1); upserts to the Supabase `weight` table
 
+**Today card visibility**
+- Settings → Today Tab lets each user show or hide the Workout cards, Journal card, and Weight card independently
+- Preferences are stored per account in Supabase and persist after reload
+
 ### Log tab
 - **Calendar** (default): monthly grid with prev/next month navigation; each day shows a purple workout icon for completed workouts, an amber moon for rest/skip days, a teal zap icon for other activities, a dimmed projected icon for future days, or is empty for past days with no data; days with a journal entry show a small **green dot**; days with weight logged show a small **coral dot**; today is subtly highlighted; all past days are tappable
 - **List**: chronological log of all past entries (newest first), with workout icon, date, day of week, and name
@@ -77,7 +81,7 @@ The Today tab is a daily habit dashboard with three cards. All entry happens via
 
 ### Other
 - Offline-capable PWA, installable on iPhone home screen; entries logged while offline are automatically synced to Supabase the next time the app loads with a connection
-- **Account + Settings** — Settings shows the signed-in email, avatar initial, optional first/last name fields stored in Supabase auth metadata, a Tutorial shortcut, Sync data now, Change password, Send feedback, Sign out, and a Danger Zone delete-account flow
+- **Account + Settings** — Settings shows the signed-in email, avatar initial, optional first/last name fields stored in Supabase auth metadata, Today Tab card toggles, a Tutorial shortcut, Sync data now, Change password, Send feedback, Sign out, and a Danger Zone delete-account flow
 - **Auth recovery** — login includes a Forgot password link that sends a Supabase password reset email; recovery links open the app and prompt for a new password
 - **First-time welcome screen** — brand-new signups see a one-time welcome overlay before the Today tab, with a quick walkthrough of workouts, journaling, weight tracking, and settings; dismiss state is stored per user in localStorage
 - **Test mode** — hidden feature; triple-tap the version stamp (bottom of Today screen) or press Alt+Shift+T to toggle; shows an amber banner confirming no real data is affected; uses isolated localStorage keys (`habits_test`, `habits_test_other_activities`, `habits_test_journal`) and skips all Supabase calls
@@ -128,6 +132,27 @@ Data is stored in **Supabase** (primary) with **localStorage** as an offline fal
 | `date` | `date` | The weight date — unique, one entry per day |
 | `value_lbs` | `numeric(5,1)` | Weight in lbs |
 | `created_at` | `timestamptz` | Set automatically by Supabase |
+
+**`user_preferences`** — one row per user for account-level UI settings
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | `uuid` | Primary key |
+| `user_id` | `uuid` | Unique reference to `auth.users(id)` |
+| `show_workout_card` | `boolean` | Controls Today workout + tomorrow preview visibility |
+| `show_journal_card` | `boolean` | Controls Today journal card visibility |
+| `show_weight_card` | `boolean` | Controls Today weight card visibility |
+| `created_at` | `timestamptz` | Set automatically by Supabase |
+| `updated_at` | `timestamptz` | Set automatically by Supabase |
+
+Required database setup:
+- `user_id` must stay unique per user. The app uses `upsert(..., { onConflict: ['user_id'] })`, so Supabase needs the unique constraint / index `user_preferences_user_id_key` on `user_id`.
+- Row Level Security must be enabled with `alter table public.user_preferences enable row level security;`
+- Reads should use a policy such as `user_preferences_select_own` with `for select using (auth.uid() = user_id)`
+- Inserts should use a policy such as `user_preferences_insert_own` with `for insert with check (auth.uid() = user_id)`
+- Updates should use a policy such as `user_preferences_update_own` with `for update using (auth.uid() = user_id)`
+
+These policies keep reads, inserts, and updates scoped to the signed-in user and should remain in place after any auth-related Supabase changes.
 
 Migration SQL (run manually in Supabase SQL editor):
 ```sql
