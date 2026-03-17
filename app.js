@@ -34,7 +34,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.5.10';
+    const VERSION = '1.5.11';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -339,20 +339,32 @@
       return `Last done ${days} days ago`;
     }
 
-    function lastDoneBadge(days) {
-      if (days === null) return { text: 'Never', className: 'is-red' };
-      if (days >= 8) return { text: `${days}d ago`, className: 'is-red' };
-      if (days >= 4) return { text: `${days}d ago`, className: 'is-yellow' };
-      return { text: `${days}d ago`, className: 'is-green' };
+    function lastDoneBadge(days, options = {}) {
+      const { prefixLastDone = false } = options;
+      if (days === null) return { text: 'Never', className: 'is-red', doneToday: false };
+      if (days === 0) return { text: 'Today', className: 'is-green', doneToday: true };
+      const text = prefixLastDone ? `Last done ${days}d ago` : `${days}d ago`;
+      if (days >= 8) return { text, className: 'is-red', doneToday: false };
+      if (days >= 4) return { text, className: 'is-yellow', doneToday: false };
+      return { text, className: 'is-green', doneToday: false };
     }
 
-    function renderLastDonePill(el, days) {
+    function renderLastDonePill(el, days, options = {}) {
       if (!el) return;
-      const badge = lastDoneBadge(days);
+      const badge = lastDoneBadge(days, options);
       el.hidden = false;
       const baseClass = el.dataset.baseClass ? `${el.dataset.baseClass} ` : '';
       el.className = `${baseClass}last-done-pill ${badge.className}`.trim();
-      el.textContent = badge.text;
+      if (badge.doneToday) {
+        el.innerHTML = '';
+        el.appendChild(document.createTextNode(badge.text));
+        const icon = document.createElement('i');
+        icon.setAttribute('data-lucide', 'check');
+        icon.className = 'last-done-pill-icon';
+        el.appendChild(icon);
+      } else {
+        el.textContent = badge.text;
+      }
     }
 
     let toastTimer;
@@ -2527,17 +2539,17 @@
 
       const suggestionLastDoneEl = document.getElementById('suggestion-last-done');
       if (heroState === 'default') {
-        renderLastDonePill(suggestionLastDoneEl, sugDays);
+        renderLastDonePill(suggestionLastDoneEl, sugDays, { prefixLastDone: true });
       } else {
         suggestionLastDoneEl.hidden = true;
       }
 
       // Subtitle
       document.getElementById('suggestion-subtitle').textContent =
-        heroState === 'done'    ? 'Completed today'       :
-        heroState === 'skipped' ? 'Day off logged'        :
+        heroState === 'done'    ? 'Completed today' :
+        heroState === 'skipped' ? 'Day off logged'  :
         heroState === 'other'   ? 'Other activity logged' :
-                                   lastDoneText(sugDays, false);
+                                   '';
 
       // Buttons — mutually exclusive per state
       const mainBtn      = document.getElementById('main-done-btn');
@@ -2594,7 +2606,8 @@
       tomorrowNameEl.appendChild(document.createTextNode(tomorrowWorkout.name));
       renderLastDonePill(
         document.getElementById('tomorrow-last-done'),
-        data[tomorrowWorkout.id] ? daysSince(data[tomorrowWorkout.id]) : null
+        data[tomorrowWorkout.id] ? daysSince(data[tomorrowWorkout.id]) : null,
+        { prefixLastDone: true }
       );
 
       // First-use prompt — shown only to new users who have no history yet
