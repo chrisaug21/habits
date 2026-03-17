@@ -34,7 +34,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.5.14';
+    const VERSION = '1.5.15';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -44,6 +44,11 @@
     const BASE_JOURNAL_KEY = TEST_MODE ? 'habits_test_journal' : 'habits_journal';
     const BASE_WEIGHT_KEY = TEST_MODE ? 'habits_test_weight' : 'habits_weight';
     const BASE_WELCOMED_KEY = 'habits_welcomed';
+    const DEFAULT_USER_PREFERENCES = Object.freeze({
+      show_workout_card: true,
+      show_journal_card: true,
+      show_weight_card: true,
+    });
     // ────────────────────────────────────────────────────────────────────────
 
     function getScopedStorageKeyForUser(baseKey, userId = currentUser?.id) {
@@ -96,6 +101,14 @@
       const key = getScopedStorageKey(BASE_WELCOMED_KEY);
       if (!key) return;
       localStorage.setItem(key, '1');
+    }
+
+    function normalizeUserPreferences(row) {
+      return {
+        show_workout_card: row?.show_workout_card ?? DEFAULT_USER_PREFERENCES.show_workout_card,
+        show_journal_card: row?.show_journal_card ?? DEFAULT_USER_PREFERENCES.show_journal_card,
+        show_weight_card: row?.show_weight_card ?? DEFAULT_USER_PREFERENCES.show_weight_card,
+      };
     }
 
     // One-time migration from legacy shared keys to user-scoped keys.
@@ -274,6 +287,92 @@
       writeCachedJSON(BASE_STORAGE_KEY, data);
     }
 
+    async function insertDefaultUserPreferences() {
+      if (!sb || !currentUser?.id) return { ...DEFAULT_USER_PREFERENCES };
+
+      const row = {
+        user_id: currentUser.id,
+        show_workout_card: DEFAULT_USER_PREFERENCES.show_workout_card,
+        show_journal_card: DEFAULT_USER_PREFERENCES.show_journal_card,
+        show_weight_card: DEFAULT_USER_PREFERENCES.show_weight_card,
+      };
+      const { data, error } = await sb.from('user_preferences').insert(row).select('*').single();
+      if (error) return { ...DEFAULT_USER_PREFERENCES };
+      return normalizeUserPreferences(data || row);
+    }
+
+    async function loadUserPreferences() {
+      if (!sb || TEST_MODE || !currentUser?.id) {
+        userPreferences = { ...DEFAULT_USER_PREFERENCES };
+        return userPreferences;
+      }
+
+      try {
+        const { data, error } = await sb.from('user_preferences').select('*').eq('user_id', currentUser.id)
+          .order('created_at', { ascending: false }).limit(1).maybeSingle();
+        if (error) throw error;
+
+        if (!data) {
+          userPreferences = await insertDefaultUserPreferences();
+          return userPreferences;
+        }
+
+        userPreferences = normalizeUserPreferences(data);
+        return userPreferences;
+      } catch (err) {
+        console.warn('[preferences] load failed, using defaults:', err);
+        userPreferences = { ...DEFAULT_USER_PREFERENCES };
+        return userPreferences;
+      }
+    }
+
+    function renderSettingsTodayTab() {
+      document.getElementById('toggle-workout-card').checked = !!userPreferences.show_workout_card;
+      document.getElementById('toggle-journal-card').checked = !!userPreferences.show_journal_card;
+      document.getElementById('toggle-weight-card').checked = !!userPreferences.show_weight_card;
+    }
+
+    async function saveUserPreference(key, value) {
+      if (TEST_MODE) {
+        userPreferences = { ...userPreferences, [key]: value };
+        return;
+      }
+      if (!sb || !currentUser?.id) throw new Error('Supabase client not available');
+
+      const nextPreferences = { ...userPreferences, [key]: value };
+      const canonicalRow = {
+        user_id: currentUser.id,
+        show_workout_card: nextPreferences.show_workout_card,
+        show_weight_card: nextPreferences.show_weight_card,
+        show_journal_card: nextPreferences.show_journal_card,
+      };
+      const { error } = await sb.from('user_preferences').upsert(canonicalRow, { onConflict: ['user_id'] });
+      if (error) throw error;
+      userPreferences = nextPreferences;
+    }
+
+    async function handlePreferenceToggle(key, checked, inputId) {
+      const input = document.getElementById(inputId);
+      const previous = !!userPreferences[key];
+
+      input.disabled = true;
+      userPreferences = { ...userPreferences, [key]: checked };
+      renderSettingsTodayTab();
+      await render(cachedData);
+
+      try {
+        await saveUserPreference(key, checked);
+      } catch (err) {
+        console.error('[preferences] update failed:', err);
+        userPreferences = { ...userPreferences, [key]: previous };
+        renderSettingsTodayTab();
+        await render(cachedData);
+        showToast('Could not save setting');
+      } finally {
+        input.disabled = false;
+      }
+    }
+
     function todayStr() {
       const d = new Date();
       const y = d.getFullYear();
@@ -427,6 +526,7 @@
     let isProcessing = false;
     let lastSyncedAt = null;  // Date.now() timestamp of last successful Supabase sync
     let syncOffline  = false; // true if the last Supabase attempt failed
+    let userPreferences = { ...DEFAULT_USER_PREFERENCES };
 
     function setButtonsDisabled(disabled) {
       ['main-done-btn', 'log-other-btn', 'undo-btn'].forEach(id => {
@@ -1294,6 +1394,7 @@
     }
 
     function renderJournalCard() {
+      if (!userPreferences.show_journal_card) return;
       const journal = getJournalSync() || [];
       const entry = journal.find(e => e.date === todayStr());
       const content = document.getElementById('journal-card-content');
@@ -1452,7 +1553,7 @@
     // the sync-btn handler can distinguish a real sync from a silent fallback.
     async function syncAllData() {
       if (!sb) throw new Error('No Supabase connection');
-      const [stateRes, historyRes, journalRes, weightRes] = await Promise.all([
+      const [stateRes, historyRes, journalRes, weightRes, preferencesRes] = await Promise.all([
         sb.from('state').select('*').eq('user_id', currentUser?.id)
           .order('id', { ascending: false }).limit(1).maybeSingle(),
         sb.from('history').select('*').eq('user_id', currentUser?.id)
@@ -1461,18 +1562,23 @@
           .order('date', { ascending: false }),
         sb.from('weight').select('date, value_lbs').eq('user_id', currentUser?.id)
           .order('date', { ascending: false }),
+        sb.from('user_preferences').select('*').eq('user_id', currentUser?.id)
+          .order('created_at', { ascending: false }).limit(1).maybeSingle(),
       ]);
       if (stateRes.error)   throw stateRes.error;
       if (historyRes.error) throw historyRes.error;
       if (journalRes.error) throw journalRes.error;
       if (weightRes.error)  throw weightRes.error;
+      if (preferencesRes.error) throw preferencesRes.error;
       // Update journal + weight caches directly
       cachedJournal = (journalRes.data || []).map(r => ({
         date: r.date, intention: r.intention || '', gratitude: r.gratitude || '', one_thing: r.one_thing || '',
       }));
       cachedWeight = (weightRes.data || []).map(r => ({ date: r.date, value_lbs: parseFloat(r.value_lbs) }));
+      userPreferences = preferencesRes.data ? normalizeUserPreferences(preferencesRes.data) : { ...DEFAULT_USER_PREFERENCES };
       writeCachedJSON(BASE_JOURNAL_KEY, cachedJournal);
       writeCachedJSON(BASE_WEIGHT_KEY, cachedWeight);
+      renderSettingsTodayTab();
       // render() calls loadData() internally for state+history (preserves offline-sync logic)
       await render();
     }
@@ -1554,6 +1660,7 @@
     }
 
     function renderWeightCard() {
+      if (!userPreferences.show_weight_card) return;
       const today = todayStr();
       const entry = (getWeightSync() || []).find(r => r.date === today);
       const content = document.getElementById('weight-card-content');
@@ -2384,6 +2491,15 @@
     document.getElementById('tutorial-btn').onclick = () => openWelcomeScreen();
 
     document.getElementById('save-profile-btn').onclick = () => saveProfile();
+    document.getElementById('toggle-workout-card').addEventListener('change', e => {
+      handlePreferenceToggle('show_workout_card', e.target.checked, 'toggle-workout-card');
+    });
+    document.getElementById('toggle-journal-card').addEventListener('change', e => {
+      handlePreferenceToggle('show_journal_card', e.target.checked, 'toggle-journal-card');
+    });
+    document.getElementById('toggle-weight-card').addEventListener('change', e => {
+      handlePreferenceToggle('show_weight_card', e.target.checked, 'toggle-weight-card');
+    });
     document.getElementById('sync-btn').onclick = async () => {
       const syncBtn = document.getElementById('sync-btn');
       if (syncBtn.classList.contains('is-syncing')) return;
@@ -2407,6 +2523,7 @@
         cachedData    = null;
         cachedJournal = null;
         cachedWeight  = null;
+        userPreferences = { ...DEFAULT_USER_PREFERENCES };
         showAuthScreen();
       } catch {
         showToast('Sign out failed — check your connection');
@@ -2487,6 +2604,7 @@
     async function render(preloadedData = null) {
       const data = preloadedData || await loadData();
       cachedData = data; // cache so history renderers can access it on-demand
+      const preferences = userPreferences || DEFAULT_USER_PREFERENCES;
 
       const today = todayStr();
       const nextInRotation = getSuggested(data);
@@ -2555,6 +2673,7 @@
         heroState === 'skipped' ? 'Day off logged'  :
         heroState === 'other'   ? 'Other activity logged' :
                                    '';
+      document.getElementById('suggestion-card').hidden = !preferences.show_workout_card;
 
       // Buttons — mutually exclusive per state
       const mainBtn      = document.getElementById('main-done-btn');
@@ -2597,7 +2716,7 @@
       //   is still today's scheduled workout, which is also tomorrow's (rotation didn't move).
       // No action yet today: rotationIndex points to today, so tomorrow is idx + 1.
       const tomorrowPreviewEl = document.getElementById('tomorrow-preview');
-      tomorrowPreviewEl.hidden = heroState === 'default';
+      tomorrowPreviewEl.hidden = !preferences.show_workout_card || heroState === 'default';
       const rotIdx = data.rotationIndex || 0;
       const tomorrowWorkout = actionTakenToday
         ? WORKOUTS.find(w => w.id === ROTATION[rotIdx % ROTATION.length])
@@ -2618,12 +2737,14 @@
       // First-use prompt — shown only to new users who have no history yet
       const firstUsePrompt = document.getElementById('first-use-prompt');
       if (firstUsePrompt) {
-        firstUsePrompt.hidden = !(history.length === 0 && heroState === 'default');
+        firstUsePrompt.hidden = !preferences.show_workout_card || !(history.length === 0 && heroState === 'default');
       }
 
       // Update Today tab cards
-      renderJournalCard();
-      renderWeightCard();
+      document.getElementById('journal-card').hidden = !preferences.show_journal_card;
+      document.getElementById('weight-card').hidden = !preferences.show_weight_card;
+      if (preferences.show_journal_card) renderJournalCard();
+      if (preferences.show_weight_card) renderWeightCard();
 
       // If the history or stats view is visible, keep it in sync with the new data
       if (historyViewActive) renderHistoryView(data);
@@ -2676,6 +2797,7 @@
       document.getElementById('settings-avatar').textContent = getUserInitial();
       document.getElementById('settings-first-name').value = meta.first_name || '';
       document.getElementById('settings-last-name').value = meta.last_name || '';
+      renderSettingsTodayTab();
       setProfileEditing(!hasSavedProfileName(meta));
     }
 
@@ -2868,13 +2990,14 @@
       const userId = currentUser?.id;
       const deletionRequestedAt = new Date().toISOString();
       try {
-        const [historyRes, journalRes, weightRes, stateRes] = await Promise.all([
+        const [historyRes, journalRes, weightRes, stateRes, preferencesRes] = await Promise.all([
           sb.from('history').delete().eq('user_id', userId),
           sb.from('journal').delete().eq('user_id', userId),
           sb.from('weight').delete().eq('user_id', userId),
           sb.from('state').delete().eq('user_id', userId),
+          sb.from('user_preferences').delete().eq('user_id', userId),
         ]);
-        [historyRes, journalRes, weightRes, stateRes].forEach(res => {
+        [historyRes, journalRes, weightRes, stateRes, preferencesRes].forEach(res => {
           if (res.error) throw res.error;
         });
 
@@ -2978,6 +3101,7 @@
       cachedData    = null;
       cachedJournal = null;
       cachedWeight  = null;
+      userPreferences = { ...DEFAULT_USER_PREFERENCES };
       document.getElementById('auth-screen').hidden = false;
       document.getElementById('app-container').hidden = true;
       document.getElementById('bottom-nav').hidden = true;
@@ -3020,10 +3144,12 @@
     }
 
     // Bundles the three calls that kick off the main app after auth is confirmed.
-    function initApp() {
+    async function initApp() {
       switchMainTab('today');
       renderSettingsAccount();
-      render();
+      await loadUserPreferences();
+      renderSettingsTodayTab();
+      await render();
       if (hasPendingWelcome() && !hasDismissedWelcome()) {
         openWelcomeScreen();
       }
