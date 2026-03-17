@@ -153,6 +153,49 @@
       letter-spacing: -0.02em;
     }
 
+    .last-done-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 28px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      line-height: 1;
+      white-space: nowrap;
+      border: 1px solid transparent;
+    }
+
+    .last-done-pill-icon {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+
+    .last-done-pill.is-green {
+      background: var(--green-bg);
+      color: var(--green);
+      border-color: rgba(62, 207, 142, 0.22);
+    }
+
+    .last-done-pill.is-yellow {
+      background: rgba(245, 158, 11, 0.12);
+      color: var(--amber);
+      border-color: rgba(245, 158, 11, 0.22);
+    }
+
+    .last-done-pill.is-red {
+      background: var(--red-bg);
+      color: var(--red);
+      border-color: rgba(255, 85, 85, 0.24);
+    }
+
+    .suggestion-last-done {
+      margin: -2px 0 10px;
+    }
+
     .suggestion-subtitle {
       font-size: 0.85rem;
       color: var(--text-secondary);
@@ -532,6 +575,14 @@
       flex-shrink: 0;
     }
 
+    .tomorrow-last-done {
+      margin-top: 4px;
+      align-self: center;
+      min-height: 24px;
+      padding: 5px 9px;
+      font-size: 0.75rem;
+    }
+
     /* Toast — raised above the bottom nav bar */
     .toast {
       position: fixed;
@@ -859,6 +910,11 @@
 
     /* ── Test Mode Banner ─────────────────────────────────────────────────── */
     .test-banner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 340;
       background: rgba(245, 158, 11, 0.12);
       border-bottom: 2px solid var(--amber);
       color: var(--amber);
@@ -866,7 +922,7 @@
       align-items: center;
       justify-content: center;
       gap: 14px;
-      padding: 11px 16px;
+      padding: calc(env(safe-area-inset-top, 0px) + 11px) 16px 11px;
       font-size: 0.72rem;
       font-weight: 700;
       letter-spacing: 0.1em;
@@ -1051,13 +1107,18 @@
     }
 
     /* ── Version stamp ──────────────────────────────────────────────────────── */
-    #version-stamp {
+    #version-stamp,
+    .auth-version-stamp {
       text-align: center;
       font-size: 11px;
       color: var(--text-dim);
       margin-top: 24px;
       user-select: none;
       -webkit-user-select: none;
+    }
+
+    .auth-version-stamp {
+      margin-top: 4px;
     }
 
     /* ── Past day tap affordance in calendar ────────────────────────────────── */
@@ -1428,6 +1489,13 @@
       font-weight: 600;
       color: var(--text-primary);
       margin-bottom: 5px;
+    }
+
+    .stats-type-last-done {
+      margin-bottom: 8px;
+      min-height: 24px;
+      padding: 5px 9px;
+      font-size: 0.75rem;
     }
 
     .stats-bar-track {
