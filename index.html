@@ -44,6 +44,7 @@
           <button class="auth-link-btn" id="show-signup-btn">Sign up</button>
         </p>
       </div>
+      <div class="auth-version-stamp" id="login-version-stamp"></div>
     </div>
 
     <!-- Signup Panel -->
@@ -67,6 +68,7 @@
           <button class="auth-link-btn" id="show-login-btn">Sign in</button>
         </p>
       </div>
+      <div class="auth-version-stamp" id="signup-version-stamp"></div>
     </div>
 
   </div>
@@ -141,6 +143,7 @@ focus on. Takes about 60 seconds and helps ground you in being mindful and prese
           <i data-lucide="dumbbell"></i>
         </div>
         <div class="suggestion-name" id="suggestion-name"></div>
+        <div class="suggestion-last-done" id="suggestion-last-done" data-base-class="suggestion-last-done" hidden></div>
         <div class="suggestion-subtitle" id="suggestion-subtitle"></div>
         <div class="card-actions">
           <button class="done-btn" id="main-done-btn">Done!</button>
@@ -156,6 +159,7 @@ focus on. Takes about 60 seconds and helps ground you in being mindful and prese
       <div class="tomorrow-preview" id="tomorrow-preview" hidden>
         <span class="tomorrow-label">Tomorrow</span>
         <span class="tomorrow-name" id="tomorrow-name"></span>
+        <span class="tomorrow-last-done" id="tomorrow-last-done" data-base-class="tomorrow-last-done"></span>
       </div>
 
       <!-- Journal card -->
@@ -256,6 +260,7 @@ focus on. Takes about 60 seconds and helps ground you in being mindful and prese
         <button class="stats-toggle-btn active" id="stats-btn-30">Last 30 Days</button>
         <button class="stats-toggle-btn" id="stats-btn-all">All Time</button>
       </div>
+      <div id="stats-content"></div>
       <div class="stats-section" id="weight-chart-section">
         <div class="stats-section-label">Weight Trend</div>
         <div class="stats-card weight-chart-card">
@@ -265,7 +270,6 @@ focus on. Takes about 60 seconds and helps ground you in being mindful and prese
           </div>
         </div>
       </div>
-      <div id="stats-content"></div>
     </div>
 
   </div>

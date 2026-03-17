@@ -34,7 +34,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.5.7';
+    const VERSION = '1.5.10';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -337,6 +337,22 @@
       if (days === null) return 'Never done';
       if (days === 1)    return 'Last done 1 day ago';
       return `Last done ${days} days ago`;
+    }
+
+    function lastDoneBadge(days) {
+      if (days === null) return { text: 'Never', className: 'is-red' };
+      if (days >= 8) return { text: `${days}d ago`, className: 'is-red' };
+      if (days >= 4) return { text: `${days}d ago`, className: 'is-yellow' };
+      return { text: `${days}d ago`, className: 'is-green' };
+    }
+
+    function renderLastDonePill(el, days) {
+      if (!el) return;
+      const badge = lastDoneBadge(days);
+      el.hidden = false;
+      const baseClass = el.dataset.baseClass ? `${el.dataset.baseClass} ` : '';
+      el.className = `${baseClass}last-done-pill ${badge.className}`.trim();
+      el.textContent = badge.text;
     }
 
     let toastTimer;
@@ -2011,7 +2027,6 @@
 
     // ── Stats view ─────────────────────────────────────────────────────────
     function renderStatsView(data) {
-      renderWeightChart();
       const container = document.getElementById('stats-content');
       const history   = data.history || [];
 
@@ -2204,11 +2219,15 @@
               const w = WORKOUTS.find(x => x.id === id);
               const count = typeCounts[id];
               const pct   = maxCount > 0 ? Math.round((count / maxCount) * 100) : 0;
+              const lastDone = lastDoneBadge(data[w.id] ? daysSince(data[w.id]) : null);
               return `
                 <div class="stats-type-row">
                   <i data-lucide="${w.icon}" class="stats-type-icon"></i>
                   <div class="stats-type-info">
                     <div class="stats-type-name">${w.name}</div>
+                    <div class="stats-type-last-done last-done-pill ${lastDone.className}">
+                      ${lastDone.text}
+                    </div>
                     <div class="stats-bar-track">
                       <div class="stats-bar-fill" style="width:${pct}%"></div>
                     </div>
@@ -2222,6 +2241,8 @@
       `;
 
       container.innerHTML = html;
+      document.getElementById('view-stats').appendChild(document.getElementById('weight-chart-section'));
+      renderWeightChart();
       if (typeof lucide !== 'undefined') lucide.createIcons();
 
       // Attach expand/collapse handler for the Other row after innerHTML is set.
@@ -2504,6 +2525,13 @@
         heroState === 'done'    ? (WORKOUTS.find(w => w.id === todayEntry.type)?.name || heroWorkout.name) :
         heroWorkout.name;
 
+      const suggestionLastDoneEl = document.getElementById('suggestion-last-done');
+      if (heroState === 'default') {
+        renderLastDonePill(suggestionLastDoneEl, sugDays);
+      } else {
+        suggestionLastDoneEl.hidden = true;
+      }
+
       // Subtitle
       document.getElementById('suggestion-subtitle').textContent =
         heroState === 'done'    ? 'Completed today'       :
@@ -2564,6 +2592,10 @@
       tomorrowIconEl.className = 'tomorrow-icon';
       tomorrowNameEl.appendChild(tomorrowIconEl);
       tomorrowNameEl.appendChild(document.createTextNode(tomorrowWorkout.name));
+      renderLastDonePill(
+        document.getElementById('tomorrow-last-done'),
+        data[tomorrowWorkout.id] ? daysSince(data[tomorrowWorkout.id]) : null
+      );
 
       // First-use prompt — shown only to new users who have no history yet
       const firstUsePrompt = document.getElementById('first-use-prompt');
@@ -2613,6 +2645,8 @@
       const stamp = status ? `v${VERSION} · ${status}` : `v${VERSION}`;
       document.getElementById('version-stamp').textContent = stamp;
       document.getElementById('settings-version-stamp').textContent = stamp;
+      document.getElementById('login-version-stamp').textContent = `v${VERSION}`;
+      document.getElementById('signup-version-stamp').textContent = `v${VERSION}`;
     }
     updateSyncStamp();
     setInterval(updateSyncStamp, 30_000);
@@ -2631,6 +2665,9 @@
       const screen = document.getElementById('welcome-screen');
       lastFocusedBeforeWelcome = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       screen.hidden = false;
+      screen.scrollTop = 0;
+      const card = screen.querySelector('.welcome-card');
+      if (card) card.scrollIntoView({ block: 'start' });
       document.getElementById('app-container').inert = true;
       document.getElementById('bottom-nav').inert = true;
       if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -2871,16 +2908,21 @@
     // Triple-tap within 600 ms to toggle test mode
     let _tapCount = 0;
     let _tapTimer = null;
-    document.getElementById('version-stamp').addEventListener('click', () => {
-      _tapCount++;
-      if (_tapCount === 3) {
-        _tapCount = 0;
+    function bindTestModeTapTrigger(el) {
+      el.addEventListener('click', () => {
+        _tapCount++;
+        if (_tapCount === 3) {
+          _tapCount = 0;
+          clearTimeout(_tapTimer);
+          toggleTestMode();
+          return;
+        }
         clearTimeout(_tapTimer);
-        toggleTestMode();
-        return;
-      }
-      clearTimeout(_tapTimer);
-      _tapTimer = setTimeout(() => { _tapCount = 0; }, 600);
+        _tapTimer = setTimeout(() => { _tapCount = 0; }, 600);
+      });
+    }
+    ['version-stamp', 'login-version-stamp', 'signup-version-stamp'].forEach(id => {
+      bindTestModeTapTrigger(document.getElementById(id));
     });
 
     // Alt+Shift+T (desktop) — same toggle (Ctrl+Shift+T is reserved by browsers)
