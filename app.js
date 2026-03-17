@@ -34,7 +34,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.5.12';
+    const VERSION = '1.5.13';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -2681,13 +2681,17 @@
       const screen = document.getElementById('welcome-screen');
       lastFocusedBeforeWelcome = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       screen.hidden = false;
-      screen.scrollTop = 0;
-      const card = screen.querySelector('.welcome-card');
-      if (card) card.scrollIntoView({ block: 'start' });
       document.getElementById('app-container').inert = true;
       document.getElementById('bottom-nav').inert = true;
       if (typeof lucide !== 'undefined') lucide.createIcons();
-      document.getElementById('welcome-continue-btn').focus();
+      requestAnimationFrame(() => {
+        screen.scrollTop = 0;
+        screen.scrollTo(0, 0);
+        const card = screen.querySelector('.welcome-card');
+        if (card) card.scrollIntoView({ block: 'start' });
+        const continueBtn = document.getElementById('welcome-continue-btn');
+        if (continueBtn) continueBtn.focus({ preventScroll: true });
+      });
     }
 
     function closeWelcomeScreen() {
