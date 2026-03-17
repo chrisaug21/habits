@@ -259,8 +259,9 @@ window.HabitsApp.registerLogModule = function registerLogModule(ctx) {
       const newType = capturedType;
       const note = capturedNote;
       const dateStr = capturedDate;
+      const rotationIds = WORKOUTS.map(workout => workout.id);
       const isRotationWorkout = !!WORKOUTS.find(w => w.id === newType);
-      const hasLaterEntries = history.some(entry => entry.date > dateStr);
+      const hasLaterEntries = history.some(entry => entry.date > dateStr && rotationIds.includes(entry.type));
       const shouldAdvance = isRotationWorkout && !hasLaterEntries;
 
       function recomputeLastDone() {

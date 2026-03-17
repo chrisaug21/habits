@@ -228,7 +228,7 @@ window.HabitsApp.registerStatsModule = function registerStatsModule(ctx) {
 
     const otherPct = maxCount > 0 ? Math.round((otherCount / maxCount) * 100) : 0;
     const otherRowHtml = otherCount > 0 ? `
-        <div class="stats-type-row stats-other-row" id="stats-other-row">
+        <div class="stats-type-row stats-other-row" id="stats-other-row" role="button" tabindex="0" aria-expanded="false">
           <i data-lucide="zap" class="stats-type-icon"></i>
           <div class="stats-type-info">
             <div class="stats-type-name">Other</div>
@@ -321,11 +321,19 @@ window.HabitsApp.registerStatsModule = function registerStatsModule(ctx) {
       const otherRow = document.getElementById('stats-other-row');
       const otherList = document.getElementById('stats-other-list');
       const chevron = otherRow.querySelector('.stats-other-chevron');
-      otherRow.addEventListener('click', () => {
+      const toggleOtherList = () => {
         const nowExpanded = otherList.hidden;
         otherList.hidden = !nowExpanded;
+        otherRow.setAttribute('aria-expanded', String(nowExpanded));
         chevron.setAttribute('data-lucide', nowExpanded ? 'chevron-up' : 'chevron-down');
         if (typeof lucide !== 'undefined') lucide.createIcons();
+      };
+      otherRow.addEventListener('click', toggleOtherList);
+      otherRow.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          toggleOtherList();
+        }
       });
     }
   }

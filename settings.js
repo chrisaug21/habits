@@ -64,7 +64,7 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
   }
 
   function closeWelcomeScreen() {
-    deps.markWelcomeDismissed();
+    deps.markWelcomeDismissed(state.currentUser?.id);
     const screen = document.getElementById('welcome-screen');
     screen.hidden = true;
     document.getElementById('app-container').inert = false;

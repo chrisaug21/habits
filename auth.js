@@ -7,14 +7,21 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
   const data = ctx.data;
   const deps = ctx.deps;
 
+  function showConnectivityError(errorEl) {
+    if (errorEl) {
+      errorEl.textContent = 'Could not connect to the server. Please try again later.';
+      errorEl.hidden = false;
+    }
+    utils.showToast('Could not connect to the server');
+  }
+
   async function sendPasswordReset() {
+    const errorEl = document.getElementById('login-error');
     if (!state.sb) {
-      document.getElementById('login-error').textContent = 'Could not connect to the server. Please try again later.';
-      document.getElementById('login-error').hidden = false;
+      showConnectivityError(errorEl);
       return;
     }
     const email = document.getElementById('login-email').value.trim();
-    const errorEl = document.getElementById('login-error');
     errorEl.hidden = true;
     if (!email) {
       errorEl.textContent = 'Enter your email first';
@@ -138,6 +145,10 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
       const password = document.getElementById('login-password').value;
       const errorEl = document.getElementById('login-error');
       errorEl.hidden = true;
+      if (!state.sb) {
+        showConnectivityError(errorEl);
+        return;
+      }
       const btn = document.getElementById('login-btn');
       btn.disabled = true;
       try {
@@ -161,6 +172,10 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
       const pwErrEl = document.getElementById('signup-password-error');
       pwErrEl.hidden = true;
       errorEl.hidden = true;
+      if (!state.sb) {
+        showConnectivityError(errorEl);
+        return;
+      }
       if (password.length < 8) {
         pwErrEl.hidden = false;
         return;
@@ -212,8 +227,11 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
         }
       })();
     } else {
-      document.getElementById('login-error').textContent = 'Could not connect to the server. Please try again later.';
-      document.getElementById('login-error').hidden = false;
+      showConnectivityError(document.getElementById('login-error'));
+      ['login-btn', 'signup-btn', 'forgot-password-btn'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = true;
+      });
     }
   }
 

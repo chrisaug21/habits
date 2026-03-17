@@ -172,6 +172,7 @@
       state: App.state,
       deps: {
         updateSyncStamp: () => Shared.updateSyncStamp(),
+        showToast: msg => Shared.showToast(msg),
       },
     });
 
@@ -396,7 +397,7 @@
         getUserFeedbackIdentity: () => getUserFeedbackIdentity(),
         hasSavedProfileName: meta => hasSavedProfileName(meta),
         setProfileEditing: value => setProfileEditing(value),
-        markWelcomeDismissed: () => markWelcomeDismissed(),
+        markWelcomeDismissed: userId => markWelcomeDismissed(userId),
       },
     });
 

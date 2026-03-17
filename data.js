@@ -56,8 +56,8 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
     localStorage.setItem(key, 'pending');
   }
 
-  function markWelcomeDismissed() {
-    const key = getScopedStorageKey(BASE_WELCOMED_KEY);
+  function markWelcomeDismissed(userId = state.currentUser?.id) {
+    const key = getScopedStorageKeyForUser(BASE_WELCOMED_KEY, userId);
     if (!key) return;
     localStorage.setItem(key, '1');
   }
@@ -109,14 +109,18 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
 
       let stateRow = stateRes.data;
       if (!stateRow) {
-        const { data: maxRow } = await state.sb.from('state')
-          .select('id').order('id', { ascending: false }).limit(1).maybeSingle();
-        const safeId = (maxRow?.id ?? 0) + 1;
-        const { data: newState, error: insertErr } = await state.sb.from('state')
-          .insert({ id: safeId, rotation_index: 0, action_date: null, user_id: userId })
-          .select().single();
-        if (insertErr) console.warn('[loadData] State row insert failed:', insertErr);
-        stateRow = newState ?? { rotation_index: 0, action_date: null };
+        const { data: upsertedState, error: upsertErr } = await state.sb.from('state')
+          .upsert({
+            user_id: userId,
+            rotation_index: 0,
+            action_date: null,
+          }, { onConflict: ['user_id'] })
+          .select('*')
+          .single();
+        if (upsertErr) {
+          console.warn('[loadData] State row upsert failed:', upsertErr);
+        }
+        stateRow = upsertedState ?? { rotation_index: 0, action_date: null };
       }
 
       const historyRows = historyRes.data || [];
@@ -158,7 +162,8 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
       return loaded;
     } catch (err) {
       console.warn('Supabase read failed, falling back to localStorage:', err);
-      state.syncOffline = true;
+      deps.showToast?.('Could not reach the server — using cached data');
+      state.syncOffline = false;
       deps.updateSyncStamp();
       return readCachedJSON(BASE_STORAGE_KEY, {});
     }
@@ -223,7 +228,10 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
       show_journal_card: DEFAULT_USER_PREFERENCES.show_journal_card,
       show_weight_card: DEFAULT_USER_PREFERENCES.show_weight_card,
     };
-    const { data, error } = await state.sb.from('user_preferences').insert(row).select('*').single();
+    const { data, error } = await state.sb.from('user_preferences')
+      .upsert(row, { onConflict: ['user_id'] })
+      .select('*')
+      .single();
     if (error) return { ...DEFAULT_USER_PREFERENCES };
     return normalizeUserPreferences(data || row);
   }
@@ -251,24 +259,30 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
   }
 
   async function saveUserPreference(key, value) {
+    const prevPreferences = { ...state.userPreferences };
     const nextPreferences = { ...state.userPreferences, [key]: value };
     state.userPreferences = nextPreferences;
 
     if (TEST_MODE) return;
-    if (!state.sb || !state.currentUser?.id) throw new Error('Supabase client not available');
+    if (!state.sb || !state.currentUser?.id) {
+      state.userPreferences = prevPreferences;
+      throw new Error('Supabase client not available');
+    }
 
-    const payload = { user_id: state.currentUser.id, [key]: value };
-    const { data, error } = await state.sb.from('user_preferences')
-      .upsert(payload, { onConflict: ['user_id'] })
-      .select('show_workout_card, show_journal_card, show_weight_card')
-      .single();
-    if (error) throw error;
+    try {
+      const payload = { user_id: state.currentUser.id, [key]: value };
+      const { data, error } = await state.sb.from('user_preferences')
+        .upsert(payload, { onConflict: ['user_id'] })
+        .select('show_workout_card, show_journal_card, show_weight_card')
+        .single();
+      if (error) throw error;
 
-    if (data) {
-      state.userPreferences = {
-        ...normalizeUserPreferences(data),
-        ...state.userPreferences,
-      };
+      if (data) {
+        state.userPreferences = normalizeUserPreferences(data);
+      }
+    } catch (error) {
+      state.userPreferences = prevPreferences;
+      throw error;
     }
   }
 

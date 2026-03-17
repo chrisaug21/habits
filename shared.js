@@ -124,10 +124,14 @@ window.HabitsApp.registerSharedModule = function registerSharedModule(ctx) {
     state.settingsProfileEditing = isEditing;
     ['settings-first-name', 'settings-last-name'].forEach(id => {
       const input = document.getElementById(id);
+      if (!input) return;
       input.readOnly = !isEditing;
       input.classList.toggle('is-readonly', !isEditing);
     });
-    document.getElementById('save-profile-btn').textContent = isEditing ? 'Save profile' : 'Edit profile';
+    const saveBtn = document.getElementById('save-profile-btn');
+    if (saveBtn) {
+      saveBtn.textContent = isEditing ? 'Save profile' : 'Edit profile';
+    }
   }
 
   function setButtonsDisabled(disabled) {
