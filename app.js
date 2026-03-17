@@ -333,22 +333,28 @@
     }
 
     async function saveUserPreference(key, value) {
-      if (TEST_MODE) {
-        userPreferences = { ...userPreferences, [key]: value };
-        return;
-      }
+      const nextPreferences = { ...userPreferences, [key]: value };
+      userPreferences = nextPreferences;
+
+      if (TEST_MODE) return;
       if (!sb || !currentUser?.id) throw new Error('Supabase client not available');
 
-      const nextPreferences = { ...userPreferences, [key]: value };
-      const canonicalRow = {
+      const payload = {
         user_id: currentUser.id,
-        show_workout_card: nextPreferences.show_workout_card,
-        show_weight_card: nextPreferences.show_weight_card,
-        show_journal_card: nextPreferences.show_journal_card,
+        [key]: value,
       };
-      const { error } = await sb.from('user_preferences').upsert(canonicalRow, { onConflict: ['user_id'] });
+      const { data, error } = await sb.from('user_preferences')
+        .upsert(payload, { onConflict: ['user_id'] })
+        .select('show_workout_card, show_journal_card, show_weight_card')
+        .single();
       if (error) throw error;
-      userPreferences = nextPreferences;
+
+      if (data) {
+        userPreferences = {
+          ...normalizeUserPreferences(data),
+          ...userPreferences,
+        };
+      }
     }
 
     async function handlePreferenceToggle(key, checked, inputId) {

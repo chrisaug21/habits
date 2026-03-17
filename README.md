@@ -145,6 +145,15 @@ Data is stored in **Supabase** (primary) with **localStorage** as an offline fal
 | `created_at` | `timestamptz` | Set automatically by Supabase |
 | `updated_at` | `timestamptz` | Set automatically by Supabase |
 
+Required database setup:
+- `user_id` must stay unique per user. The app uses `upsert(..., { onConflict: ['user_id'] })`, so Supabase needs the unique constraint / index `user_preferences_user_id_key` on `user_id`.
+- Row Level Security must be enabled with `alter table public.user_preferences enable row level security;`
+- Reads should use a policy such as `user_preferences_select_own` with `for select using (auth.uid() = user_id)`
+- Inserts should use a policy such as `user_preferences_insert_own` with `for insert with check (auth.uid() = user_id)`
+- Updates should use a policy such as `user_preferences_update_own` with `for update using (auth.uid() = user_id)`
+
+These policies keep reads, inserts, and updates scoped to the signed-in user and should remain in place after any auth-related Supabase changes.
+
 Migration SQL (run manually in Supabase SQL editor):
 ```sql
 create table if not exists weight (
