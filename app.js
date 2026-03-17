@@ -34,7 +34,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.5.11';
+    const VERSION = '1.5.12';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -2232,13 +2232,16 @@
               const count = typeCounts[id];
               const pct   = maxCount > 0 ? Math.round((count / maxCount) * 100) : 0;
               const lastDone = lastDoneBadge(data[w.id] ? daysSince(data[w.id]) : null);
+              const lastDoneHtml = lastDone.doneToday
+                ? `${lastDone.text}<i data-lucide="check" class="last-done-pill-icon"></i>`
+                : lastDone.text;
               return `
                 <div class="stats-type-row">
                   <i data-lucide="${w.icon}" class="stats-type-icon"></i>
                   <div class="stats-type-info">
                     <div class="stats-type-name">${w.name}</div>
                     <div class="stats-type-last-done last-done-pill ${lastDone.className}">
-                      ${lastDone.text}
+                      ${lastDoneHtml}
                     </div>
                     <div class="stats-bar-track">
                       <div class="stats-bar-fill" style="width:${pct}%"></div>
