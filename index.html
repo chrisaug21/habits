@@ -90,8 +90,7 @@ tracking workouts (with suggestions!), tracking your weight (optionally), and co
           <i data-lucide="repeat"></i>
           <span>Your workout rotation</span>
         </div>
-        <p class="welcome-copy">The app suggests workouts each day based on a rotation, including
-cycling, strength circuits (upper body push workouts, upper body pull workouts, lower body workouts), as well as yoga. Just tap Done when you finish or select "Rest Day" from the Log activity options if you did something else. The rotation picks back up the next day. You can also add custom workouts if you did something else (like Zumba, pickleball or even snow shoveling!).</p>
+        <p class="welcome-copy">The app suggests workouts each day based on your workout rotation. You can keep the default setup or change it to anything you want in Settings, including repeating favorite workouts, reordering the flow, or adding your own custom workouts.</p>
       </div>
       <div class="welcome-section">
         <div class="welcome-section-head">
@@ -114,7 +113,7 @@ focus on. Takes about 60 seconds and helps ground you in being mindful and prese
           <i data-lucide="settings"></i>
           <span>Settings</span>
         </div>
-        <p class="welcome-copy">Use the Settings panel to manage your account details, change your password, send feedback, reopen this tutorial, sync data, or sign out.</p>
+        <p class="welcome-copy">Use the Settings panel to manage your account details, change your workout rotation, and choose which Today tab cards you want to see for workouts, journaling, and weight. You can also change your password, send feedback, reopen this tutorial, sync data, or sign out.</p>
       </div>
       <button class="welcome-cta" id="welcome-continue-btn">
         <span>Got it, let's go</span>
@@ -252,14 +251,14 @@ focus on. Takes about 60 seconds and helps ground you in being mindful and prese
         </div>
       </div>
       <div class="settings-section">
-        <div class="settings-section-title">My Rotation</div>
+        <div class="settings-section-title">My Workout Rotation</div>
         <div class="settings-card" id="settings-rotation-card">
           <div class="settings-rotation-empty" id="settings-rotation-empty" hidden>
             <div class="settings-rotation-empty-title">Using default rotation</div>
             <div class="settings-rotation-empty-note">Build your own workout order and save it to your account.</div>
           </div>
           <div class="settings-rotation-list" id="settings-rotation-list" hidden></div>
-          <button class="settings-secondary-btn" id="rotation-builder-open-btn">Customize my rotation</button>
+          <button class="settings-secondary-btn" id="rotation-builder-open-btn">Customize my workout rotation</button>
         </div>
       </div>
       <div class="settings-section">
@@ -435,7 +434,7 @@ focus on. Takes about 60 seconds and helps ground you in being mindful and prese
         <button class="rotation-builder-close-btn" id="rotation-builder-close-btn" type="button" aria-label="Close">
           <i data-lucide="x"></i>
         </button>
-        <div class="modal-title rotation-builder-title" id="rotation-builder-title">My Rotation</div>
+        <div class="modal-title rotation-builder-title" id="rotation-builder-title">My Workout Rotation</div>
         <div class="rotation-builder-spacer" aria-hidden="true"></div>
       </div>
 

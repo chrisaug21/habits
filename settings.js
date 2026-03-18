@@ -181,7 +181,9 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
     rotationBuilderSaving = false;
     hideCustomWorkoutForm();
     renderRotationBuilder();
-    document.getElementById('rotation-builder-modal').hidden = false;
+    const modal = document.getElementById('rotation-builder-modal');
+    modal.hidden = false;
+    modal.style.display = '';
     document.getElementById('app-container').inert = true;
     document.getElementById('bottom-nav').inert = true;
     setTimeout(() => document.getElementById('rotation-builder-close-btn').focus(), 80);
@@ -192,7 +194,9 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
     stagedRotationSlots = null;
     destroyRotationSortable();
     hideCustomWorkoutForm();
-    document.getElementById('rotation-builder-modal').hidden = true;
+    const modal = document.getElementById('rotation-builder-modal');
+    modal.hidden = true;
+    modal.style.display = 'none';
     document.getElementById('app-container').inert = false;
     document.getElementById('bottom-nav').inert = false;
   }
