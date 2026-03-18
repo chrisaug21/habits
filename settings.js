@@ -7,9 +7,10 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
   const data = ctx.data;
   const deps = ctx.deps;
   const pendingPreferenceSaves = {};
-  let stagedRotationIds = null;
+  let stagedRotationSlots = null;
   let rotationBuilderSaving = false;
   let customWorkoutSaving = false;
+  let rotationSortable = null;
 
   function renderSettingsTodayTab() {
     document.getElementById('toggle-workout-card').checked = !!state.userPreferences.show_workout_card;
@@ -18,7 +19,55 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
   }
 
   function getBuilderSeedRotation() {
-    return utils.getActiveRotation().map(workout => workout.id);
+    return utils.getActiveRotation().map((workout, index) => ({
+      slotId: workout.rotation_slot_id || `default-slot-${index}`,
+      workoutId: workout.id,
+    }));
+  }
+
+  function makeStagedSlot(workoutId) {
+    return {
+      slotId: (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+        ? crypto.randomUUID()
+        : `staged-slot-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      workoutId,
+    };
+  }
+
+  function destroyRotationSortable() {
+    if (rotationSortable && typeof rotationSortable.destroy === 'function') {
+      rotationSortable.destroy();
+    }
+    rotationSortable = null;
+  }
+
+  function syncStagedSlotsFromDom() {
+    const currentListEl = document.getElementById('rotation-builder-current-list');
+    const orderedSlotIds = [...currentListEl.querySelectorAll('[data-slot-id]')]
+      .map(row => row.dataset.slotId);
+    if (!Array.isArray(stagedRotationSlots) || !orderedSlotIds.length) return;
+
+    const slotMap = new Map(stagedRotationSlots.map(slot => [slot.slotId, slot]));
+    stagedRotationSlots = orderedSlotIds
+      .map(slotId => slotMap.get(slotId))
+      .filter(Boolean);
+  }
+
+  function initRotationSortable() {
+    destroyRotationSortable();
+    const currentListEl = document.getElementById('rotation-builder-current-list');
+    if (!currentListEl || typeof window.Sortable === 'undefined') return;
+
+    rotationSortable = window.Sortable.create(currentListEl, {
+      animation: 150,
+      handle: '.rotation-builder-drag-handle',
+      ghostClass: 'rotation-builder-row--dragging',
+      chosenClass: 'rotation-builder-row--picked',
+      onEnd() {
+        syncStagedSlotsFromDom();
+        renderRotationBuilder();
+      },
+    });
   }
 
   function hideCustomWorkoutForm() {
@@ -64,41 +113,46 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
   }
 
   function renderRotationBuilder() {
-    if (!Array.isArray(stagedRotationIds)) return;
+    if (!Array.isArray(stagedRotationSlots)) return;
 
-    const stagedRotation = stagedRotationIds
-      .map(id => utils.getWorkoutById(id))
+    const stagedRotation = stagedRotationSlots
+      .map(slot => {
+        const workout = utils.getWorkoutById(slot.workoutId);
+        if (!workout) return null;
+        return { ...slot, workout };
+      })
       .filter(Boolean);
     const currentListEl = document.getElementById('rotation-builder-current-list');
     currentListEl.innerHTML = stagedRotation.map((workout, index) => `
-      <div class="rotation-builder-row">
+      <div class="rotation-builder-row" data-slot-id="${workout.slotId}">
         <div class="rotation-builder-row-position">${index + 1}</div>
-        <div class="rotation-builder-row-icon"><i data-lucide="${workout.icon}"></i></div>
+        <button class="rotation-builder-drag-handle" type="button" aria-label="Drag to reorder">
+          <i data-lucide="grip"></i>
+        </button>
+        <div class="rotation-builder-row-icon"><i data-lucide="${workout.workout.icon}"></i></div>
         <div class="rotation-builder-row-copy">
-          <div class="rotation-builder-row-name">${utils.escapeHtml(workout.name)}</div>
-          <div class="rotation-builder-row-meta">${utils.escapeHtml(workout.category || '')}</div>
+          <div class="rotation-builder-row-name">${utils.escapeHtml(workout.workout.name)}</div>
+          <div class="rotation-builder-row-meta">${utils.escapeHtml(workout.workout.category || '')}</div>
         </div>
         <div class="rotation-builder-reorder">
-          <button class="rotation-builder-icon-btn" type="button" data-move-up="${workout.id}" ${index === 0 ? 'disabled' : ''} aria-label="Move up">
+          <button class="rotation-builder-icon-btn" type="button" data-move-up="${workout.slotId}" ${index === 0 ? 'disabled' : ''} aria-label="Move up">
             <i data-lucide="chevron-up"></i>
           </button>
-          <button class="rotation-builder-icon-btn" type="button" data-move-down="${workout.id}" ${index === stagedRotation.length - 1 ? 'disabled' : ''} aria-label="Move down">
+          <button class="rotation-builder-icon-btn" type="button" data-move-down="${workout.slotId}" ${index === stagedRotation.length - 1 ? 'disabled' : ''} aria-label="Move down">
             <i data-lucide="chevron-down"></i>
           </button>
         </div>
-        <button class="rotation-builder-remove-btn" type="button" data-remove-workout="${workout.id}" ${stagedRotation.length <= 2 ? 'disabled' : ''}>Remove</button>
+        <button class="rotation-builder-remove-btn" type="button" data-remove-slot="${workout.slotId}" ${stagedRotation.length <= 2 ? 'disabled' : ''}>Remove</button>
       </div>
     `).join('');
 
-    const stagedSet = new Set(stagedRotationIds);
-    const remainingLibrary = [...(state.workoutLibrary || [])]
-      .filter(workout => !stagedSet.has(workout.id))
+    const library = [...(state.workoutLibrary || [])]
       .sort((a, b) => {
         if (a.is_global !== b.is_global) return a.is_global ? -1 : 1;
         return a.name.localeCompare(b.name);
       });
-    const globalWorkouts = remainingLibrary.filter(workout => workout.is_global);
-    const customWorkouts = remainingLibrary.filter(workout => !workout.is_global);
+    const globalWorkouts = library.filter(workout => workout.is_global);
+    const customWorkouts = library.filter(workout => !workout.is_global);
 
     const renderLibraryRows = workouts => workouts.map(workout => `
       <div class="rotation-builder-library-row">
@@ -115,14 +169,15 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
     document.getElementById('rotation-library-custom-group').hidden = customWorkouts.length === 0;
     document.getElementById('rotation-library-global-list').innerHTML = renderLibraryRows(globalWorkouts);
     document.getElementById('rotation-library-custom-list').innerHTML = renderLibraryRows(customWorkouts);
-    document.getElementById('rotation-library-empty').hidden = remainingLibrary.length !== 0;
-    document.getElementById('rotation-builder-save-btn').disabled = stagedRotationIds.length < 2 || rotationBuilderSaving;
+    document.getElementById('rotation-library-empty').hidden = library.length !== 0;
+    document.getElementById('rotation-builder-save-btn').disabled = stagedRotationSlots.length < 2 || rotationBuilderSaving;
 
     if (typeof lucide !== 'undefined') lucide.createIcons();
+    initRotationSortable();
   }
 
   function openRotationBuilder() {
-    stagedRotationIds = getBuilderSeedRotation();
+    stagedRotationSlots = getBuilderSeedRotation();
     rotationBuilderSaving = false;
     hideCustomWorkoutForm();
     renderRotationBuilder();
@@ -134,43 +189,44 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
 
   function closeRotationBuilder() {
     if (rotationBuilderSaving || customWorkoutSaving) return;
-    stagedRotationIds = null;
+    stagedRotationSlots = null;
+    destroyRotationSortable();
     hideCustomWorkoutForm();
     document.getElementById('rotation-builder-modal').hidden = true;
     document.getElementById('app-container').inert = false;
     document.getElementById('bottom-nav').inert = false;
   }
 
-  function moveStagedWorkout(workoutId, direction) {
-    if (!Array.isArray(stagedRotationIds)) return;
-    const index = stagedRotationIds.indexOf(workoutId);
+  function moveStagedWorkout(slotId, direction) {
+    if (!Array.isArray(stagedRotationSlots)) return;
+    const index = stagedRotationSlots.findIndex(slot => slot.slotId === slotId);
     if (index === -1) return;
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= stagedRotationIds.length) return;
-    const nextIds = [...stagedRotationIds];
-    [nextIds[index], nextIds[targetIndex]] = [nextIds[targetIndex], nextIds[index]];
-    stagedRotationIds = nextIds;
+    if (targetIndex < 0 || targetIndex >= stagedRotationSlots.length) return;
+    const nextSlots = [...stagedRotationSlots];
+    [nextSlots[index], nextSlots[targetIndex]] = [nextSlots[targetIndex], nextSlots[index]];
+    stagedRotationSlots = nextSlots;
     renderRotationBuilder();
   }
 
   function addWorkoutToStage(workoutId) {
-    if (!Array.isArray(stagedRotationIds) || stagedRotationIds.includes(workoutId)) return;
-    stagedRotationIds = [...stagedRotationIds, workoutId];
+    if (!Array.isArray(stagedRotationSlots)) return;
+    stagedRotationSlots = [...stagedRotationSlots, makeStagedSlot(workoutId)];
     renderRotationBuilder();
   }
 
-  function removeWorkoutFromStage(workoutId) {
-    if (!Array.isArray(stagedRotationIds) || stagedRotationIds.length <= 2) return;
-    stagedRotationIds = stagedRotationIds.filter(id => id !== workoutId);
+  function removeWorkoutFromStage(slotId) {
+    if (!Array.isArray(stagedRotationSlots) || stagedRotationSlots.length <= 2) return;
+    stagedRotationSlots = stagedRotationSlots.filter(slot => slot.slotId !== slotId);
     renderRotationBuilder();
   }
 
   async function saveStagedRotation() {
-    if (!Array.isArray(stagedRotationIds) || stagedRotationIds.length < 2 || rotationBuilderSaving) return;
+    if (!Array.isArray(stagedRotationSlots) || stagedRotationSlots.length < 2 || rotationBuilderSaving) return;
     rotationBuilderSaving = true;
     document.getElementById('rotation-builder-save-btn').disabled = true;
     try {
-      await data.saveUserRotation(stagedRotationIds);
+      await data.saveUserRotation(stagedRotationSlots.map(slot => slot.workoutId));
       renderSettingsRotation();
       await deps.render(state.cachedData);
       closeRotationBuilder();
@@ -180,7 +236,7 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
     } finally {
       rotationBuilderSaving = false;
       if (!document.getElementById('rotation-builder-modal').hidden) {
-        document.getElementById('rotation-builder-save-btn').disabled = stagedRotationIds.length < 2;
+        document.getElementById('rotation-builder-save-btn').disabled = stagedRotationSlots.length < 2;
       }
     }
   }
@@ -566,9 +622,9 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
         addWorkoutToStage(addButton.dataset.addWorkout);
         return;
       }
-      const removeButton = e.target.closest('[data-remove-workout]');
+      const removeButton = e.target.closest('[data-remove-slot]');
       if (removeButton) {
-        removeWorkoutFromStage(removeButton.dataset.removeWorkout);
+        removeWorkoutFromStage(removeButton.dataset.removeSlot);
         return;
       }
       const moveUpButton = e.target.closest('[data-move-up]');

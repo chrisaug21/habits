@@ -2399,6 +2399,15 @@
       min-height: 48px;
     }
 
+    .rotation-builder-row--dragging {
+      opacity: 0.45;
+    }
+
+    .rotation-builder-row--picked {
+      background: rgba(108, 99, 255, 0.08);
+      border-radius: 16px;
+    }
+
     .rotation-builder-row-position {
       width: 26px;
       text-align: center;
@@ -2406,6 +2415,27 @@
       font-weight: 700;
       color: var(--text-secondary);
       flex-shrink: 0;
+    }
+
+    .rotation-builder-drag-handle {
+      width: 40px;
+      min-height: 40px;
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      background: transparent;
+      color: var(--text-secondary);
+      display: grid;
+      place-items: center;
+      padding: 0;
+      cursor: grab;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .rotation-builder-drag-handle:active {
+      cursor: grabbing;
+      background: rgba(108, 99, 255, 0.08);
     }
 
     .rotation-builder-reorder {

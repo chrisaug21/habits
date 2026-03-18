@@ -223,6 +223,7 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
     try {
       const { data: rows, error } = await state.sb.from('user_rotation')
         .select(`
+          id,
           position,
           workout_id,
           workout_library (
@@ -239,7 +240,15 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
       if (error) throw error;
 
       const rotation = (rows || [])
-        .map(row => normalizeWorkoutLibraryRow(row.workout_library))
+        .map(row => {
+          const workout = normalizeWorkoutLibraryRow(row.workout_library);
+          if (!workout) return null;
+          return {
+            ...workout,
+            rotation_slot_id: row.id || row.position || null,
+            position: row.position ?? null,
+          };
+        })
         .filter(Boolean);
       state.userRotation = rotation.length ? rotation : null;
       return state.userRotation;
@@ -308,7 +317,17 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
     if (orderedIds.length < 2) throw new Error('Rotation must contain at least 2 workouts');
 
     const nextRotation = orderedIds
-      .map(id => (state.workoutLibrary || []).find(workout => workout.id === id))
+      .map((id, index) => {
+        const workout = (state.workoutLibrary || []).find(item => item.id === id);
+        if (!workout) return null;
+        return {
+          ...workout,
+          rotation_slot_id: (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+            ? crypto.randomUUID()
+            : `rotation-slot-${Date.now()}-${index}`,
+          position: index,
+        };
+      })
       .filter(Boolean);
     if (nextRotation.length !== orderedIds.length) {
       throw new Error('Could not resolve all workouts in the rotation');
