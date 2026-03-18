@@ -96,9 +96,9 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
 
   async function initApp() {
     deps.switchMainTab('today');
-    deps.renderSettingsAccount();
     await deps.loadWorkoutLibrary();
     await deps.loadUserRotation();
+    deps.renderSettingsAccount();
     await data.loadUserPreferences();
     deps.renderSettingsTodayTab();
     await deps.render();

@@ -17,6 +17,8 @@ intentionally simple. Live at https://habits.chrisaug.com.
 - localStorage is read-only cache — do not write to it
 - Account-level UI settings belong in `user_preferences`, not `state`
 - `user_preferences` should be loaded once after auth, cached in memory, and written back directly on change
+- Custom workout rotations should load into in-memory `state.workoutLibrary` and `state.userRotation` after auth resolves
+- Use shared rotation helpers for reads so the app prefers `state.userRotation` when it has 2+ items and otherwise falls back to the built-in `WORKOUTS`/`ROTATION`
 - Keep `app.js` as the runtime spine; shared helpers may live in small support files like `shared.js` and `data.js`, while feature code belongs in feature modules
 - Supabase JS `.upsert()` calls must pass `onConflict` as a comma-separated string, not an array
 - If Supabase is unreachable, show an error toast — no offline writes
