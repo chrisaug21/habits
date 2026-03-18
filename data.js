@@ -114,7 +114,7 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
             user_id: userId,
             rotation_index: 0,
             action_date: null,
-          }, { onConflict: ['user_id'] })
+          }, { onConflict: 'user_id' })
           .select('*')
           .single();
         if (upsertErr) {
@@ -229,7 +229,7 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
       show_weight_card: DEFAULT_USER_PREFERENCES.show_weight_card,
     };
     const { data, error } = await state.sb.from('user_preferences')
-      .upsert(row, { onConflict: ['user_id'] })
+      .upsert(row, { onConflict: 'user_id' })
       .select('*')
       .single();
     if (error) return { ...DEFAULT_USER_PREFERENCES };
@@ -272,7 +272,7 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
     try {
       const payload = { user_id: state.currentUser.id, [key]: value };
       const { data, error } = await state.sb.from('user_preferences')
-        .upsert(payload, { onConflict: ['user_id'] })
+        .upsert(payload, { onConflict: 'user_id' })
         .select('show_workout_card, show_journal_card, show_weight_card')
         .single();
       if (error) throw error;

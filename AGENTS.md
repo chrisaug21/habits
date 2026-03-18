@@ -18,6 +18,7 @@ intentionally simple. Live at https://habits.chrisaug.com.
 - Account-level UI settings belong in `user_preferences`, not `state`
 - `user_preferences` should be loaded once after auth, cached in memory, and written back directly on change
 - Keep `app.js` as the runtime spine; shared helpers may live in small support files like `shared.js` and `data.js`, while feature code belongs in feature modules
+- Supabase JS `.upsert()` calls must pass `onConflict` as a comma-separated string, not an array
 - If Supabase is unreachable, show an error toast — no offline writes
 - Reuse shared "last done" thresholds and labels across surfaces instead of re-inventing per-view logic
 - Do not add frameworks or dependencies without explicit approval

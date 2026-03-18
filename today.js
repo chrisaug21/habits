@@ -353,6 +353,7 @@ window.HabitsApp.registerTodayModule = function registerTodayModule(ctx) {
       return journal;
     } catch (err) {
       console.warn('Journal load failed, using localStorage:', err);
+      utils.showToast('Could not load journal — showing cached data');
       state.cachedJournal = local;
       return local;
     }
@@ -376,7 +377,7 @@ window.HabitsApp.registerTodayModule = function registerTodayModule(ctx) {
       gratitude: entry.gratitude || null,
       one_thing: entry.one_thing || null,
       user_id: state.currentUser?.id,
-    }, { onConflict: ['date', 'user_id'] });
+    }, { onConflict: 'date,user_id' });
     if (error) throw error;
 
     const journal = state.cachedJournal ? [...state.cachedJournal] : [];
@@ -559,6 +560,7 @@ window.HabitsApp.registerTodayModule = function registerTodayModule(ctx) {
       return weights;
     } catch (err) {
       console.warn('Weight load failed, using localStorage:', err);
+      utils.showToast('Could not load weight — showing cached data');
       state.cachedWeight = local;
       return local;
     }
@@ -628,7 +630,7 @@ window.HabitsApp.registerTodayModule = function registerTodayModule(ctx) {
     }
     if (!state.sb) throw new Error('Supabase client not available');
 
-    const { error } = await state.sb.from('weight').upsert({ date, value_lbs: valueLbs, user_id: state.currentUser?.id }, { onConflict: ['date', 'user_id'] });
+    const { error } = await state.sb.from('weight').upsert({ date, value_lbs: valueLbs, user_id: state.currentUser?.id }, { onConflict: 'date,user_id' });
     if (error) throw error;
 
     const rows = state.cachedWeight ? [...state.cachedWeight] : [];

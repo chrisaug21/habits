@@ -6,6 +6,7 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
   const utils = ctx.utils;
   const data = ctx.data;
   const deps = ctx.deps;
+  const pendingPreferenceSaves = {};
 
   function renderSettingsTodayTab() {
     document.getElementById('toggle-workout-card').checked = !!state.userPreferences.show_workout_card;
@@ -15,24 +16,43 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
 
   async function handlePreferenceToggle(key, checked, inputId) {
     const input = document.getElementById(inputId);
+    const priorSave = pendingPreferenceSaves[key];
+    if (priorSave) {
+      await priorSave.catch(() => {});
+    }
+
     const previous = !!state.userPreferences[key];
+    const expectedValue = checked;
 
     input.disabled = true;
-    state.userPreferences = { ...state.userPreferences, [key]: checked };
+    state.userPreferences = { ...state.userPreferences, [key]: expectedValue };
     renderSettingsTodayTab();
     await deps.render(state.cachedData);
 
-    try {
-      await data.saveUserPreference(key, checked);
-    } catch (err) {
-      console.error('[preferences] update failed:', err);
-      state.userPreferences = { ...state.userPreferences, [key]: previous };
-      renderSettingsTodayTab();
-      await deps.render(state.cachedData);
-      utils.showToast('Could not save setting');
-    } finally {
-      input.disabled = false;
-    }
+    const savePromise = (async () => {
+      try {
+        await data.saveUserPreference(key, expectedValue);
+        if (state.userPreferences[key] === expectedValue) {
+          renderSettingsTodayTab();
+        }
+      } catch (err) {
+        console.error('[preferences] update failed:', err);
+        if (state.userPreferences[key] === expectedValue) {
+          state.userPreferences = { ...state.userPreferences, [key]: previous };
+          renderSettingsTodayTab();
+          await deps.render(state.cachedData);
+          utils.showToast('Could not save setting');
+        }
+      } finally {
+        if (pendingPreferenceSaves[key] === savePromise) {
+          delete pendingPreferenceSaves[key];
+          input.disabled = false;
+        }
+      }
+    })();
+
+    pendingPreferenceSaves[key] = savePromise;
+    await savePromise;
   }
 
   function renderSettingsAccount() {
