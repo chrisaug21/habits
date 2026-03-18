@@ -54,7 +54,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.5.21';
+    const VERSION = '1.5.22';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -91,6 +91,7 @@
     let cachedWeight  = null;          // array of { date, value_lbs }
     let workoutLibrary = [];
     let userRotation = null;
+    let programs = [];
     let activeWeightDate     = null;  // date currently being edited in the weight modal
     let weightModalFromBackfill = false; // true when weight modal was opened from the day-detail sheet
     let historyViewActive = false;
@@ -139,6 +140,8 @@
       set workoutLibrary(value) { workoutLibrary = value; },
       get userRotation() { return userRotation; },
       set userRotation(value) { userRotation = value; },
+      get programs() { return programs; },
+      set programs(value) { programs = value; },
       get journalNudgeConfirmed() { return _journalNudgeConfirmed; },
       set journalNudgeConfirmed(value) { _journalNudgeConfirmed = value; },
       get activeWeightDate() { return activeWeightDate; },
@@ -407,6 +410,10 @@
         getUserFeedbackIdentity: () => getUserFeedbackIdentity(),
         hasSavedProfileName: meta => hasSavedProfileName(meta),
         setProfileEditing: value => setProfileEditing(value),
+        hasPendingWelcome: () => hasPendingWelcome(),
+        hasDismissedWelcome: () => hasDismissedWelcome(),
+        switchMainTab: tab => switchMainTab(tab),
+        openWelcomeScreen: () => openWelcomeScreen(),
         markWelcomeDismissed: userId => markWelcomeDismissed(userId),
       },
     });
@@ -420,6 +427,8 @@
       closeWelcomeScreen: Settings.closeWelcomeScreen,
       openPasswordModal: Settings.openPasswordModal,
       closePasswordModal: Settings.closePasswordModal,
+      openProgramPickerScreen: Settings.openProgramPickerScreen,
+      closeProgramPickerScreen: Settings.closeProgramPickerScreen,
     };
 
     const {
@@ -429,6 +438,7 @@
       closeWelcomeScreen,
       openPasswordModal,
       closePasswordModal,
+      openProgramPickerScreen,
     } = Settings;
 
     const Auth = App.registerAuthModule({
@@ -443,9 +453,11 @@
         render: () => render(),
         loadWorkoutLibrary: () => loadWorkoutLibrary(),
         loadUserRotation: () => loadUserRotation(),
+        loadPrograms: () => loadPrograms(),
         hasPendingWelcome: () => hasPendingWelcome(),
         hasDismissedWelcome: () => hasDismissedWelcome(),
         openWelcomeScreen: () => openWelcomeScreen(),
+        openProgramPickerScreen: () => openProgramPickerScreen(),
         loadJournal: () => loadJournal(),
         renderJournalCard: () => renderJournalCard(),
         renderCalendar: data => renderCalendar(data),

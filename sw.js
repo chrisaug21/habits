@@ -1,4 +1,4 @@
-const CACHE = 'habits-v21';
+const CACHE = 'habits-v22';
 const PRECACHE = [
   '/',
   '/index.html',

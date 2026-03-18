@@ -82,6 +82,34 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
     };
   }
 
+  function normalizeProgramWorkoutRow(row) {
+    const workout = normalizeWorkoutLibraryRow(row?.workout_library);
+    if (!workout) return null;
+    return {
+      ...workout,
+      program_workout_id: row?.id || null,
+      position: typeof row?.position === 'number' ? row.position : null,
+    };
+  }
+
+  function normalizeProgramRow(row) {
+    if (!row?.id) return null;
+    const workouts = Array.isArray(row.program_workouts)
+      ? row.program_workouts
+        .map(normalizeProgramWorkoutRow)
+        .filter(Boolean)
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+      : [];
+    return {
+      id: row.id,
+      name: row.name || 'Untitled program',
+      description: row.description || '',
+      is_global: !!row.is_global,
+      created_by: row.created_by || null,
+      workouts,
+    };
+  }
+
   function migrateLegacyCacheKeys() {
     if (TEST_MODE) return;
     const migrateKey = (oldKey, baseKey) => {
@@ -256,6 +284,66 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
       state.userRotation = null;
       return state.userRotation;
     }
+  }
+
+  async function loadPrograms() {
+    if (!state.currentUser?.id) {
+      state.programs = [];
+      return state.programs;
+    }
+    if (!state.sb || TEST_MODE) {
+      state.programs = [];
+      return state.programs;
+    }
+    try {
+      const userId = state.currentUser.id;
+      const { data: rows, error } = await state.sb.from('programs')
+        .select(`
+          id,
+          name,
+          description,
+          is_global,
+          created_by,
+          program_workouts (
+            id,
+            workout_id,
+            position,
+            workout_library (
+              id,
+              name,
+              category,
+              icon,
+              is_global,
+              created_by
+            )
+          )
+        `)
+        .or(`is_global.eq.true,created_by.eq.${userId}`)
+        .order('is_global', { ascending: false })
+        .order('name', { ascending: true })
+        .order('position', { ascending: true, foreignTable: 'program_workouts' });
+      if (error) throw error;
+
+      state.programs = (rows || [])
+        .map(normalizeProgramRow)
+        .filter(Boolean);
+      return state.programs;
+    } catch (err) {
+      console.warn('[programs] load failed:', err);
+      state.programs = [];
+      return state.programs;
+    }
+  }
+
+  function getProgramById(programId) {
+    if (!programId) return null;
+    return (state.programs || []).find(program => program.id === programId) || null;
+  }
+
+  async function saveProgramAsUserRotation(programId) {
+    const program = getProgramById(programId);
+    if (!program) throw new Error('Program not found');
+    return saveUserRotation(program.workouts.map(workout => workout.id));
   }
 
   async function saveData(data, deletedSid = null) {
@@ -477,10 +565,15 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
     markWelcomeDismissed,
     normalizeUserPreferences,
     normalizeWorkoutLibraryRow,
+    normalizeProgramWorkoutRow,
+    normalizeProgramRow,
     migrateLegacyCacheKeys,
     loadData,
     loadWorkoutLibrary,
     loadUserRotation,
+    loadPrograms,
+    getProgramById,
+    saveProgramAsUserRotation,
     saveData,
     saveUserRotation,
     saveCustomWorkout,

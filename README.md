@@ -2,7 +2,7 @@
 
 A mobile-first PWA for daily habits — workout tracking, journaling, and intention-setting.
 
-**Current version: 1.5.21**
+**Current version: 1.5.22**
 
 Live at: https://habits.chrisaug.com
 
@@ -35,7 +35,9 @@ Peloton alternates with every other workout. Yoga appears every 4th workout over
 
 The default rotation is position-based, not time-based — it always picks up where it left off regardless of how many days pass between workouts.
 
-Each signed-in user can now build and save a custom rotation in Settings. Until a user saves a custom rotation with at least 2 workouts, the app keeps using the default built-in rotation above.
+Each signed-in user can now build and save a custom rotation in Settings. New accounts first choose a pre-built program or build their own from scratch, and existing accounts can reset to a program later from Settings. Until a user saves a custom rotation with at least 2 workouts, the app keeps using the default built-in rotation above.
+
+Pre-built programs live in Supabase and are loaded after auth into `state.programs`. Global programs are visible to everyone, while personal programs are scoped to their owner.
 
 ## Features
 
@@ -47,7 +49,7 @@ The Today tab is a daily habit dashboard with customizable cards. All entry happ
 
 **Workout card**
 - Shows today's suggested workout (Next Up) with rotation, Done!, and Undo logic unchanged
-- Uses the signed-in user's custom rotation when saved; otherwise falls back to the built-in default rotation
+- Uses the signed-in user's saved rotation when available, whether it came from a pre-built program or the custom builder; otherwise falls back to the built-in default rotation
 - **Done!** — logs the workout and advances the rotation
 - **Log activity** — opens a chooser modal with all 5 workout types, Rest Day, and a freeform Other activity option
 - **Undo** — reverses the most recent log entry; rolls back the rotation if applicable
@@ -84,7 +86,7 @@ The Today tab is a daily habit dashboard with customizable cards. All entry happ
 
 ### Other
 - Offline-capable PWA, installable on iPhone home screen; entries logged while offline are automatically synced to Supabase the next time the app loads with a connection
-- **Account + Settings** — Settings shows the signed-in email, avatar initial, optional first/last name fields stored in Supabase auth metadata, Today Tab card toggles, a My Rotation builder for custom workout order, a Tutorial shortcut, Sync data now, Change password, Send feedback, Sign out, and a Danger Zone delete-account flow
+- **Account + Settings** — Settings shows the signed-in email, avatar initial, optional first/last name fields stored in Supabase auth metadata, Today Tab card toggles, a My Rotation area with reset-to-program and custom-builder flows, a Tutorial shortcut, Sync data now, Change password, Send feedback, Sign out, and a Danger Zone delete-account flow
 - **Auth recovery** — login includes a Forgot password link that sends a Supabase password reset email; recovery links open the app and prompt for a new password
 - **First-time welcome screen** — brand-new signups see a one-time welcome overlay before the Today tab, with a quick walkthrough of workouts, journaling, weight tracking, and settings; dismiss state is stored per user in localStorage
 - **Test mode** — hidden feature; triple-tap the version stamp (bottom of Today screen) or press Alt+Shift+T to toggle; shows an amber banner confirming no real data is affected; uses isolated localStorage keys (`habits_test`, `habits_test_other_activities`, `habits_test_journal`) and skips all Supabase calls
@@ -180,7 +182,27 @@ These policies keep reads, inserts, and updates scoped to the signed-in user and
 Behavior notes:
 - `state.workoutLibrary` is loaded once after auth with global workouts plus workouts created by the current user
 - `state.userRotation` is loaded once after auth in saved order
+- `state.programs` is loaded once after auth with global programs plus programs created by the current user
 - The app uses `state.userRotation` only when it contains at least 2 workouts; otherwise it falls back to the built-in `WORKOUTS`/`ROTATION` constants for backward compatibility
+
+**`programs`** — pre-built workout rotation templates
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | `uuid` | Primary key |
+| `name` | `text` | Program name shown in the picker |
+| `description` | `text` | Short summary shown on the program card |
+| `is_global` | `boolean` | `true` for seeded programs shared by everyone |
+| `created_by` | `uuid` (nullable) | `auth.users(id)` for personal programs, `null` for global programs |
+
+**`program_workouts`** — ordered workouts inside each program
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | `uuid` | Primary key |
+| `program_id` | `uuid` | References `programs(id)` |
+| `workout_id` | `uuid` | References `workout_library(id)` |
+| `position` | `integer` | Zero-based order within the program |
 
 Migration SQL (run manually in Supabase SQL editor):
 ```sql

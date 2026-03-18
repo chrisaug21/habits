@@ -90,7 +90,7 @@ tracking workouts (with suggestions!), tracking your weight (optionally), and co
           <i data-lucide="repeat"></i>
           <span>Your workout rotation</span>
         </div>
-        <p class="welcome-copy">The app suggests workouts each day based on your workout rotation. You can keep the default setup or change it to anything you want in Settings, including repeating favorite workouts, reordering the flow, or adding your own custom workouts.</p>
+        <p class="welcome-copy">The app suggests workouts each day based on your workout rotation. New accounts start by picking a pre-built program or building a custom rotation from scratch, and you can reset or customize that setup anytime in Settings.</p>
       </div>
       <div class="welcome-section">
         <div class="welcome-section-head">
@@ -113,10 +113,30 @@ focus on. Takes about 60 seconds and helps ground you in being mindful and prese
           <i data-lucide="settings"></i>
           <span>Settings</span>
         </div>
-        <p class="welcome-copy">Use the Settings panel to manage your account details, change your workout rotation, and choose which Today tab cards you want to see for workouts, journaling, and weight. You can also change your password, send feedback, reopen this tutorial, sync data, or sign out.</p>
+        <p class="welcome-copy">Use the Settings panel to manage your account details, reset or customize your workout rotation, and choose which Today tab cards you want to see for workouts, journaling, and weight. You can also change your password, send feedback, reopen this tutorial, sync data, or sign out.</p>
       </div>
       <button class="welcome-cta" id="welcome-continue-btn">
         <span>Got it, let's go</span>
+        <i data-lucide="arrow-right"></i>
+      </button>
+    </div>
+  </div>
+
+  <div id="program-picker-screen" hidden role="dialog" aria-modal="true" aria-labelledby="program-picker-title">
+    <div class="welcome-card program-picker-screen-card">
+      <div class="welcome-badge">
+        <i data-lucide="repeat"></i>
+        Starting Rotation
+      </div>
+      <h2 class="welcome-title" id="program-picker-title">Choose a starting rotation</h2>
+      <p class="welcome-copy">Pick a program to get started. You can customize it anytime.</p>
+      <div class="program-picker-list" id="program-picker-screen-list"></div>
+      <button class="program-picker-custom-btn" id="program-picker-custom-btn" type="button">
+        <span>Build my own from scratch</span>
+        <i data-lucide="chevron-right"></i>
+      </button>
+      <button class="welcome-cta" id="program-picker-confirm-btn" type="button">
+        <span>Start with Balanced</span>
         <i data-lucide="arrow-right"></i>
       </button>
     </div>
@@ -253,6 +273,10 @@ focus on. Takes about 60 seconds and helps ground you in being mindful and prese
       <div class="settings-section">
         <div class="settings-section-title">My Workout Rotation</div>
         <div class="settings-card" id="settings-rotation-card">
+          <button class="settings-secondary-btn" id="reset-program-btn" type="button">
+            <i data-lucide="rotate-ccw"></i>
+            Reset to a program
+          </button>
           <div class="settings-rotation-empty" id="settings-rotation-empty" hidden>
             <div class="settings-rotation-empty-title">Using default rotation</div>
             <div class="settings-rotation-empty-note">Build your own workout order and save it to your account.</div>
@@ -496,6 +520,30 @@ focus on. Takes about 60 seconds and helps ground you in being mindful and prese
       <div class="modal-actions rotation-builder-actions">
         <button class="modal-cancel-btn" id="rotation-builder-cancel-btn" type="button">Cancel</button>
         <button class="modal-confirm-btn" id="rotation-builder-save-btn" type="button">Save rotation</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="program-reset-modal" hidden role="dialog" aria-modal="true" aria-labelledby="program-reset-title">
+    <div class="modal-sheet">
+      <div class="modal-title" id="program-reset-title">Choose a program</div>
+      <div class="program-picker-sheet-copy">Pick a saved program to replace your current rotation.</div>
+      <div class="program-picker-list program-picker-list--sheet" id="program-reset-list"></div>
+      <button class="program-picker-custom-btn program-picker-custom-btn--sheet" id="program-reset-custom-btn" type="button">
+        <span>Build my own from scratch</span>
+        <i data-lucide="chevron-right"></i>
+      </button>
+      <button class="modal-cancel-btn" id="program-reset-cancel-btn" type="button">Cancel</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="program-reset-confirm-modal" hidden role="dialog" aria-modal="true" aria-labelledby="program-reset-confirm-title">
+    <div class="modal-sheet">
+      <div class="modal-title" id="program-reset-confirm-title">Replace your current rotation?</div>
+      <div class="program-picker-confirm-copy" id="program-reset-confirm-copy">This cannot be undone.</div>
+      <div class="modal-actions">
+        <button class="modal-cancel-btn" id="program-reset-confirm-cancel-btn" type="button">Cancel</button>
+        <button class="modal-confirm-btn" id="program-reset-confirm-btn" type="button">Confirm</button>
       </div>
     </div>
   </div>

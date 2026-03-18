@@ -54,6 +54,7 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
     state.cachedWeight = null;
     state.workoutLibrary = [];
     state.userRotation = null;
+    state.programs = [];
     state.userPreferences = { ...DEFAULT_USER_PREFERENCES };
     document.getElementById('auth-screen').hidden = false;
     document.getElementById('app-container').hidden = true;
@@ -69,6 +70,9 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
     document.getElementById('password-modal').hidden = true;
     document.getElementById('delete-account-modal').hidden = true;
     document.getElementById('welcome-screen').hidden = true;
+    document.getElementById('program-picker-screen').hidden = true;
+    document.getElementById('program-reset-modal').hidden = true;
+    document.getElementById('program-reset-confirm-modal').hidden = true;
     document.getElementById('app-container').inert = false;
     document.getElementById('bottom-nav').inert = false;
     state.lastFocusedBeforeWelcome = null;
@@ -98,11 +102,14 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
     deps.switchMainTab('today');
     await deps.loadWorkoutLibrary();
     await deps.loadUserRotation();
+    await deps.loadPrograms();
     deps.renderSettingsAccount();
     await data.loadUserPreferences();
     deps.renderSettingsTodayTab();
     await deps.render();
-    if (deps.hasPendingWelcome() && !deps.hasDismissedWelcome()) {
+    if (deps.hasPendingWelcome() && !utils.hasCustomRotation()) {
+      deps.openProgramPickerScreen();
+    } else if (deps.hasPendingWelcome() && !deps.hasDismissedWelcome()) {
       deps.openWelcomeScreen();
     }
     deps.loadJournal().then(() => {
