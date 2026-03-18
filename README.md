@@ -2,7 +2,7 @@
 
 A mobile-first PWA for daily habits — workout tracking, journaling, and intention-setting.
 
-**Current version: 1.5.15**
+**Current version: 1.5.16**
 
 Live at: https://habits.chrisaug.com
 
@@ -189,7 +189,15 @@ When test mode is active (`?test=true` in the URL), the app writes to isolated p
 |---|---|
 | `index.html` | App shell — HTML markup only |
 | `style.css` | All CSS styles |
-| `app.js` | All JavaScript — app logic, Supabase calls, service worker registration |
+| `app.js` | Core runtime spine — constants, shared state, module wiring, tab routing, service worker registration |
+| `shared.js` | Shared utilities — date helpers, profile helpers, toasts, sync stamp, test-mode helpers |
+| `data.js` | Shared cache + Supabase data helpers |
+| `today.js` | Today tab rendering and actions |
+| `log.js` | Log tab rendering and backfill flow |
+| `stats.js` | Stats tab rendering and chart logic |
+| `settings.js` | Settings/account rendering and actions |
+| `auth.js` | Login, signup, password reset, and auth bootstrap |
+| `rotations.js` | Placeholder for future custom workout rotations work (`#115`) |
 | `sw.js` | Service worker — precaching and offline support |
 | `manifest.json` | PWA manifest |
 | `netlify.toml` | Build command (injects Supabase credentials) and scheduled keep-alive function |
@@ -228,7 +236,7 @@ Settings feedback submits through a hidden Netlify form named `feedback` using a
 
 Requires `apple-touch-icon.png` (180×180 PNG, generated from `icon.svg`) for a proper home screen icon on iOS. Until added, iOS uses a page screenshot as the icon.
 
-The service worker (`sw.js`) precaches `index.html`, `style.css`, `app.js`, and the CDN scripts used by the app (Supabase, Lucide, and Chart.js). This means the app loads correctly offline after the first visit — no network request to the CDN needed.
+The service worker (`sw.js`) precaches `index.html`, `style.css`, every app script file (`app.js`, `shared.js`, `data.js`, `today.js`, `log.js`, `stats.js`, `settings.js`, `auth.js`, `rotations.js`), and the CDN scripts used by the app (Supabase, Lucide, and Chart.js). This means the app loads correctly offline after the first visit — no network request to the CDN needed.
 
 ## Next Steps
 

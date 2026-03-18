@@ -1,9 +1,17 @@
-const CACHE = 'habits-v15';
+const CACHE = 'habits-v17';
 const PRECACHE = [
   '/',
   '/index.html',
   '/style.css',
   '/app.js',
+  '/shared.js',
+  '/data.js',
+  '/today.js',
+  '/log.js',
+  '/stats.js',
+  '/settings.js',
+  '/auth.js',
+  '/rotations.js',
   '/manifest.json',
   // Favicon & app icons
   '/favicon.ico',

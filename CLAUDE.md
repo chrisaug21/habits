@@ -8,7 +8,7 @@ Habits is a mobile-first PWA for personal habit tracking. Solo-built and
 intentionally simple. Live at https://habits.chrisaug.com.
 
 ## Stack
-- Vanilla JS, HTML, CSS (single-file architecture — intentional, do not refactor)
+- Vanilla JS, HTML, CSS (plain script modules, no framework or bundler)
 - Supabase (backend + auth)
 - Netlify (hosting + serverless functions)
 
@@ -18,6 +18,8 @@ intentionally simple. Live at https://habits.chrisaug.com.
 - localStorage cache keys must be scoped per user ID to prevent cache bleed between accounts on the same device
 - Account-level UI settings belong in `user_preferences`, not `state`
 - `user_preferences` should be loaded once after auth, cached in memory, and written back directly on change
+- Keep `app.js` as the runtime spine; shared helpers may live in small support files like `shared.js` and `data.js`, while feature code belongs in feature modules
+- Supabase JS `.upsert()` calls must pass `onConflict` as a comma-separated string, not an array
 - Reuse shared "last done" thresholds and labels across surfaces instead of re-inventing per-view logic
 - If Supabase is unreachable, show an error toast — do not attempt offline writes
 - Do not introduce frameworks or additional dependencies without explicit approval
