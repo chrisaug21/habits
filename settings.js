@@ -111,13 +111,13 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
     return (state.programs || []).find(program => program.id === programId) || null;
   }
 
-  function getProgramCardHtml(program, { selected = false } = {}) {
+  function getProgramCardHtml(program, { selected = false, disabled = false } = {}) {
     const workouts = Array.isArray(program.workouts) ? program.workouts : [];
     const preview = workouts.slice(0, 5);
     const extraCount = workouts.length - preview.length;
     const workoutCountLabel = `${workouts.length} workout${workouts.length === 1 ? '' : 's'}`;
     return `
-      <button class="program-picker-card${selected ? ' is-selected' : ''}" type="button" data-program-id="${program.id}" aria-pressed="${selected ? 'true' : 'false'}">
+      <button class="program-picker-card${selected ? ' is-selected' : ''}" type="button" data-program-id="${program.id}" aria-pressed="${selected ? 'true' : 'false'}" aria-disabled="${disabled ? 'true' : 'false'}" ${disabled ? 'disabled' : ''}>
         <div class="program-picker-card-top">
           <div class="program-picker-card-copy">
             <div class="program-picker-card-name">${utils.escapeHtml(program.name)}</div>
@@ -145,7 +145,10 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
     if (!programs.length) {
       return '<div class="program-picker-card-empty">Programs could not be loaded right now. You can still build your own from scratch.</div>';
     }
-    return programs.map(program => getProgramCardHtml(program, { selected: program.id === selectedId })).join('');
+    return programs.map(program => getProgramCardHtml(program, {
+      selected: program.id === selectedId,
+      disabled: programPickerSaving,
+    })).join('');
   }
 
   function renderProgramPickerScreen() {
@@ -153,8 +156,11 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
     selectedProgramId = resolvedSelection;
     document.getElementById('program-picker-screen-list').innerHTML = getProgramListMarkup(resolvedSelection);
     const confirmBtn = document.getElementById('program-picker-confirm-btn');
+    const customBtn = document.getElementById('program-picker-custom-btn');
     const selectedProgram = getProgramById(resolvedSelection);
     confirmBtn.disabled = !selectedProgram || programPickerSaving;
+    customBtn.disabled = programPickerSaving;
+    customBtn.setAttribute('aria-disabled', programPickerSaving ? 'true' : 'false');
     confirmBtn.querySelector('span').textContent = selectedProgram
       ? `Start with ${selectedProgram.name}`
       : 'Build my own from scratch';
@@ -191,6 +197,9 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
 
   function renderProgramResetPicker() {
     document.getElementById('program-reset-list').innerHTML = getProgramListMarkup(null);
+    const customBtn = document.getElementById('program-reset-custom-btn');
+    customBtn.disabled = programPickerSaving;
+    customBtn.setAttribute('aria-disabled', programPickerSaving ? 'true' : 'false');
     if (typeof lucide !== 'undefined') lucide.createIcons();
   }
 
@@ -240,6 +249,7 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
       if (flow === 'ftux') {
         renderProgramPickerScreen();
       } else if (flow === 'reset') {
+        renderProgramResetPicker();
         document.getElementById('program-reset-confirm-btn').disabled = true;
       }
 
@@ -265,6 +275,8 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
       programPickerSaving = false;
       if (flow === 'ftux' && !document.getElementById('program-picker-screen').hidden) {
         renderProgramPickerScreen();
+      } else if (flow === 'reset' && !document.getElementById('program-reset-modal').hidden) {
+        renderProgramResetPicker();
       }
     }
   }
@@ -275,6 +287,7 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
   }
 
   function openCustomBuilderFromFtux() {
+    if (programPickerSaving) return;
     closeProgramPickerScreen({ preserveFlow: true });
     deps.switchMainTab('settings');
     openRotationBuilder({ seed: 'empty', returnToProgramPickerOnCancel: true });
@@ -814,6 +827,7 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
     document.getElementById('program-picker-confirm-btn').onclick = () => confirmSelectedProgram();
     document.getElementById('program-picker-custom-btn').onclick = () => openCustomBuilderFromFtux();
     document.getElementById('program-picker-screen').addEventListener('click', e => {
+      if (programPickerSaving) return;
       const card = e.target.closest('[data-program-id]');
       if (!card) return;
       const programId = card.dataset.programId;
@@ -824,6 +838,7 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
     });
     document.getElementById('program-reset-cancel-btn').onclick = () => closeProgramResetPicker();
     document.getElementById('program-reset-custom-btn').onclick = () => {
+      if (programPickerSaving) return;
       closeProgramResetPicker();
       openRotationBuilder();
     };
@@ -831,6 +846,7 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
       if (e.target === document.getElementById('program-reset-modal')) closeProgramResetPicker();
     });
     document.getElementById('program-reset-list').addEventListener('click', e => {
+      if (programPickerSaving) return;
       const card = e.target.closest('[data-program-id]');
       if (!card?.dataset.programId) return;
       openProgramResetConfirm(card.dataset.programId);

@@ -343,7 +343,15 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
   async function saveProgramAsUserRotation(programId) {
     const program = getProgramById(programId);
     if (!program) throw new Error('Program not found');
-    return saveUserRotation(program.workouts.map(workout => workout.id));
+    const nextRotation = await saveUserRotation(program.workouts.map(workout => workout.id));
+    const currentData = await loadData();
+    const resetData = {
+      ...currentData,
+      rotationIndex: 0,
+      actionDate: null,
+    };
+    await saveData(resetData);
+    return nextRotation;
   }
 
   async function saveData(data, deletedSid = null) {

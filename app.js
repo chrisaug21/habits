@@ -54,7 +54,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.5.22';
+    const VERSION = '1.5.23';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';

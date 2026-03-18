@@ -699,6 +699,12 @@
       touch-action: manipulation;
     }
 
+    .program-picker-custom-btn:disabled,
+    .program-picker-card:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+
     .program-picker-custom-btn:active {
       background: var(--surface2);
     }
@@ -2555,6 +2561,13 @@
       color: var(--text-primary);
     }
 
+    .rotation-builder-row-name {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     .rotation-builder-section-note,
     .rotation-builder-row-meta,
     .rotation-builder-library-meta,
@@ -2643,6 +2656,7 @@
       display: grid;
       place-items: center;
       padding: 0;
+      flex-shrink: 0;
     }
 
     .rotation-builder-icon-btn:disabled,
