@@ -6,7 +6,6 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
     BASE_STORAGE_KEY,
     BASE_WELCOMED_KEY,
     DEFAULT_USER_PREFERENCES,
-    WORKOUT_CATEGORY_ICONS,
   } = ctx.constants;
   const state = ctx.state;
   const deps = ctx.deps;
@@ -77,7 +76,7 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
       id: row.id,
       name: row.name || 'Untitled workout',
       category: row.category || '',
-      icon: row.icon || WORKOUT_CATEGORY_ICONS[row.category] || 'dumbbell',
+      icon: row.icon || '',
       is_global: !!row.is_global,
       created_by: row.created_by || null,
     };
@@ -340,18 +339,11 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
     if (!state.sb || !state.currentUser?.id) throw new Error('Supabase client not available');
 
     try {
-      const { error: deleteError } = await state.sb.from('user_rotation')
-        .delete()
-        .eq('user_id', state.currentUser.id);
-      if (deleteError) throw deleteError;
-
-      const rows = orderedIds.map((workoutId, position) => ({
-        user_id: state.currentUser.id,
-        workout_id: workoutId,
-        position,
-      }));
-      const { error: insertError } = await state.sb.from('user_rotation').insert(rows);
-      if (insertError) throw insertError;
+      const { error } = await state.sb.rpc('save_user_rotation', {
+        p_user_id: state.currentUser.id,
+        p_workout_ids: orderedIds,
+      });
+      if (error) throw error;
 
       state.userRotation = nextRotation;
       return state.userRotation;
@@ -365,14 +357,13 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
   async function saveCustomWorkout({ name, category }) {
     const trimmedName = String(name || '').trim();
     const normalizedCategory = String(category || '').trim();
-    if (!trimmedName || !WORKOUT_CATEGORY_ICONS[normalizedCategory]) {
+    if (!trimmedName || !normalizedCategory) {
       throw new Error('Workout name and category are required');
     }
 
     const payload = {
       name: trimmedName,
       category: normalizedCategory,
-      icon: WORKOUT_CATEGORY_ICONS[normalizedCategory],
       is_global: false,
       created_by: state.currentUser?.id || null,
     };

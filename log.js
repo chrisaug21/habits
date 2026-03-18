@@ -392,6 +392,7 @@ window.HabitsApp.registerLogModule = function registerLogModule(ctx) {
     const map = {};
     let rotIdx = currentData.rotationIndex || 0;
     const rotation = utils.getActiveRotation();
+    if (!rotation || rotation.length === 0) return map;
     const start = new Date();
     start.setHours(0, 0, 0, 0);
 

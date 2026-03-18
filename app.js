@@ -54,7 +54,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.5.19';
+    const VERSION = '1.5.20';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -68,12 +68,6 @@
       show_workout_card: true,
       show_journal_card: true,
       show_weight_card: true,
-    });
-    const WORKOUT_CATEGORY_ICONS = Object.freeze({
-      Cardio: 'bike',
-      Strength: 'dumbbell',
-      Flexibility: 'flower-2',
-      Rest: 'moon',
     });
     // ────────────────────────────────────────────────────────────────────────
 
@@ -116,7 +110,6 @@
       BASE_JOURNAL_KEY,
       BASE_WEIGHT_KEY,
       DEFAULT_USER_PREFERENCES,
-      WORKOUT_CATEGORY_ICONS,
       SKIP_DEFAULTS,
       MAX_ACTIVITY_LENGTH,
       BASE_STORAGE_KEY,

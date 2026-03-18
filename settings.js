@@ -187,8 +187,8 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
     setTimeout(() => document.getElementById('rotation-builder-close-btn').focus(), 80);
   }
 
-  function closeRotationBuilder() {
-    if (rotationBuilderSaving || customWorkoutSaving) return;
+  function closeRotationBuilder(force = false) {
+    if (!force && (rotationBuilderSaving || customWorkoutSaving)) return;
     stagedRotationSlots = null;
     destroyRotationSortable();
     hideCustomWorkoutForm();
@@ -227,12 +227,13 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
     document.getElementById('rotation-builder-save-btn').disabled = true;
     try {
       await data.saveUserRotation(stagedRotationSlots.map(slot => slot.workoutId));
+      closeRotationBuilder(true);
       renderSettingsRotation();
       await deps.render(state.cachedData);
-      closeRotationBuilder();
       utils.showToast('Rotation saved');
     } catch (err) {
       console.error('[rotation-builder] save failed:', err);
+      utils.showToast('Failed to save rotation — please try again');
     } finally {
       rotationBuilderSaving = false;
       if (!document.getElementById('rotation-builder-modal').hidden) {

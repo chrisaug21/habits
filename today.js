@@ -126,7 +126,9 @@ window.HabitsApp.registerTodayModule = function registerTodayModule(ctx) {
         (!('advanced' in last) && last.type !== 'off');
       if (wasRotationAdvancing) {
         const rotation = utils.getActiveRotation();
-        loaded.rotationIndex = ((loaded.rotationIndex || 0) - 1 + rotation.length) % rotation.length;
+        if (rotation.length > 0) {
+          loaded.rotationIndex = ((loaded.rotationIndex || 0) - 1 + rotation.length) % rotation.length;
+        }
       }
 
       const stillLockedToday = (loaded.history || []).some(entry =>
@@ -798,9 +800,16 @@ window.HabitsApp.registerTodayModule = function registerTodayModule(ctx) {
     tomorrowPreviewEl.hidden = !preferences.show_workout_card || heroState === 'default';
     const rotIdx = loaded.rotationIndex || 0;
     const activeRotation = utils.getActiveRotation();
-    const tomorrowWorkout = actionTakenToday
-      ? activeRotation[rotIdx % activeRotation.length]
-      : activeRotation[(rotIdx + 1) % activeRotation.length];
+    const tomorrowWorkout = activeRotation.length > 0
+      ? (actionTakenToday
+        ? activeRotation[rotIdx % activeRotation.length]
+        : activeRotation[(rotIdx + 1) % activeRotation.length])
+      : null;
+    if (!tomorrowWorkout) {
+      tomorrowPreviewEl.hidden = true;
+      document.getElementById('tomorrow-name').innerHTML = '';
+      document.getElementById('tomorrow-last-done').hidden = true;
+    } else {
     const tomorrowNameEl = document.getElementById('tomorrow-name');
     tomorrowNameEl.innerHTML = '';
     const tomorrowIconEl = document.createElement('i');
@@ -813,6 +822,7 @@ window.HabitsApp.registerTodayModule = function registerTodayModule(ctx) {
       loaded[tomorrowWorkout.id] ? utils.daysSince(loaded[tomorrowWorkout.id]) : null,
       { prefixLastDone: true }
     );
+    }
 
     const firstUsePrompt = document.getElementById('first-use-prompt');
     if (firstUsePrompt) {
