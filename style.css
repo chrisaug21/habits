@@ -2677,6 +2677,21 @@
       flex-shrink: 0;
     }
 
+    .rotation-builder-remove-btn--icon {
+      display: none;
+      width: 36px;
+      min-height: 36px;
+      padding: 0;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .rotation-builder-remove-btn--icon i,
+    .rotation-builder-remove-btn--icon svg {
+      width: 16px;
+      height: 16px;
+    }
+
     .rotation-builder-add-btn {
       color: var(--accent);
       border-color: var(--accent);
@@ -2722,6 +2737,23 @@
 
     .rotation-builder-actions {
       margin-top: auto;
+    }
+
+    @media (max-width: 479px) {
+      .rotation-builder-row {
+        gap: 8px;
+      }
+
+      .rotation-builder-row-position,
+      .rotation-builder-row-meta,
+      .rotation-builder-reorder,
+      .rotation-builder-remove-btn--text {
+        display: none;
+      }
+
+      .rotation-builder-remove-btn--icon {
+        display: inline-flex;
+      }
     }
 
     .settings-primary-btn,

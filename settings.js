@@ -353,7 +353,10 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
             <i data-lucide="chevron-down"></i>
           </button>
         </div>
-        <button class="rotation-builder-remove-btn" type="button" data-remove-slot="${workout.slotId}" ${stagedRotation.length <= 2 ? 'disabled' : ''}>Remove</button>
+        <button class="rotation-builder-remove-btn rotation-builder-remove-btn--text" type="button" data-remove-slot="${workout.slotId}" ${stagedRotation.length <= 2 ? 'disabled' : ''}>Remove</button>
+        <button class="rotation-builder-remove-btn rotation-builder-remove-btn--icon" type="button" data-remove-slot="${workout.slotId}" ${stagedRotation.length <= 2 ? 'disabled' : ''} aria-label="Remove workout">
+          <i data-lucide="x"></i>
+        </button>
       </div>
     `).join('');
 
