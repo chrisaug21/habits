@@ -360,10 +360,21 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
     if (!trimmedName || !normalizedCategory) {
       throw new Error('Workout name and category are required');
     }
+    const iconByCategory = {
+      Cardio: 'bike',
+      Strength: 'dumbbell',
+      Flexibility: 'sparkles',
+      Rest: 'moon',
+    };
+    const derivedIcon = iconByCategory[normalizedCategory];
+    if (!derivedIcon) {
+      throw new Error('Workout name and category are required');
+    }
 
     const payload = {
       name: trimmedName,
       category: normalizedCategory,
+      icon: derivedIcon,
       is_global: false,
       created_by: state.currentUser?.id || null,
     };

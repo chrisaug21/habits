@@ -11,6 +11,8 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
   let rotationBuilderSaving = false;
   let customWorkoutSaving = false;
   let rotationSortable = null;
+  let lastAddedWorkoutId = null;
+  let lastAddedResetTimer = null;
 
   function renderSettingsTodayTab() {
     document.getElementById('toggle-workout-card').checked = !!state.userPreferences.show_workout_card;
@@ -39,6 +41,17 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
       rotationSortable.destroy();
     }
     rotationSortable = null;
+  }
+
+  function setLastAddedWorkout(workoutId) {
+    lastAddedWorkoutId = workoutId;
+    clearTimeout(lastAddedResetTimer);
+    lastAddedResetTimer = setTimeout(() => {
+      lastAddedWorkoutId = null;
+      if (!document.getElementById('rotation-builder-modal').hidden) {
+        renderRotationBuilder();
+      }
+    }, 900);
   }
 
   function syncStagedSlotsFromDom() {
@@ -161,7 +174,7 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
           <div class="rotation-builder-library-name">${utils.escapeHtml(workout.name)}</div>
           <div class="rotation-builder-library-meta">${utils.escapeHtml(workout.category || '')}</div>
         </div>
-        <button class="rotation-builder-add-btn" type="button" data-add-workout="${workout.id}">Add</button>
+        <button class="rotation-builder-add-btn${lastAddedWorkoutId === workout.id ? ' is-added' : ''}" type="button" data-add-workout="${workout.id}" ${lastAddedWorkoutId === workout.id ? 'disabled' : ''}>${lastAddedWorkoutId === workout.id ? 'Added' : 'Add'}</button>
       </div>
     `).join('');
 
@@ -216,7 +229,10 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
   function addWorkoutToStage(workoutId) {
     if (!Array.isArray(stagedRotationSlots)) return;
     stagedRotationSlots = [...stagedRotationSlots, makeStagedSlot(workoutId)];
+    setLastAddedWorkout(workoutId);
     renderRotationBuilder();
+    const workout = utils.getWorkoutById(workoutId);
+    utils.showToast(`${workout?.name || 'Workout'} added`);
   }
 
   function removeWorkoutFromStage(slotId) {

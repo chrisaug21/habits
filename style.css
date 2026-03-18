@@ -2489,6 +2489,12 @@
       background: rgba(108, 99, 255, 0.08);
     }
 
+    .rotation-builder-add-btn.is-added {
+      color: #fff;
+      border-color: transparent;
+      background: var(--accent);
+    }
+
     .rotation-builder-library-group {
       display: flex;
       flex-direction: column;
