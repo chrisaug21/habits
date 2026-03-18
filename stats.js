@@ -1,7 +1,6 @@
 window.HabitsApp = window.HabitsApp || {};
 
 window.HabitsApp.registerStatsModule = function registerStatsModule(ctx) {
-  const { WORKOUTS } = ctx.constants;
   const state = ctx.state;
   const utils = ctx.utils;
   const deps = ctx.deps;
@@ -206,8 +205,9 @@ window.HabitsApp.registerStatsModule = function registerStatsModule(ctx) {
     }
     const consistencyPct = Math.round((distinctDays / denominator) * 100);
 
-    const ROTATION_TYPE_IDS = new Set(['peloton', 'upper_push', 'upper_pull', 'lower', 'yoga']);
-    const typeOrder = ['peloton', 'upper_push', 'upper_pull', 'lower', 'yoga'];
+    const activeWorkouts = utils.getActiveWorkoutList();
+    const ROTATION_TYPE_IDS = new Set(activeWorkouts.map(workout => workout.id));
+    const typeOrder = activeWorkouts.map(workout => workout.id);
     const typeCounts = {};
     typeOrder.forEach(id => { typeCounts[id] = 0; });
     rangeEntries.forEach(entry => {
@@ -285,7 +285,7 @@ window.HabitsApp.registerStatsModule = function registerStatsModule(ctx) {
           <div class="stats-section-label">Workouts by Type</div>
           <div class="stats-card">
             ${typeOrder.map(id => {
-              const workout = WORKOUTS.find(x => x.id === id);
+              const workout = utils.getWorkoutById(id);
               const count = typeCounts[id];
               const pct = maxCount > 0 ? Math.round((count / maxCount) * 100) : 0;
               const lastDone = utils.lastDoneBadge(currentData[workout.id] ? utils.daysSince(currentData[workout.id]) : null);

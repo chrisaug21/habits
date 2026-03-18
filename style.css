@@ -2226,6 +2226,310 @@
       opacity: 0.6;
     }
 
+    .settings-rotation-empty {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .settings-rotation-empty-title,
+    .settings-rotation-row-name {
+      font-size: 0.98rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .settings-rotation-empty-note,
+    .settings-rotation-row-position {
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      line-height: 1.45;
+    }
+
+    .settings-rotation-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .settings-rotation-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 44px;
+    }
+
+    .settings-rotation-row-index {
+      width: 28px;
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      font-weight: 700;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .settings-rotation-row-icon,
+    .rotation-builder-row-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      display: grid;
+      place-items: center;
+      color: var(--text-primary);
+      flex-shrink: 0;
+    }
+
+    .settings-rotation-row-copy,
+    .rotation-builder-row-copy,
+    .rotation-builder-library-copy {
+      min-width: 0;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .rotation-builder-modal {
+      align-items: stretch;
+      justify-content: stretch;
+    }
+
+    .rotation-builder-sheet {
+      min-height: 100vh;
+      max-height: 100vh;
+      border-radius: 0;
+      padding-top: calc(18px + env(safe-area-inset-top, 0px));
+      padding-bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+      gap: 18px;
+    }
+
+    .rotation-builder-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .rotation-builder-close-btn {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text-primary);
+      display: grid;
+      place-items: center;
+      padding: 0;
+      flex-shrink: 0;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .rotation-builder-close-btn:active {
+      background: rgba(108, 99, 255, 0.12);
+    }
+
+    .rotation-builder-title {
+      flex: 1;
+    }
+
+    .rotation-builder-spacer {
+      width: 42px;
+      flex-shrink: 0;
+    }
+
+    .rotation-builder-content {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      padding-bottom: 8px;
+    }
+
+    .rotation-builder-section {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 16px;
+    }
+
+    .rotation-builder-section-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .rotation-builder-section-title,
+    .rotation-builder-row-name,
+    .rotation-builder-library-name {
+      font-size: 0.98rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .rotation-builder-section-note,
+    .rotation-builder-row-meta,
+    .rotation-builder-library-meta,
+    .rotation-builder-library-label {
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      line-height: 1.45;
+    }
+
+    .rotation-builder-current-list,
+    .rotation-builder-library-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .rotation-builder-row,
+    .rotation-builder-library-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 48px;
+    }
+
+    .rotation-builder-row--dragging {
+      opacity: 0.45;
+    }
+
+    .rotation-builder-row--picked {
+      background: rgba(108, 99, 255, 0.08);
+      border-radius: 16px;
+    }
+
+    .rotation-builder-row-position {
+      width: 26px;
+      text-align: center;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+
+    .rotation-builder-drag-handle {
+      width: 40px;
+      min-height: 40px;
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      background: transparent;
+      color: var(--text-secondary);
+      display: grid;
+      place-items: center;
+      padding: 0;
+      cursor: grab;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .rotation-builder-drag-handle:active {
+      cursor: grabbing;
+      background: rgba(108, 99, 255, 0.08);
+    }
+
+    .rotation-builder-reorder {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .rotation-builder-icon-btn,
+    .rotation-builder-remove-btn,
+    .rotation-builder-add-btn {
+      border-radius: 12px;
+      min-height: 40px;
+      font-family: inherit;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .rotation-builder-icon-btn {
+      width: 40px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text-primary);
+      display: grid;
+      place-items: center;
+      padding: 0;
+    }
+
+    .rotation-builder-icon-btn:disabled,
+    .rotation-builder-remove-btn:disabled,
+    .rotation-builder-add-btn:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+
+    .rotation-builder-remove-btn,
+    .rotation-builder-add-btn {
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-primary);
+      padding: 0 14px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .rotation-builder-add-btn {
+      color: var(--accent);
+      border-color: var(--accent);
+      background: rgba(108, 99, 255, 0.08);
+    }
+
+    .rotation-builder-add-btn.is-added {
+      color: #fff;
+      border-color: transparent;
+      background: var(--accent);
+    }
+
+    .rotation-builder-library-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .rotation-builder-library-label {
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+    }
+
+    .rotation-builder-library-empty {
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      text-align: center;
+      padding: 8px 0 4px;
+    }
+
+    .rotation-builder-add-own-btn {
+      width: 100%;
+    }
+
+    .rotation-builder-custom-form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-top: 4px;
+    }
+
+    .rotation-builder-actions {
+      margin-top: auto;
+    }
+
     .settings-primary-btn,
     .settings-secondary-btn,
     .settings-signout-btn,

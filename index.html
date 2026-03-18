@@ -22,6 +22,7 @@
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.563.0/dist/umd/lucide.min.js" defer crossorigin="anonymous"></script>
   <!-- Chart.js — used for the weight trend chart on Stats -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js" defer crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js" defer crossorigin="anonymous"></script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -89,8 +90,7 @@ tracking workouts (with suggestions!), tracking your weight (optionally), and co
           <i data-lucide="repeat"></i>
           <span>Your workout rotation</span>
         </div>
-        <p class="welcome-copy">The app suggests workouts each day based on a rotation, including
-cycling, strength circuits (upper body push workouts, upper body pull workouts, lower body workouts), as well as yoga. Just tap Done when you finish or select "Rest Day" from the Log activity options if you did something else. The rotation picks back up the next day. You can also add custom workouts if you did something else (like Zumba, pickleball or even snow shoveling!).</p>
+        <p class="welcome-copy">The app suggests workouts each day based on your workout rotation. You can keep the default setup or change it to anything you want in Settings, including repeating favorite workouts, reordering the flow, or adding your own custom workouts.</p>
       </div>
       <div class="welcome-section">
         <div class="welcome-section-head">
@@ -113,7 +113,7 @@ focus on. Takes about 60 seconds and helps ground you in being mindful and prese
           <i data-lucide="settings"></i>
           <span>Settings</span>
         </div>
-        <p class="welcome-copy">Use the Settings panel to manage your account details, change your password, send feedback, reopen this tutorial, sync data, or sign out.</p>
+        <p class="welcome-copy">Use the Settings panel to manage your account details, change your workout rotation, and choose which Today tab cards you want to see for workouts, journaling, and weight. You can also change your password, send feedback, reopen this tutorial, sync data, or sign out.</p>
       </div>
       <button class="welcome-cta" id="welcome-continue-btn">
         <span>Got it, let's go</span>
@@ -248,6 +248,17 @@ focus on. Takes about 60 seconds and helps ground you in being mindful and prese
               <span class="settings-toggle-switch" aria-hidden="true"></span>
             </span>
           </label>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">My Workout Rotation</div>
+        <div class="settings-card" id="settings-rotation-card">
+          <div class="settings-rotation-empty" id="settings-rotation-empty" hidden>
+            <div class="settings-rotation-empty-title">Using default rotation</div>
+            <div class="settings-rotation-empty-note">Build your own workout order and save it to your account.</div>
+          </div>
+          <div class="settings-rotation-list" id="settings-rotation-list" hidden></div>
+          <button class="settings-secondary-btn" id="rotation-builder-open-btn">Customize my workout rotation</button>
         </div>
       </div>
       <div class="settings-section">
@@ -413,6 +424,78 @@ focus on. Takes about 60 seconds and helps ground you in being mindful and prese
       <div class="modal-actions">
         <button class="modal-cancel-btn" id="delete-account-cancel-btn">Cancel</button>
         <button class="modal-confirm-btn modal-danger-btn" id="delete-account-confirm-btn">Yes, delete everything</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay rotation-builder-modal" id="rotation-builder-modal" hidden role="dialog" aria-modal="true" aria-labelledby="rotation-builder-title">
+    <div class="modal-sheet rotation-builder-sheet">
+      <div class="rotation-builder-header">
+        <button class="rotation-builder-close-btn" id="rotation-builder-close-btn" type="button" aria-label="Close">
+          <i data-lucide="x"></i>
+        </button>
+        <div class="modal-title rotation-builder-title" id="rotation-builder-title">My Workout Rotation</div>
+        <div class="rotation-builder-spacer" aria-hidden="true"></div>
+      </div>
+
+      <div class="rotation-builder-content">
+        <section class="rotation-builder-section">
+          <div class="rotation-builder-section-head">
+            <div>
+              <div class="rotation-builder-section-title">Current rotation</div>
+              <div class="rotation-builder-section-note">Keep at least 2 workouts in your rotation.</div>
+            </div>
+          </div>
+          <div class="rotation-builder-current-list" id="rotation-builder-current-list"></div>
+        </section>
+
+        <section class="rotation-builder-section">
+          <div class="rotation-builder-section-head">
+            <div>
+              <div class="rotation-builder-section-title">Add from library</div>
+              <div class="rotation-builder-section-note">Global workouts first, then the ones you created.</div>
+            </div>
+          </div>
+          <div class="rotation-builder-library-group" id="rotation-library-global-group" hidden>
+            <div class="rotation-builder-library-label">Global workouts</div>
+            <div class="rotation-builder-library-list" id="rotation-library-global-list"></div>
+          </div>
+          <div class="rotation-builder-library-group" id="rotation-library-custom-group" hidden>
+            <div class="rotation-builder-library-label">Your workouts</div>
+            <div class="rotation-builder-library-list" id="rotation-library-custom-list"></div>
+          </div>
+          <div class="rotation-builder-library-empty" id="rotation-library-empty" hidden>No workouts in your library yet.</div>
+
+          <button class="settings-secondary-btn rotation-builder-add-own-btn" id="rotation-add-own-btn" type="button">
+            <i data-lucide="plus"></i>
+            Add your own
+          </button>
+
+          <div class="rotation-builder-custom-form" id="rotation-custom-form" hidden>
+            <label class="settings-field">
+              <span>Name</span>
+              <input class="settings-input" id="rotation-custom-name" type="text" maxlength="80" placeholder="Workout name" autocomplete="off">
+            </label>
+            <label class="settings-field">
+              <span>Category</span>
+              <select class="settings-input" id="rotation-custom-category">
+                <option value="Cardio">Cardio</option>
+                <option value="Strength">Strength</option>
+                <option value="Flexibility">Flexibility</option>
+                <option value="Rest">Rest</option>
+              </select>
+            </label>
+            <div class="modal-actions">
+              <button class="modal-cancel-btn" id="rotation-custom-cancel-btn" type="button">Cancel</button>
+              <button class="modal-confirm-btn" id="rotation-custom-save-btn" type="button">Save workout</button>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="modal-actions rotation-builder-actions">
+        <button class="modal-cancel-btn" id="rotation-builder-cancel-btn" type="button">Cancel</button>
+        <button class="modal-confirm-btn" id="rotation-builder-save-btn" type="button">Save rotation</button>
       </div>
     </div>
   </div>

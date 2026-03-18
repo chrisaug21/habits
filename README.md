@@ -2,7 +2,7 @@
 
 A mobile-first PWA for daily habits — workout tracking, journaling, and intention-setting.
 
-**Current version: 1.5.16**
+**Current version: 1.5.21**
 
 Live at: https://habits.chrisaug.com
 
@@ -33,7 +33,9 @@ Peloton alternates with every other workout. Yoga appears every 4th workout over
 | 12 | **Yoga** |
 | → repeat | |
 
-The rotation is position-based, not time-based — it always picks up where it left off regardless of how many days pass between workouts.
+The default rotation is position-based, not time-based — it always picks up where it left off regardless of how many days pass between workouts.
+
+Each signed-in user can now build and save a custom rotation in Settings. Until a user saves a custom rotation with at least 2 workouts, the app keeps using the default built-in rotation above.
 
 ## Features
 
@@ -45,6 +47,7 @@ The Today tab is a daily habit dashboard with customizable cards. All entry happ
 
 **Workout card**
 - Shows today's suggested workout (Next Up) with rotation, Done!, and Undo logic unchanged
+- Uses the signed-in user's custom rotation when saved; otherwise falls back to the built-in default rotation
 - **Done!** — logs the workout and advances the rotation
 - **Log activity** — opens a chooser modal with all 5 workout types, Rest Day, and a freeform Other activity option
 - **Undo** — reverses the most recent log entry; rolls back the rotation if applicable
@@ -68,7 +71,7 @@ The Today tab is a daily habit dashboard with customizable cards. All entry happ
 ### Log tab
 - **Calendar** (default): monthly grid with prev/next month navigation; each day shows a purple workout icon for completed workouts, an amber moon for rest/skip days, a teal zap icon for other activities, a dimmed projected icon for future days, or is empty for past days with no data; days with a journal entry show a small **green dot**; days with weight logged show a small **coral dot**; today is subtly highlighted; all past days are tappable
 - **List**: chronological log of all past entries (newest first), with workout icon, date, day of week, and name
-- **Schedule**: the next 14 projected workouts based on the current rotation
+- **Schedule**: the next 14 projected workouts based on the current user rotation
 - **Past-day detail / backfill** — tap any past day in the calendar to open a day-detail sheet; it always opens in read-only mode first and shows exercise, weight, and any journal entry for that day; from there you can add or edit exercise, and add or edit weight for any past day; journal remains read-only; exercise options are all 5 rotation workouts, Rest Day, and Other Activity
 
 ### Stats tab
@@ -81,7 +84,7 @@ The Today tab is a daily habit dashboard with customizable cards. All entry happ
 
 ### Other
 - Offline-capable PWA, installable on iPhone home screen; entries logged while offline are automatically synced to Supabase the next time the app loads with a connection
-- **Account + Settings** — Settings shows the signed-in email, avatar initial, optional first/last name fields stored in Supabase auth metadata, Today Tab card toggles, a Tutorial shortcut, Sync data now, Change password, Send feedback, Sign out, and a Danger Zone delete-account flow
+- **Account + Settings** — Settings shows the signed-in email, avatar initial, optional first/last name fields stored in Supabase auth metadata, Today Tab card toggles, a My Rotation builder for custom workout order, a Tutorial shortcut, Sync data now, Change password, Send feedback, Sign out, and a Danger Zone delete-account flow
 - **Auth recovery** — login includes a Forgot password link that sends a Supabase password reset email; recovery links open the app and prompt for a new password
 - **First-time welcome screen** — brand-new signups see a one-time welcome overlay before the Today tab, with a quick walkthrough of workouts, journaling, weight tracking, and settings; dismiss state is stored per user in localStorage
 - **Test mode** — hidden feature; triple-tap the version stamp (bottom of Today screen) or press Alt+Shift+T to toggle; shows an amber banner confirming no real data is affected; uses isolated localStorage keys (`habits_test`, `habits_test_other_activities`, `habits_test_journal`) and skips all Supabase calls
@@ -153,6 +156,31 @@ Required database setup:
 - Updates should use a policy such as `user_preferences_update_own` with `for update using (auth.uid() = user_id)`
 
 These policies keep reads, inserts, and updates scoped to the signed-in user and should remain in place after any auth-related Supabase changes.
+
+**`workout_library`** — global and user-created workouts used by the rotation builder
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | `uuid` | Primary key |
+| `name` | `text` | Workout name |
+| `category` | `text` | Cardio, Strength, Flexibility, or Rest |
+| `icon` | `text` | Lucide icon name derived from category |
+| `is_global` | `boolean` | `true` for seeded workouts shared by everyone |
+| `created_by` | `uuid` | `auth.users(id)` for custom workouts, `null` for global workouts |
+
+**`user_rotation`** — ordered per-user workout rotation
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | `uuid` | Primary key |
+| `user_id` | `uuid` | Owner of this rotation row |
+| `workout_id` | `uuid` | References `workout_library(id)` |
+| `position` | `integer` | Zero-based order within the saved rotation |
+
+Behavior notes:
+- `state.workoutLibrary` is loaded once after auth with global workouts plus workouts created by the current user
+- `state.userRotation` is loaded once after auth in saved order
+- The app uses `state.userRotation` only when it contains at least 2 workouts; otherwise it falls back to the built-in `WORKOUTS`/`ROTATION` constants for backward compatibility
 
 Migration SQL (run manually in Supabase SQL editor):
 ```sql

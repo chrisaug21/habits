@@ -52,6 +52,8 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
     state.cachedData = null;
     state.cachedJournal = null;
     state.cachedWeight = null;
+    state.workoutLibrary = [];
+    state.userRotation = null;
     state.userPreferences = { ...DEFAULT_USER_PREFERENCES };
     document.getElementById('auth-screen').hidden = false;
     document.getElementById('app-container').hidden = true;
@@ -94,6 +96,8 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
 
   async function initApp() {
     deps.switchMainTab('today');
+    await deps.loadWorkoutLibrary();
+    await deps.loadUserRotation();
     deps.renderSettingsAccount();
     await data.loadUserPreferences();
     deps.renderSettingsTodayTab();

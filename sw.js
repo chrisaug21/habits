@@ -1,4 +1,4 @@
-const CACHE = 'habits-v17';
+const CACHE = 'habits-v21';
 const PRECACHE = [
   '/',
   '/index.html',
@@ -25,6 +25,7 @@ const PRECACHE = [
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
   'https://cdn.jsdelivr.net/npm/lucide@0.563.0/dist/umd/lucide.min.js',
   'https://cdn.jsdelivr.net/npm/chart.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js',
 ];
 
 self.addEventListener('install', event => {

@@ -48,9 +48,41 @@ window.HabitsApp.registerSharedModule = function registerSharedModule(ctx) {
     return `${y}-${m}-${day}`;
   }
 
+  function hasCustomRotation() {
+    return Array.isArray(state.userRotation) && state.userRotation.length >= 2;
+  }
+
+  function getActiveRotation() {
+    if (hasCustomRotation()) return state.userRotation;
+    return ROTATION.map(id => WORKOUTS.find(w => w.id === id)).filter(Boolean);
+  }
+
+  function getActiveWorkoutList() {
+    if (hasCustomRotation()) {
+      const seen = new Set();
+      return state.userRotation.filter(workout => {
+        if (!workout?.id || seen.has(workout.id)) return false;
+        seen.add(workout.id);
+        return true;
+      });
+    }
+    return WORKOUTS;
+  }
+
+  function getWorkoutById(id) {
+    if (!id) return null;
+    const activeWorkout = getActiveWorkoutList().find(workout => workout.id === id);
+    if (activeWorkout) return activeWorkout;
+    const libraryWorkout = (state.workoutLibrary || []).find(workout => workout.id === id);
+    if (libraryWorkout) return libraryWorkout;
+    return WORKOUTS.find(workout => workout.id === id) || null;
+  }
+
   function getSuggested(data) {
-    const idx = (data.rotationIndex || 0) % ROTATION.length;
-    return WORKOUTS.find(w => w.id === ROTATION[idx]);
+    const rotation = getActiveRotation();
+    if (!rotation.length) return WORKOUTS[0] || null;
+    const idx = (data.rotationIndex || 0) % rotation.length;
+    return rotation[idx] || rotation[0];
   }
 
   function lastDoneBadge(days, options = {}) {
@@ -198,6 +230,10 @@ window.HabitsApp.registerSharedModule = function registerSharedModule(ctx) {
     getYesterdayStr,
     daysSince,
     dateToStr,
+    hasCustomRotation,
+    getActiveRotation,
+    getActiveWorkoutList,
+    getWorkoutById,
     getSuggested,
     lastDoneBadge,
     renderLastDonePill,
