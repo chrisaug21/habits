@@ -18,6 +18,8 @@ intentionally simple. Live at https://habits.chrisaug.com.
 - Account-level UI settings belong in `user_preferences`, not `state`
 - `user_preferences` should be loaded once after auth, cached in memory, and written back directly on change
 - Custom workout rotations should load into in-memory `state.workoutLibrary` and `state.userRotation` after auth resolves
+- Pre-built workout programs should load into in-memory `state.programs` after auth resolves; if that fetch fails, fall back silently so the rest of the app still works
+- Program-picker actions must disable while a program save is in flight so users cannot double-submit or jump into the builder mid-save
 - Use shared rotation helpers for reads so the app prefers `state.userRotation` when it has 2+ items and otherwise falls back to the built-in `WORKOUTS`/`ROTATION`
 - Read workout icons from `workout_library.icon` when workout rows are already loaded; do not re-derive display icons from category in app code
 - Persist saved user rotations through the `save_user_rotation` Supabase RPC instead of separate client-side delete/insert calls

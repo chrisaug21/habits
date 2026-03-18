@@ -538,6 +538,187 @@
       transform: translateY(1px);
     }
 
+    #program-picker-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 330;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px
+               calc(env(safe-area-inset-bottom, 0px) + 20px);
+      background:
+        radial-gradient(circle at top, rgba(108, 99, 255, 0.22), transparent 38%),
+        rgba(13, 13, 20, 0.92);
+      backdrop-filter: blur(10px);
+      overflow-y: auto;
+    }
+
+    .program-picker-screen-card {
+      gap: 16px;
+    }
+
+    .program-picker-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .program-picker-card {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      text-align: left;
+      color: inherit;
+      font-family: inherit;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      transition: border-color 0.15s, background 0.15s, transform 0.15s;
+    }
+
+    .program-picker-card.is-selected {
+      border-color: var(--border-active);
+      background: var(--surface2);
+      box-shadow: inset 0 0 0 1px rgba(108, 99, 255, 0.12);
+    }
+
+    .program-picker-card:active {
+      transform: translateY(1px);
+    }
+
+    .program-picker-card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .program-picker-card-copy {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .program-picker-card-name {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .program-picker-card-description,
+    .program-picker-sheet-copy,
+    .program-picker-confirm-copy {
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    .program-picker-card-count {
+      flex-shrink: 0;
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: rgba(108, 99, 255, 0.12);
+      color: var(--accent);
+      font-size: 0.78rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .program-picker-card-preview {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .program-picker-card-preview-label {
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+
+    .program-picker-card-preview-icons {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .program-picker-card-preview-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      display: grid;
+      place-items: center;
+      color: var(--text-primary);
+      flex-shrink: 0;
+    }
+
+    .program-picker-card-preview-icon.is-extra {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+    }
+
+    .program-picker-card-empty {
+      border: 1px dashed var(--border);
+      border-radius: 20px;
+      padding: 16px;
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    .program-picker-custom-btn {
+      width: 100%;
+      min-height: 48px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: transparent;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px 16px;
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .program-picker-custom-btn:disabled,
+    .program-picker-card:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+
+    .program-picker-custom-btn:active {
+      background: var(--surface2);
+    }
+
+    .program-picker-custom-btn--sheet {
+      margin-top: 4px;
+    }
+
+    .program-picker-list--sheet {
+      max-height: min(52vh, 460px);
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+
     .tomorrow-preview {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -2252,6 +2433,11 @@
       gap: 10px;
     }
 
+    #reset-program-btn {
+      width: 100%;
+      margin-bottom: 12px;
+    }
+
     .settings-rotation-row {
       display: flex;
       align-items: center;
@@ -2375,6 +2561,13 @@
       color: var(--text-primary);
     }
 
+    .rotation-builder-row-name {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     .rotation-builder-section-note,
     .rotation-builder-row-meta,
     .rotation-builder-library-meta,
@@ -2463,6 +2656,7 @@
       display: grid;
       place-items: center;
       padding: 0;
+      flex-shrink: 0;
     }
 
     .rotation-builder-icon-btn:disabled,
@@ -2481,6 +2675,21 @@
       font-size: 0.9rem;
       font-weight: 600;
       flex-shrink: 0;
+    }
+
+    .rotation-builder-remove-btn--icon {
+      display: none;
+      width: 36px;
+      min-height: 36px;
+      padding: 0;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .rotation-builder-remove-btn--icon i,
+    .rotation-builder-remove-btn--icon svg {
+      width: 16px;
+      height: 16px;
     }
 
     .rotation-builder-add-btn {
@@ -2528,6 +2737,23 @@
 
     .rotation-builder-actions {
       margin-top: auto;
+    }
+
+    @media (max-width: 479px) {
+      .rotation-builder-row {
+        gap: 8px;
+      }
+
+      .rotation-builder-row-position,
+      .rotation-builder-row-meta,
+      .rotation-builder-reorder,
+      .rotation-builder-remove-btn--text {
+        display: none;
+      }
+
+      .rotation-builder-remove-btn--icon {
+        display: inline-flex;
+      }
     }
 
     .settings-primary-btn,

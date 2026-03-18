@@ -13,6 +13,11 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
   let rotationSortable = null;
   let lastAddedWorkoutId = null;
   let lastAddedResetTimer = null;
+  let programPickerFlow = null;
+  let selectedProgramId = null;
+  let pendingProgramResetId = null;
+  let builderReturnToProgramPicker = false;
+  let programPickerSaving = false;
 
   function renderSettingsTodayTab() {
     document.getElementById('toggle-workout-card').checked = !!state.userPreferences.show_workout_card;
@@ -95,6 +100,199 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
     document.getElementById('rotation-custom-name').focus();
   }
 
+  function getDefaultProgramId() {
+    const programs = Array.isArray(state.programs) ? state.programs : [];
+    const balancedProgram = programs.find(program => program.name?.trim().toLowerCase() === 'balanced');
+    return balancedProgram?.id || programs[0]?.id || null;
+  }
+
+  function getProgramById(programId) {
+    if (!programId) return null;
+    return (state.programs || []).find(program => program.id === programId) || null;
+  }
+
+  function getProgramCardHtml(program, { selected = false, disabled = false } = {}) {
+    const workouts = Array.isArray(program.workouts) ? program.workouts : [];
+    const preview = workouts.slice(0, 5);
+    const extraCount = workouts.length - preview.length;
+    const workoutCountLabel = `${workouts.length} workout${workouts.length === 1 ? '' : 's'}`;
+    return `
+      <button class="program-picker-card${selected ? ' is-selected' : ''}" type="button" data-program-id="${program.id}" aria-pressed="${selected ? 'true' : 'false'}" aria-disabled="${disabled ? 'true' : 'false'}" ${disabled ? 'disabled' : ''}>
+        <div class="program-picker-card-top">
+          <div class="program-picker-card-copy">
+            <div class="program-picker-card-name">${utils.escapeHtml(program.name)}</div>
+            <div class="program-picker-card-description">${utils.escapeHtml(program.description || '')}</div>
+          </div>
+          <div class="program-picker-card-count">${workoutCountLabel}</div>
+        </div>
+        <div class="program-picker-card-preview">
+          <div class="program-picker-card-preview-label">Starts with</div>
+          <div class="program-picker-card-preview-icons">
+            ${preview.map(workout => `
+              <div class="program-picker-card-preview-icon" aria-hidden="true">
+                <i data-lucide="${workout.icon}"></i>
+              </div>
+            `).join('')}
+            ${extraCount > 0 ? `<div class="program-picker-card-preview-icon is-extra" aria-hidden="true">+${extraCount}</div>` : ''}
+          </div>
+        </div>
+      </button>
+    `;
+  }
+
+  function getProgramListMarkup(selectedId = null) {
+    const programs = Array.isArray(state.programs) ? state.programs : [];
+    if (!programs.length) {
+      return '<div class="program-picker-card-empty">Programs could not be loaded right now. You can still build your own from scratch.</div>';
+    }
+    return programs.map(program => getProgramCardHtml(program, {
+      selected: program.id === selectedId,
+      disabled: programPickerSaving,
+    })).join('');
+  }
+
+  function renderProgramPickerScreen() {
+    const resolvedSelection = getProgramById(selectedProgramId) ? selectedProgramId : getDefaultProgramId();
+    selectedProgramId = resolvedSelection;
+    document.getElementById('program-picker-screen-list').innerHTML = getProgramListMarkup(resolvedSelection);
+    const confirmBtn = document.getElementById('program-picker-confirm-btn');
+    const customBtn = document.getElementById('program-picker-custom-btn');
+    const selectedProgram = getProgramById(resolvedSelection);
+    confirmBtn.disabled = !selectedProgram || programPickerSaving;
+    customBtn.disabled = programPickerSaving;
+    customBtn.setAttribute('aria-disabled', programPickerSaving ? 'true' : 'false');
+    confirmBtn.querySelector('span').textContent = selectedProgram
+      ? `Start with ${selectedProgram.name}`
+      : 'Build my own from scratch';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+
+  function openProgramPickerScreen() {
+    programPickerFlow = 'ftux';
+    selectedProgramId = getDefaultProgramId();
+    renderProgramPickerScreen();
+    const screen = document.getElementById('program-picker-screen');
+    screen.hidden = false;
+    document.getElementById('app-container').inert = true;
+    document.getElementById('bottom-nav').inert = true;
+    requestAnimationFrame(() => {
+      screen.scrollTop = 0;
+      const focusTarget = document.getElementById('program-picker-confirm-btn').disabled
+        ? document.getElementById('program-picker-custom-btn')
+        : document.getElementById('program-picker-confirm-btn');
+      focusTarget?.focus({ preventScroll: true });
+    });
+  }
+
+  function closeProgramPickerScreen(options = {}) {
+    const { preserveFlow = false } = options;
+    document.getElementById('program-picker-screen').hidden = true;
+    document.getElementById('app-container').inert = false;
+    document.getElementById('bottom-nav').inert = false;
+    selectedProgramId = null;
+    if (!preserveFlow) {
+      programPickerFlow = null;
+    }
+  }
+
+  function renderProgramResetPicker() {
+    document.getElementById('program-reset-list').innerHTML = getProgramListMarkup(null);
+    const customBtn = document.getElementById('program-reset-custom-btn');
+    customBtn.disabled = programPickerSaving;
+    customBtn.setAttribute('aria-disabled', programPickerSaving ? 'true' : 'false');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+
+  function openProgramResetPicker() {
+    programPickerFlow = 'reset';
+    pendingProgramResetId = null;
+    document.getElementById('program-reset-confirm-modal').hidden = true;
+    renderProgramResetPicker();
+    document.getElementById('program-reset-modal').hidden = false;
+  }
+
+  function closeProgramResetPicker() {
+    document.getElementById('program-reset-modal').hidden = true;
+    document.getElementById('program-reset-confirm-modal').hidden = true;
+    pendingProgramResetId = null;
+    if (programPickerFlow === 'reset') {
+      programPickerFlow = null;
+    }
+  }
+
+  function openProgramResetConfirm(programId) {
+    const program = getProgramById(programId);
+    if (!program) return;
+    pendingProgramResetId = programId;
+    document.getElementById('program-reset-confirm-copy').textContent = `Replace your current rotation with ${program.name}? This cannot be undone.`;
+    document.getElementById('program-reset-confirm-btn').disabled = false;
+    document.getElementById('program-reset-confirm-modal').hidden = false;
+  }
+
+  function closeProgramResetConfirm() {
+    document.getElementById('program-reset-confirm-modal').hidden = true;
+    pendingProgramResetId = null;
+  }
+
+  function finishFtuxProgramFlow() {
+    closeProgramPickerScreen();
+    deps.switchMainTab('today');
+    if (deps.hasPendingWelcome() && !deps.hasDismissedWelcome()) {
+      deps.openWelcomeScreen();
+    }
+  }
+
+  async function applyProgramSelection(programId, flow) {
+    if (!programId || programPickerSaving) return;
+    programPickerSaving = true;
+    try {
+      if (flow === 'ftux') {
+        renderProgramPickerScreen();
+      } else if (flow === 'reset') {
+        renderProgramResetPicker();
+        document.getElementById('program-reset-confirm-btn').disabled = true;
+      }
+
+      await data.saveProgramAsUserRotation(programId);
+      renderSettingsRotation();
+      await deps.render(state.cachedData);
+
+      if (flow === 'ftux') {
+        finishFtuxProgramFlow();
+        utils.showToast('Starting rotation saved');
+      } else {
+        closeProgramResetConfirm();
+        closeProgramResetPicker();
+        utils.showToast('Rotation replaced');
+      }
+    } catch (err) {
+      console.error('[program-picker] save failed:', err);
+      utils.showToast('Could not save rotation');
+      if (flow === 'reset') {
+        document.getElementById('program-reset-confirm-btn').disabled = false;
+      }
+    } finally {
+      programPickerSaving = false;
+      if (flow === 'ftux' && !document.getElementById('program-picker-screen').hidden) {
+        renderProgramPickerScreen();
+      } else if (flow === 'reset' && !document.getElementById('program-reset-modal').hidden) {
+        renderProgramResetPicker();
+      }
+    }
+  }
+
+  async function confirmSelectedProgram() {
+    if (!selectedProgramId) return;
+    await applyProgramSelection(selectedProgramId, 'ftux');
+  }
+
+  function openCustomBuilderFromFtux() {
+    if (programPickerSaving) return;
+    closeProgramPickerScreen({ preserveFlow: true });
+    deps.switchMainTab('settings');
+    openRotationBuilder({ seed: 'empty', returnToProgramPickerOnCancel: true });
+  }
+
   function renderSettingsRotation() {
     const emptyEl = document.getElementById('settings-rotation-empty');
     const listEl = document.getElementById('settings-rotation-list');
@@ -155,7 +353,10 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
             <i data-lucide="chevron-down"></i>
           </button>
         </div>
-        <button class="rotation-builder-remove-btn" type="button" data-remove-slot="${workout.slotId}" ${stagedRotation.length <= 2 ? 'disabled' : ''}>Remove</button>
+        <button class="rotation-builder-remove-btn rotation-builder-remove-btn--text" type="button" data-remove-slot="${workout.slotId}" ${stagedRotation.length <= 2 ? 'disabled' : ''}>Remove</button>
+        <button class="rotation-builder-remove-btn rotation-builder-remove-btn--icon" type="button" data-remove-slot="${workout.slotId}" ${stagedRotation.length <= 2 ? 'disabled' : ''} aria-label="Remove workout">
+          <i data-lucide="x"></i>
+        </button>
       </div>
     `).join('');
 
@@ -189,9 +390,11 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
     initRotationSortable();
   }
 
-  function openRotationBuilder() {
-    stagedRotationSlots = getBuilderSeedRotation();
+  function openRotationBuilder(options = {}) {
+    const { seed = 'current', returnToProgramPickerOnCancel = false } = options;
+    stagedRotationSlots = seed === 'empty' ? [] : getBuilderSeedRotation();
     rotationBuilderSaving = false;
+    builderReturnToProgramPicker = returnToProgramPickerOnCancel;
     hideCustomWorkoutForm();
     renderRotationBuilder();
     const modal = document.getElementById('rotation-builder-modal');
@@ -204,7 +407,9 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
 
   function closeRotationBuilder(force = false) {
     if (!force && (rotationBuilderSaving || customWorkoutSaving)) return;
+    const shouldReopenProgramPicker = !force && builderReturnToProgramPicker;
     stagedRotationSlots = null;
+    builderReturnToProgramPicker = false;
     destroyRotationSortable();
     hideCustomWorkoutForm();
     const modal = document.getElementById('rotation-builder-modal');
@@ -212,6 +417,9 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
     modal.style.display = 'none';
     document.getElementById('app-container').inert = false;
     document.getElementById('bottom-nav').inert = false;
+    if (shouldReopenProgramPicker) {
+      openProgramPickerScreen();
+    }
   }
 
   function moveStagedWorkout(slotId, direction) {
@@ -243,6 +451,7 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
 
   async function saveStagedRotation() {
     if (!Array.isArray(stagedRotationSlots) || stagedRotationSlots.length < 2 || rotationBuilderSaving) return;
+    const completesFtuxProgramFlow = builderReturnToProgramPicker;
     rotationBuilderSaving = true;
     document.getElementById('rotation-builder-save-btn').disabled = true;
     try {
@@ -250,7 +459,12 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
       closeRotationBuilder(true);
       renderSettingsRotation();
       await deps.render(state.cachedData);
-      utils.showToast('Rotation saved');
+      if (completesFtuxProgramFlow) {
+        finishFtuxProgramFlow();
+        utils.showToast('Rotation saved');
+      } else {
+        utils.showToast('Rotation saved');
+      }
     } catch (err) {
       console.error('[rotation-builder] save failed:', err);
       utils.showToast('Failed to save rotation — please try again');
@@ -539,6 +753,7 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
       state.cachedWeight = null;
       state.workoutLibrary = [];
       state.userRotation = null;
+      state.programs = [];
       state.userPreferences = { ...DEFAULT_USER_PREFERENCES };
       data.removeCachedValue(BASE_STORAGE_KEY);
       data.removeCachedValue(BASE_JOURNAL_KEY);
@@ -570,6 +785,7 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
       state.cachedWeight = null;
       state.workoutLibrary = [];
       state.userRotation = null;
+      state.programs = [];
       state.userPreferences = { ...DEFAULT_USER_PREFERENCES };
       deps.showAuthScreen();
     } catch {
@@ -609,7 +825,42 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
     document.getElementById('feedback-btn').onclick = () => openFeedbackModal();
     document.getElementById('signout-btn').onclick = () => signOut();
     document.getElementById('delete-account-btn').onclick = () => openDeleteAccountModal();
+    document.getElementById('reset-program-btn').onclick = () => openProgramResetPicker();
     document.getElementById('rotation-builder-open-btn').onclick = () => openRotationBuilder();
+    document.getElementById('program-picker-confirm-btn').onclick = () => confirmSelectedProgram();
+    document.getElementById('program-picker-custom-btn').onclick = () => openCustomBuilderFromFtux();
+    document.getElementById('program-picker-screen').addEventListener('click', e => {
+      if (programPickerSaving) return;
+      const card = e.target.closest('[data-program-id]');
+      if (!card) return;
+      const programId = card.dataset.programId;
+      if (!programId) return;
+      selectedProgramId = programId;
+      renderProgramPickerScreen();
+      confirmSelectedProgram();
+    });
+    document.getElementById('program-reset-cancel-btn').onclick = () => closeProgramResetPicker();
+    document.getElementById('program-reset-custom-btn').onclick = () => {
+      if (programPickerSaving) return;
+      closeProgramResetPicker();
+      openRotationBuilder();
+    };
+    document.getElementById('program-reset-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('program-reset-modal')) closeProgramResetPicker();
+    });
+    document.getElementById('program-reset-list').addEventListener('click', e => {
+      if (programPickerSaving) return;
+      const card = e.target.closest('[data-program-id]');
+      if (!card?.dataset.programId) return;
+      openProgramResetConfirm(card.dataset.programId);
+    });
+    document.getElementById('program-reset-confirm-cancel-btn').onclick = () => closeProgramResetConfirm();
+    document.getElementById('program-reset-confirm-btn').onclick = () => {
+      if (pendingProgramResetId) applyProgramSelection(pendingProgramResetId, 'reset');
+    };
+    document.getElementById('program-reset-confirm-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('program-reset-confirm-modal')) closeProgramResetConfirm();
+    });
     document.getElementById('feedback-cancel-btn').onclick = () => closeFeedbackModal();
     document.getElementById('feedback-send-btn').onclick = () => sendFeedback();
     document.getElementById('feedback-input').addEventListener('input', e => {
@@ -673,6 +924,8 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
     closeFeedbackModal,
     openPasswordModal,
     closePasswordModal,
+    openProgramPickerScreen,
+    closeProgramPickerScreen,
     openDeleteAccountModal,
     closeDeleteAccountModal,
     handlePreferenceToggle,
