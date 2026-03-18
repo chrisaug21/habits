@@ -1,17 +1,24 @@
 window.HabitsApp = window.HabitsApp || {};
 
 window.HabitsApp.registerLogModule = function registerLogModule(ctx) {
-  const { WORKOUTS, ROTATION, TEST_MODE, SKIP_DEFAULTS, MAX_ACTIVITY_LENGTH } = ctx.constants;
+  const { TEST_MODE, SKIP_DEFAULTS, MAX_ACTIVITY_LENGTH } = ctx.constants;
   const state = ctx.state;
   const utils = ctx.utils;
   const data = ctx.data;
   const deps = ctx.deps;
 
-  const BACKFILL_OPTIONS = [
-    ...WORKOUTS.map(w => ({ id: w.id, name: w.name, icon: w.icon, color: 'purple' })),
-    { id: 'off', name: 'Rest Day', icon: 'moon', color: 'amber' },
-    { id: 'other', name: 'Other Activity', icon: 'zap', color: 'teal' },
-  ];
+  function getBackfillOptions() {
+    return [
+      ...utils.getActiveWorkoutList().map(workout => ({
+        id: workout.id,
+        name: workout.name,
+        icon: workout.icon,
+        color: 'purple',
+      })),
+      { id: 'off', name: 'Rest Day', icon: 'moon', color: 'amber' },
+      { id: 'other', name: 'Other Activity', icon: 'zap', color: 'teal' },
+    ];
+  }
 
   const BF_WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const BF_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
@@ -78,7 +85,7 @@ window.HabitsApp.registerLogModule = function registerLogModule(ctx) {
     const hasExercise = !!entry;
     const isOff = entry?.type === 'off';
     const isOther = entry?.type === 'other';
-    const workout = (hasExercise && !isOff && !isOther) ? WORKOUTS.find(w => w.id === entry.type) : null;
+    const workout = (hasExercise && !isOff && !isOther) ? utils.getWorkoutById(entry.type) : null;
 
     const iconName = !hasExercise ? 'dumbbell' :
       (isOff ? 'moon' : isOther ? 'zap' : (workout ? workout.icon : 'dumbbell'));
@@ -156,7 +163,7 @@ window.HabitsApp.registerLogModule = function registerLogModule(ctx) {
     const container = document.getElementById('backfill-options');
     container.innerHTML = '';
 
-    for (const opt of BACKFILL_OPTIONS) {
+    for (const opt of getBackfillOptions()) {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'backfill-option' +
@@ -259,13 +266,13 @@ window.HabitsApp.registerLogModule = function registerLogModule(ctx) {
       const newType = capturedType;
       const note = capturedNote;
       const dateStr = capturedDate;
-      const rotationIds = WORKOUTS.map(workout => workout.id);
-      const isRotationWorkout = !!WORKOUTS.find(w => w.id === newType);
+      const rotationIds = utils.getActiveWorkoutList().map(workout => workout.id);
+      const isRotationWorkout = !!utils.getWorkoutById(newType) && rotationIds.includes(newType);
       const hasLaterEntries = history.some(entry => entry.date > dateStr && rotationIds.includes(entry.type));
       const shouldAdvance = isRotationWorkout && !hasLaterEntries;
 
       function recomputeLastDone() {
-        for (const workout of WORKOUTS) {
+        for (const workout of utils.getActiveWorkoutList()) {
           const maxDate = history
             .filter(entry => entry.type === workout.id)
             .reduce((max, entry) => (!max || entry.date > max) ? entry.date : max, null);
@@ -323,7 +330,8 @@ window.HabitsApp.registerLogModule = function registerLogModule(ctx) {
           if (shouldAdvance && !wasAdvanced) {
             loaded.rotationIndex = (loaded.rotationIndex || 0) + 1;
           } else if (!shouldAdvance && wasAdvanced) {
-            loaded.rotationIndex = ((loaded.rotationIndex || 0) - 1 + ROTATION.length) % ROTATION.length;
+            const rotation = utils.getActiveRotation();
+            loaded.rotationIndex = ((loaded.rotationIndex || 0) - 1 + rotation.length) % rotation.length;
           }
         }
 
@@ -361,7 +369,7 @@ window.HabitsApp.registerLogModule = function registerLogModule(ctx) {
 
       const displayName = newType === 'off' ? 'Rest day' :
         newType === 'other' ? (note || 'Other activity') :
-          (WORKOUTS.find(w => w.id === newType)?.name ?? newType);
+          (utils.getWorkoutById(newType)?.name ?? newType);
       utils.showToast(wasEdit ? `${displayName} updated` : `${displayName} logged`);
     } catch {
       utils.showToast('Could not save — check your connection');
@@ -383,6 +391,7 @@ window.HabitsApp.registerLogModule = function registerLogModule(ctx) {
     const histMap = buildHistoryMap(currentData);
     const map = {};
     let rotIdx = currentData.rotationIndex || 0;
+    const rotation = utils.getActiveRotation();
     const start = new Date();
     start.setHours(0, 0, 0, 0);
 
@@ -391,8 +400,8 @@ window.HabitsApp.registerLogModule = function registerLogModule(ctx) {
       d.setDate(d.getDate() + i);
       const ds = utils.dateToStr(d);
       if (!histMap[ds]) {
-        map[ds] = ROTATION[rotIdx % ROTATION.length];
-        rotIdx = (rotIdx + 1) % ROTATION.length;
+        map[ds] = rotation[rotIdx % rotation.length]?.id;
+        rotIdx = (rotIdx + 1) % rotation.length;
       }
     }
     return map;
@@ -462,12 +471,12 @@ window.HabitsApp.registerLogModule = function registerLogModule(ctx) {
           iconHtml = '<i class="cal-icon" data-lucide="zap"></i>';
         } else {
           classes.push('has-workout');
-          const workout = WORKOUTS.find(w => w.id === histEntry.type);
+          const workout = utils.getWorkoutById(histEntry.type);
           if (workout) iconHtml = `<i class="cal-icon" data-lucide="${workout.icon}"></i>`;
         }
       } else if (projId) {
         classes.push('is-projected');
-        const workout = WORKOUTS.find(w => w.id === projId);
+        const workout = utils.getWorkoutById(projId);
         if (workout) iconHtml = `<i class="cal-icon" data-lucide="${workout.icon}"></i>`;
       }
 
@@ -519,7 +528,7 @@ window.HabitsApp.registerLogModule = function registerLogModule(ctx) {
 
       const isOff = type === 'off';
       const isOther = type === 'other';
-      const workout = (isOff || isOther) ? null : WORKOUTS.find(w => w.id === type);
+      const workout = (isOff || isOther) ? null : utils.getWorkoutById(type);
       const iconName = isOff ? 'moon' : isOther ? 'zap' : (workout ? workout.icon : 'dumbbell');
       const color = isOff ? 'amber' : isOther ? 'teal' : 'purple';
       const displayName = isOff ? 'Rest Day' :
@@ -588,7 +597,7 @@ window.HabitsApp.registerLogModule = function registerLogModule(ctx) {
       const dateMain = `${MONTHS[d.getMonth()]} ${d.getDate()}${yearSuffix}`;
       const dayName = WEEKDAYS[d.getDay()];
 
-      const workout = WORKOUTS.find(w => w.id === type);
+      const workout = utils.getWorkoutById(type);
       const iconName = workout ? workout.icon : 'dumbbell';
       const displayName = workout ? workout.name : type;
 

@@ -37,11 +37,11 @@
     // ────────────────────────────────────────────────────────────────────────
 
     const WORKOUTS = [
-      { id: 'peloton',    name: 'Cardio \u2014 Peloton Ride',    icon: 'bike'            },
-      { id: 'upper_push', name: 'Strength \u2014 Upper Push',    icon: 'dumbbell'        },
-      { id: 'upper_pull', name: 'Strength \u2014 Upper Pull',    icon: 'dumbbell'        },
-      { id: 'lower',      name: 'Strength \u2014 Lower Body',    icon: 'dumbbell'        },
-      { id: 'yoga',       name: 'Flexibility \u2014 Yoga',       icon: 'flower-2'        },
+      { id: 'peloton',    name: 'Cardio \u2014 Peloton Ride',    icon: 'bike',      category: 'Cardio'      },
+      { id: 'upper_push', name: 'Strength \u2014 Upper Push',    icon: 'dumbbell',  category: 'Strength'    },
+      { id: 'upper_pull', name: 'Strength \u2014 Upper Pull',    icon: 'dumbbell',  category: 'Strength'    },
+      { id: 'lower',      name: 'Strength \u2014 Lower Body',    icon: 'dumbbell',  category: 'Strength'    },
+      { id: 'yoga',       name: 'Flexibility \u2014 Yoga',       icon: 'flower-2',  category: 'Flexibility' },
     ];
 
     // Fixed rotation: Peloton every other slot, Yoga every 4th workout overall
@@ -69,6 +69,12 @@
       show_journal_card: true,
       show_weight_card: true,
     });
+    const WORKOUT_CATEGORY_ICONS = Object.freeze({
+      Cardio: 'bike',
+      Strength: 'dumbbell',
+      Flexibility: 'flower-2',
+      Rest: 'moon',
+    });
     // ────────────────────────────────────────────────────────────────────────
 
     let settingsProfileEditing = true;
@@ -89,6 +95,8 @@
     let cachedJournal = null;          // array of { date, intention, gratitude, one_thing }
     let _journalNudgeConfirmed = false; // true after user taps "Yes" on gratitude nudge
     let cachedWeight  = null;          // array of { date, value_lbs }
+    let workoutLibrary = [];
+    let userRotation = null;
     let activeWeightDate     = null;  // date currently being edited in the weight modal
     let weightModalFromBackfill = false; // true when weight modal was opened from the day-detail sheet
     let historyViewActive = false;
@@ -108,6 +116,7 @@
       BASE_JOURNAL_KEY,
       BASE_WEIGHT_KEY,
       DEFAULT_USER_PREFERENCES,
+      WORKOUT_CATEGORY_ICONS,
       SKIP_DEFAULTS,
       MAX_ACTIVITY_LENGTH,
       BASE_STORAGE_KEY,
@@ -133,6 +142,10 @@
       set cachedJournal(value) { cachedJournal = value; },
       get cachedWeight() { return cachedWeight; },
       set cachedWeight(value) { cachedWeight = value; },
+      get workoutLibrary() { return workoutLibrary; },
+      set workoutLibrary(value) { workoutLibrary = value; },
+      get userRotation() { return userRotation; },
+      set userRotation(value) { userRotation = value; },
       get journalNudgeConfirmed() { return _journalNudgeConfirmed; },
       set journalNudgeConfirmed(value) { _journalNudgeConfirmed = value; },
       get activeWeightDate() { return activeWeightDate; },
@@ -210,6 +223,10 @@
       writeCachedJSON,
       loadData,
       saveData,
+      loadWorkoutLibrary,
+      loadUserRotation,
+      saveUserRotation,
+      saveCustomWorkout,
       loadUserPreferences,
       saveUserPreference,
       normalizeUserPreferences,
@@ -431,6 +448,8 @@
         renderSettingsAccount: () => renderSettingsAccount(),
         renderSettingsTodayTab: () => renderSettingsTodayTab(),
         render: () => render(),
+        loadWorkoutLibrary: () => loadWorkoutLibrary(),
+        loadUserRotation: () => loadUserRotation(),
         hasPendingWelcome: () => hasPendingWelcome(),
         hasDismissedWelcome: () => hasDismissedWelcome(),
         openWelcomeScreen: () => openWelcomeScreen(),

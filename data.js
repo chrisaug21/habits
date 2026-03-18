@@ -6,6 +6,7 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
     BASE_STORAGE_KEY,
     BASE_WELCOMED_KEY,
     DEFAULT_USER_PREFERENCES,
+    WORKOUT_CATEGORY_ICONS,
   } = ctx.constants;
   const state = ctx.state;
   const deps = ctx.deps;
@@ -67,6 +68,18 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
       show_workout_card: row?.show_workout_card ?? DEFAULT_USER_PREFERENCES.show_workout_card,
       show_journal_card: row?.show_journal_card ?? DEFAULT_USER_PREFERENCES.show_journal_card,
       show_weight_card: row?.show_weight_card ?? DEFAULT_USER_PREFERENCES.show_weight_card,
+    };
+  }
+
+  function normalizeWorkoutLibraryRow(row) {
+    if (!row?.id) return null;
+    return {
+      id: row.id,
+      name: row.name || 'Untitled workout',
+      category: row.category || '',
+      icon: row.icon || WORKOUT_CATEGORY_ICONS[row.category] || 'dumbbell',
+      is_global: !!row.is_global,
+      created_by: row.created_by || null,
     };
   }
 
@@ -169,6 +182,74 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
     }
   }
 
+  async function loadWorkoutLibrary() {
+    if (!state.currentUser?.id) {
+      state.workoutLibrary = [];
+      return state.workoutLibrary;
+    }
+    if (!state.sb || TEST_MODE) {
+      state.workoutLibrary = [];
+      return state.workoutLibrary;
+    }
+    try {
+      const userId = state.currentUser.id;
+      const { data: rows, error } = await state.sb.from('workout_library')
+        .select('id, name, category, icon, is_global, created_by')
+        .or(`is_global.eq.true,created_by.eq.${userId}`)
+        .order('is_global', { ascending: false })
+        .order('name', { ascending: true });
+      if (error) throw error;
+
+      state.workoutLibrary = (rows || [])
+        .map(normalizeWorkoutLibraryRow)
+        .filter(Boolean);
+      return state.workoutLibrary;
+    } catch (err) {
+      console.warn('[workout-library] load failed:', err);
+      state.workoutLibrary = [];
+      return state.workoutLibrary;
+    }
+  }
+
+  async function loadUserRotation() {
+    if (!state.currentUser?.id) {
+      state.userRotation = null;
+      return state.userRotation;
+    }
+    if (!state.sb || TEST_MODE) {
+      state.userRotation = null;
+      return state.userRotation;
+    }
+    try {
+      const { data: rows, error } = await state.sb.from('user_rotation')
+        .select(`
+          position,
+          workout_id,
+          workout_library (
+            id,
+            name,
+            category,
+            icon,
+            is_global,
+            created_by
+          )
+        `)
+        .eq('user_id', state.currentUser.id)
+        .order('position', { ascending: true });
+      if (error) throw error;
+
+      const rotation = (rows || [])
+        .map(row => normalizeWorkoutLibraryRow(row.workout_library))
+        .filter(Boolean);
+      state.userRotation = rotation.length ? rotation : null;
+      return state.userRotation;
+    } catch (err) {
+      console.warn('[user-rotation] load failed:', err);
+      state.userRotation = null;
+      return state.userRotation;
+    }
+  }
+
   async function saveData(data, deletedSid = null) {
     if (TEST_MODE) {
       writeCachedJSON(BASE_STORAGE_KEY, data);
@@ -218,6 +299,84 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
     state.syncOffline = false;
     deps.updateSyncStamp();
     writeCachedJSON(BASE_STORAGE_KEY, data);
+  }
+
+  async function saveUserRotation(rotationArray) {
+    const orderedIds = Array.isArray(rotationArray)
+      ? rotationArray.filter(id => typeof id === 'string' && id)
+      : [];
+    if (orderedIds.length < 2) throw new Error('Rotation must contain at least 2 workouts');
+
+    const nextRotation = orderedIds
+      .map(id => (state.workoutLibrary || []).find(workout => workout.id === id))
+      .filter(Boolean);
+    if (nextRotation.length !== orderedIds.length) {
+      throw new Error('Could not resolve all workouts in the rotation');
+    }
+
+    if (TEST_MODE) {
+      state.userRotation = nextRotation;
+      return state.userRotation;
+    }
+    if (!state.sb || !state.currentUser?.id) throw new Error('Supabase client not available');
+
+    try {
+      const { error: deleteError } = await state.sb.from('user_rotation')
+        .delete()
+        .eq('user_id', state.currentUser.id);
+      if (deleteError) throw deleteError;
+
+      const rows = orderedIds.map((workoutId, position) => ({
+        user_id: state.currentUser.id,
+        workout_id: workoutId,
+        position,
+      }));
+      const { error: insertError } = await state.sb.from('user_rotation').insert(rows);
+      if (insertError) throw insertError;
+
+      state.userRotation = nextRotation;
+      return state.userRotation;
+    } catch (err) {
+      console.error('[user-rotation] save failed:', err);
+      deps.showToast?.('Could not save rotation');
+      throw err;
+    }
+  }
+
+  async function saveCustomWorkout({ name, category }) {
+    const trimmedName = String(name || '').trim();
+    const normalizedCategory = String(category || '').trim();
+    if (!trimmedName || !WORKOUT_CATEGORY_ICONS[normalizedCategory]) {
+      throw new Error('Workout name and category are required');
+    }
+
+    const payload = {
+      name: trimmedName,
+      category: normalizedCategory,
+      icon: WORKOUT_CATEGORY_ICONS[normalizedCategory],
+      is_global: false,
+      created_by: state.currentUser?.id || null,
+    };
+
+    if (TEST_MODE) {
+      const createdWorkout = normalizeWorkoutLibraryRow({
+        ...payload,
+        id: `test-${Date.now()}`,
+      });
+      state.workoutLibrary = [...(state.workoutLibrary || []), createdWorkout];
+      return createdWorkout;
+    }
+    if (!state.sb || !state.currentUser?.id) throw new Error('Supabase client not available');
+
+    const { data: inserted, error } = await state.sb.from('workout_library')
+      .insert(payload)
+      .select('id, name, category, icon, is_global, created_by')
+      .single();
+    if (error) throw error;
+
+    const workout = normalizeWorkoutLibraryRow(inserted);
+    state.workoutLibrary = [...(state.workoutLibrary || []), workout];
+    return workout;
   }
 
   async function insertDefaultUserPreferences() {
@@ -296,9 +455,14 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
     markWelcomePending,
     markWelcomeDismissed,
     normalizeUserPreferences,
+    normalizeWorkoutLibraryRow,
     migrateLegacyCacheKeys,
     loadData,
+    loadWorkoutLibrary,
+    loadUserRotation,
     saveData,
+    saveUserRotation,
+    saveCustomWorkout,
     insertDefaultUserPreferences,
     loadUserPreferences,
     saveUserPreference,

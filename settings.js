@@ -262,6 +262,8 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
       state.cachedData = null;
       state.cachedJournal = null;
       state.cachedWeight = null;
+      state.workoutLibrary = [];
+      state.userRotation = null;
       state.userPreferences = { ...DEFAULT_USER_PREFERENCES };
       data.removeCachedValue(BASE_STORAGE_KEY);
       data.removeCachedValue(BASE_JOURNAL_KEY);
@@ -291,6 +293,8 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
       state.cachedData = null;
       state.cachedJournal = null;
       state.cachedWeight = null;
+      state.workoutLibrary = [];
+      state.userRotation = null;
       state.userPreferences = { ...DEFAULT_USER_PREFERENCES };
       deps.showAuthScreen();
     } catch {

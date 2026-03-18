@@ -1,7 +1,7 @@
 window.HabitsApp = window.HabitsApp || {};
 
 window.HabitsApp.registerTodayModule = function registerTodayModule(ctx) {
-  const { WORKOUTS, ROTATION, TEST_MODE, BASE_OTHER_ACTIVITIES_KEY, BASE_SKIP_REASONS_KEY, BASE_JOURNAL_KEY, BASE_WEIGHT_KEY, DEFAULT_USER_PREFERENCES, SKIP_DEFAULTS, MAX_ACTIVITY_LENGTH } = ctx.constants;
+  const { TEST_MODE, BASE_OTHER_ACTIVITIES_KEY, BASE_SKIP_REASONS_KEY, BASE_JOURNAL_KEY, BASE_WEIGHT_KEY, DEFAULT_USER_PREFERENCES, SKIP_DEFAULTS, MAX_ACTIVITY_LENGTH } = ctx.constants;
   const state = ctx.state;
   const utils = ctx.utils;
   const data = ctx.data;
@@ -14,11 +14,12 @@ window.HabitsApp.registerTodayModule = function registerTodayModule(ctx) {
     try {
       const loaded = await data.loadData();
       const today = utils.todayStr();
-      const idx = (loaded.rotationIndex || 0) % ROTATION.length;
-      const workoutId = ROTATION[idx];
+      const rotation = utils.getActiveRotation();
+      const idx = (loaded.rotationIndex || 0) % rotation.length;
+      const workoutId = rotation[idx].id;
 
       loaded[workoutId] = today;
-      loaded.rotationIndex = (idx + 1) % ROTATION.length;
+      loaded.rotationIndex = (idx + 1) % rotation.length;
       loaded.actionDate = today;
       loaded.history = loaded.history || [];
       loaded.history.push({ type: workoutId, date: today, advanced: true });
@@ -124,7 +125,8 @@ window.HabitsApp.registerTodayModule = function registerTodayModule(ctx) {
         last.advanced === true ||
         (!('advanced' in last) && last.type !== 'off');
       if (wasRotationAdvancing) {
-        loaded.rotationIndex = ((loaded.rotationIndex || 0) - 1 + ROTATION.length) % ROTATION.length;
+        const rotation = utils.getActiveRotation();
+        loaded.rotationIndex = ((loaded.rotationIndex || 0) - 1 + rotation.length) % rotation.length;
       }
 
       const stillLockedToday = (loaded.history || []).some(entry =>
@@ -144,7 +146,7 @@ window.HabitsApp.registerTodayModule = function registerTodayModule(ctx) {
         ? 'day off'
         : last.type === 'other'
         ? (last.note || 'other activity')
-        : (WORKOUTS.find(w => w.id === last.type)?.name ?? last.type);
+        : (utils.getWorkoutById(last.type)?.name ?? last.type);
       utils.showToast(`Undone — ${name}`);
     } catch {
       utils.setButtonsDisabled(false);
@@ -182,8 +184,8 @@ window.HabitsApp.registerTodayModule = function registerTodayModule(ctx) {
     const opts = document.getElementById('log-activity-options');
     opts.innerHTML = '';
 
-    const suggestedId = state.cachedData ? utils.getSuggested(state.cachedData).id : null;
-    for (const workout of WORKOUTS) {
+    const suggestedId = state.cachedData ? utils.getSuggested(state.cachedData)?.id : null;
+    for (const workout of utils.getActiveWorkoutList()) {
       if (workout.id === suggestedId) continue;
       const btn = document.createElement('button');
       btn.className = 'log-activity-option';
@@ -577,6 +579,8 @@ window.HabitsApp.registerTodayModule = function registerTodayModule(ctx) {
         .order('date', { ascending: false }),
       state.sb.from('weight').select('date, value_lbs').eq('user_id', state.currentUser?.id)
         .order('date', { ascending: false }),
+      data.loadWorkoutLibrary(),
+      data.loadUserRotation(),
     ]);
     if (stateRes.error) throw stateRes.error;
     if (historyRes.error) throw historyRes.error;
@@ -720,7 +724,7 @@ window.HabitsApp.registerTodayModule = function registerTodayModule(ctx) {
     const skippedToday = todayEntry?.type === 'off';
     const otherToday = todayEntry?.type === 'other';
     const heroWorkout = (actionTakenToday && !skippedToday && !otherToday && todayEntry)
-      ? (WORKOUTS.find(w => w.id === todayEntry.type) || nextInRotation)
+      ? (utils.getWorkoutById(todayEntry.type) || nextInRotation)
       : nextInRotation;
 
     document.getElementById('date-label').textContent = new Date().toLocaleDateString(
@@ -747,7 +751,7 @@ window.HabitsApp.registerTodayModule = function registerTodayModule(ctx) {
     document.getElementById('suggestion-name').textContent =
       heroState === 'skipped' ? 'Rest Day' :
       heroState === 'other'   ? (todayEntry?.note || 'Other Activity') :
-      heroState === 'done'    ? (WORKOUTS.find(w => w.id === todayEntry.type)?.name || heroWorkout.name) :
+      heroState === 'done'    ? (utils.getWorkoutById(todayEntry.type)?.name || heroWorkout.name) :
       heroWorkout.name;
 
     const suggestionLastDoneEl = document.getElementById('suggestion-last-done');
@@ -779,7 +783,7 @@ window.HabitsApp.registerTodayModule = function registerTodayModule(ctx) {
       const undoLabel =
         heroState === 'skipped' ? 'Rest Day' :
         heroState === 'other'   ? (todayEntry?.note || 'Other Activity') :
-        heroState === 'done'    ? (WORKOUTS.find(w => w.id === todayEntry.type)?.name || heroWorkout.name) :
+        heroState === 'done'    ? (utils.getWorkoutById(todayEntry.type)?.name || heroWorkout.name) :
         heroWorkout.name;
       undoBtn.innerHTML = '';
       const undoIcon = document.createElement('i');
@@ -793,9 +797,10 @@ window.HabitsApp.registerTodayModule = function registerTodayModule(ctx) {
     const tomorrowPreviewEl = document.getElementById('tomorrow-preview');
     tomorrowPreviewEl.hidden = !preferences.show_workout_card || heroState === 'default';
     const rotIdx = loaded.rotationIndex || 0;
+    const activeRotation = utils.getActiveRotation();
     const tomorrowWorkout = actionTakenToday
-      ? WORKOUTS.find(w => w.id === ROTATION[rotIdx % ROTATION.length])
-      : WORKOUTS.find(w => w.id === ROTATION[(rotIdx + 1) % ROTATION.length]);
+      ? activeRotation[rotIdx % activeRotation.length]
+      : activeRotation[(rotIdx + 1) % activeRotation.length];
     const tomorrowNameEl = document.getElementById('tomorrow-name');
     tomorrowNameEl.innerHTML = '';
     const tomorrowIconEl = document.createElement('i');
