@@ -56,6 +56,75 @@
       -webkit-font-smoothing: antialiased;
     }
 
+    #splash-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 360;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: calc(env(safe-area-inset-top, 0px) + 24px) 24px
+               calc(env(safe-area-inset-bottom, 0px) + 24px);
+      background: var(--bg);
+      opacity: 1;
+      transition: opacity 0.2s ease;
+    }
+
+    #splash-screen.is-exiting {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .splash-screen-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      min-height: 220px;
+    }
+
+    .splash-icon-stack {
+      position: relative;
+      width: 56px;
+      height: 56px;
+    }
+
+    .splash-icon {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      opacity: 0;
+      animation: splash-icon-cycle 3s ease-in-out infinite;
+    }
+
+    .splash-icon--1 { animation-delay: 0s; }
+    .splash-icon--2 { animation-delay: 0.6s; }
+    .splash-icon--3 { animation-delay: 1.2s; }
+    .splash-icon--4 { animation-delay: 1.8s; }
+    .splash-icon--5 { animation-delay: 2.4s; }
+
+    .splash-icon i,
+    .splash-icon svg {
+      width: 48px;
+      height: 48px;
+      color: var(--accent);
+    }
+
+    .splash-app-name {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      letter-spacing: 0.04em;
+    }
+
+    @keyframes splash-icon-cycle {
+      0%, 100% { opacity: 0; }
+      10%, 30% { opacity: 1; }
+      40% { opacity: 0; }
+    }
+
     .container {
       max-width: 500px;
       margin: 0 auto;
@@ -107,6 +176,104 @@
       height: 200px;
       background: radial-gradient(circle, rgba(108, 99, 255, 0.12) 0%, transparent 70%);
       pointer-events: none;
+    }
+
+    .suggestion-card--loading::before {
+      display: none;
+    }
+
+    .shimmer-block {
+      position: relative;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .shimmer-block::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      transform: translateX(-100%);
+      background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.08) 50%, transparent 100%);
+      animation: dark-shimmer 1.2s ease-in-out infinite;
+    }
+
+    @keyframes dark-shimmer {
+      100% { transform: translateX(100%); }
+    }
+
+    .loading-chip {
+      width: 122px;
+      height: 12px;
+      border-radius: 999px;
+      margin: 0 auto 16px;
+    }
+
+    .loading-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 18px;
+      margin: 0 auto 16px;
+      background: rgba(108, 99, 255, 0.14);
+    }
+
+    .loading-line {
+      border-radius: 999px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .loading-line--title {
+      width: min(220px, 78%);
+      height: 20px;
+      margin-bottom: 12px;
+    }
+
+    .loading-line--body {
+      width: min(160px, 58%);
+      height: 12px;
+      margin-bottom: 24px;
+    }
+
+    .loading-line--section {
+      width: 112px;
+      height: 12px;
+      margin-bottom: 14px;
+    }
+
+    .loading-line--stat {
+      width: 72px;
+      height: 28px;
+      margin-bottom: 10px;
+    }
+
+    .loading-line--meta {
+      width: 120px;
+      height: 12px;
+    }
+
+    .loading-button {
+      width: min(190px, 72%);
+      height: 54px;
+      border-radius: 16px;
+      margin: 0 auto;
+      background: rgba(108, 99, 255, 0.16);
+    }
+
+    .loading-button--secondary {
+      width: min(172px, 66%);
+      height: 44px;
+      margin-top: 10px;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .loading-bar {
+      width: 100%;
+      height: 12px;
+      border-radius: 999px;
+    }
+
+    .loading-bar + .loading-bar {
+      margin-top: 12px;
     }
 
     .suggestion-eyebrow {
@@ -762,6 +929,25 @@
       min-height: 24px;
       padding: 5px 9px;
       font-size: 0.75rem;
+    }
+
+    .stats-loading {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .stats-loading-pair {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .stats-loading-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px 16px;
     }
 
     /* Toast — raised above the bottom nav bar */
@@ -2435,7 +2621,6 @@
 
     #reset-program-btn {
       width: 100%;
-      margin-bottom: 12px;
     }
 
     .settings-rotation-row {

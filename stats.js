@@ -5,6 +5,17 @@ window.HabitsApp.registerStatsModule = function registerStatsModule(ctx) {
   const utils = ctx.utils;
   const deps = ctx.deps;
 
+  function setStatsLoading(isLoading) {
+    state.statsLoading = !!isLoading;
+    const loadingEl = document.getElementById('stats-loading');
+    const contentEl = document.getElementById('stats-content');
+    const weightSectionEl = document.getElementById('weight-chart-section');
+    if (loadingEl) loadingEl.hidden = !isLoading;
+    if (contentEl) contentEl.hidden = isLoading;
+    if (weightSectionEl) weightSectionEl.hidden = isLoading;
+    if (isLoading) deps.destroyWeightChart();
+  }
+
   function renderWeightChart() {
     const emptyEl = document.getElementById('weight-chart-empty');
     const wrapEl = document.getElementById('weight-chart-wrap');
@@ -132,6 +143,7 @@ window.HabitsApp.registerStatsModule = function registerStatsModule(ctx) {
   }
 
   function renderStatsView(currentData) {
+    setStatsLoading(false);
     const container = document.getElementById('stats-content');
     const history = currentData.history || [];
     const NON_WORKOUT_TYPES = new Set(['off']);
@@ -357,5 +369,6 @@ window.HabitsApp.registerStatsModule = function registerStatsModule(ctx) {
     renderWeightChart,
     renderStatsView,
     switchStatsRange,
+    setStatsLoading,
   };
 };

@@ -54,7 +54,7 @@
       'peloton', 'yoga',
     ];
 
-    const VERSION = '1.5.23';
+    const VERSION = '1.5.24';
 
     // ── Test mode ────────────────────────────────────────────────────────────
     const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
@@ -82,6 +82,12 @@
     let lastSyncedAt = null;  // Date.now() timestamp of last successful Supabase sync
     let syncOffline  = false; // true if the last Supabase attempt failed
     let userPreferences = { ...DEFAULT_USER_PREFERENCES };
+    let authResolved = false;
+    let initialAuthSettled = false;
+    let splashVisible = true;
+    let splashMaxTimer = null;
+    let todayLoading = false;
+    let statsLoading = false;
 
     const SKIP_DEFAULTS = ['Sick', 'Travel', 'Vacation', 'Social obligation'];
     const MAX_ACTIVITY_LENGTH = 100;
@@ -131,6 +137,18 @@
       set isProcessing(value) { isProcessing = value; },
       get userPreferences() { return userPreferences; },
       set userPreferences(value) { userPreferences = value; },
+      get authResolved() { return authResolved; },
+      set authResolved(value) { authResolved = value; },
+      get initialAuthSettled() { return initialAuthSettled; },
+      set initialAuthSettled(value) { initialAuthSettled = value; },
+      get splashVisible() { return splashVisible; },
+      set splashVisible(value) { splashVisible = value; },
+      get splashMaxTimer() { return splashMaxTimer; },
+      set splashMaxTimer(value) { splashMaxTimer = value; },
+      get todayLoading() { return todayLoading; },
+      set todayLoading(value) { todayLoading = value; },
+      get statsLoading() { return statsLoading; },
+      set statsLoading(value) { statsLoading = value; },
       get cachedData() { return cachedData; },
       set cachedData(value) { cachedData = value; },
       get cachedJournal() { return cachedJournal; },
@@ -253,6 +271,7 @@
         renderHistoryView: data => App.modules.log?.renderHistoryView?.(data),
         renderStatsView: data => renderStatsView(data),
         renderSettingsTodayTab: () => renderSettingsTodayTab(),
+        setStatsLoading: value => setStatsLoading(value),
       },
     });
 
@@ -275,6 +294,7 @@
     };
 
     const {
+      setTodayLoading,
       getJournalSync,
       loadJournal,
       openJournalModal,
@@ -393,6 +413,7 @@
       renderWeightChart,
       renderStatsView,
       switchStatsRange,
+      setStatsLoading,
     } = Stats;
 
     const Settings = App.registerSettingsModule({
@@ -453,6 +474,10 @@
         renderSettingsAccount: () => renderSettingsAccount(),
         renderSettingsTodayTab: () => renderSettingsTodayTab(),
         render: () => render(),
+        setTodayLoading: value => setTodayLoading(value),
+        setStatsLoading: value => setStatsLoading(value),
+        showSplashScreen: () => showSplashScreen(),
+        hideSplashScreen: () => hideSplashScreen(),
         loadWorkoutLibrary: () => loadWorkoutLibrary(),
         loadUserRotation: () => loadUserRotation(),
         loadPrograms: () => loadPrograms(),
@@ -549,6 +574,40 @@
     document.getElementById('new-password-input').addEventListener('keydown', e => {
       if (e.key === 'Enter') document.getElementById('password-save-btn').click();
     });
+
+    function showSplashScreen() {
+      const splash = document.getElementById('splash-screen');
+      if (!splash) return;
+      splash.hidden = false;
+      splash.classList.remove('is-exiting');
+      splashVisible = true;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    function hideSplashScreen() {
+      const splash = document.getElementById('splash-screen');
+      if (!splash || splash.hidden) {
+        splashVisible = false;
+        return;
+      }
+      splash.classList.add('is-exiting');
+      window.setTimeout(() => {
+        splash.hidden = true;
+        splash.classList.remove('is-exiting');
+      }, 200);
+      splashVisible = false;
+    }
+
+    showSplashScreen();
+    splashMaxTimer = window.setTimeout(() => {
+      if (!initialAuthSettled) {
+        if (currentUser) {
+          Auth.resolveInitialAuth('app');
+        } else {
+          Auth.resolveInitialAuth('auth');
+        }
+      }
+    }, 2000);
 
   }); // end DOMContentLoaded
 

@@ -74,7 +74,7 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
     if (!row?.id) return null;
     return {
       id: row.id,
-      name: row.name || 'Untitled workout',
+      name: (row.name || '').trim() || 'Untitled workout',
       category: row.category || '',
       icon: row.icon || '',
       is_global: !!row.is_global,

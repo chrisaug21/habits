@@ -80,6 +80,27 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
     document.getElementById('signup-panel').hidden = true;
   }
 
+  function resolveInitialAuth(nextScreen) {
+    if (state.splashMaxTimer) {
+      clearTimeout(state.splashMaxTimer);
+      state.splashMaxTimer = null;
+    }
+    state.authResolved = true;
+    if (nextScreen === 'app') {
+      deps.setTodayLoading(true);
+      deps.setStatsLoading(true);
+    }
+    if (!state.initialAuthSettled) {
+      state.initialAuthSettled = true;
+      if (nextScreen === 'app') showApp();
+      else showAuthScreen();
+      deps.hideSplashScreen();
+      return;
+    }
+    if (nextScreen === 'app') showApp();
+    else showAuthScreen();
+  }
+
   function authErrorMessage(err) {
     const msg = (err?.message || '').toLowerCase();
     if (msg.includes('invalid login') || msg.includes('invalid credentials') || msg.includes('wrong password')) {
@@ -99,6 +120,8 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
   }
 
   async function initApp() {
+    deps.setTodayLoading(true);
+    deps.setStatsLoading(true);
     deps.switchMainTab('today');
     await deps.loadWorkoutLibrary();
     await deps.loadUserRotation();
@@ -125,6 +148,8 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
       }
       if (state.statsViewActive && state.cachedData) {
         deps.renderStatsView(state.cachedData);
+      } else {
+        deps.setStatsLoading(false);
       }
     });
   }
@@ -166,7 +191,7 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
         const { data: userData, error } = await state.sb.auth.signInWithPassword({ email, password });
         if (error) throw error;
         state.currentUser = userData.user;
-        showApp();
+        resolveInitialAuth('app');
         initApp();
       } catch (err) {
         errorEl.textContent = authErrorMessage(err);
@@ -203,7 +228,7 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
           return;
         }
         state.currentUser = userData.user;
-        showApp();
+        resolveInitialAuth('app');
         initApp();
       } catch (err) {
         errorEl.textContent = authErrorMessage(err);
@@ -217,10 +242,10 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
       state.sb.auth.onAuthStateChange((event, session) => {
         if (event === 'SIGNED_OUT') {
           state.currentUser = null;
-          showAuthScreen();
+          resolveInitialAuth('auth');
         } else if (event === 'PASSWORD_RECOVERY' && session) {
           state.currentUser = session.user;
-          showApp();
+          resolveInitialAuth('app');
           initApp();
           deps.openPasswordModal();
           utils.showToast('Choose a new password');
@@ -233,11 +258,14 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
         const { data: { session } } = await state.sb.auth.getSession();
         if (session) {
           state.currentUser = session.user;
-          showApp();
+          resolveInitialAuth('app');
           initApp();
+        } else {
+          resolveInitialAuth('auth');
         }
       })();
     } else {
+      resolveInitialAuth('auth');
       showConnectivityError(document.getElementById('login-error'));
       ['login-btn', 'signup-btn', 'forgot-password-btn'].forEach(id => {
         const el = document.getElementById(id);
@@ -253,5 +281,6 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
     showAuthScreen,
     authErrorMessage,
     initApp,
+    resolveInitialAuth,
   };
 };
