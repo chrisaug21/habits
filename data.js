@@ -72,13 +72,11 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
 
   function normalizeWorkoutLibraryRow(row) {
     if (!row?.id) return null;
-    const normalizedName = (row.name || '').trim();
-    const isStretching = normalizedName.toLowerCase() === 'stretching';
     return {
       id: row.id,
-      name: normalizedName || 'Untitled workout',
+      name: (row.name || '').trim() || 'Untitled workout',
       category: row.category || '',
-      icon: isStretching ? 'wind' : (row.icon || ''),
+      icon: row.icon || '',
       is_global: !!row.is_global,
       created_by: row.created_by || null,
     };

@@ -601,12 +601,10 @@
     showSplashScreen();
     splashMaxTimer = window.setTimeout(() => {
       if (!initialAuthSettled) {
-        initialAuthSettled = true;
-        hideSplashScreen();
         if (currentUser) {
-          Auth.showApp();
+          Auth.resolveInitialAuth('app');
         } else {
-          showAuthScreen();
+          Auth.resolveInitialAuth('auth');
         }
       }
     }, 2000);
