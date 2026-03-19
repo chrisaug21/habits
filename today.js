@@ -7,6 +7,23 @@ window.HabitsApp.registerTodayModule = function registerTodayModule(ctx) {
   const data = ctx.data;
   const deps = ctx.deps;
 
+  function setTodayLoading(isLoading) {
+    state.todayLoading = !!isLoading;
+    const loadingCard = document.getElementById('suggestion-card-loading');
+    const card = document.getElementById('suggestion-card');
+    const prompt = document.getElementById('first-use-prompt');
+    const tomorrow = document.getElementById('tomorrow-preview');
+    const showWorkoutCard = state.userPreferences?.show_workout_card ?? DEFAULT_USER_PREFERENCES.show_workout_card;
+    if (loadingCard) loadingCard.hidden = !isLoading || !showWorkoutCard;
+    if (card) {
+      card.hidden = isLoading || !showWorkoutCard;
+    }
+    if (isLoading) {
+      if (prompt) prompt.hidden = true;
+      if (tomorrow) tomorrow.hidden = true;
+    }
+  }
+
   async function markDone() {
     if (state.isProcessing) return;
     state.isProcessing = true;
@@ -572,55 +589,62 @@ window.HabitsApp.registerTodayModule = function registerTodayModule(ctx) {
 
   async function syncAllData() {
     if (!state.sb) throw new Error('No Supabase connection');
-    const [stateRes, historyRes, journalRes, weightRes] = await Promise.all([
-      state.sb.from('state').select('*').eq('user_id', state.currentUser?.id)
-        .order('id', { ascending: false }).limit(1).maybeSingle(),
-      state.sb.from('history').select('*').eq('user_id', state.currentUser?.id)
-        .order('sequence', { ascending: true, nullsFirst: true }),
-      state.sb.from('journal').select('*').eq('user_id', state.currentUser?.id)
-        .order('date', { ascending: false }),
-      state.sb.from('weight').select('date, value_lbs').eq('user_id', state.currentUser?.id)
-        .order('date', { ascending: false }),
-      data.loadWorkoutLibrary(),
-      data.loadUserRotation(),
-    ]);
-    if (stateRes.error) throw stateRes.error;
-    if (historyRes.error) throw historyRes.error;
-    if (journalRes.error) throw journalRes.error;
-    if (weightRes.error) throw weightRes.error;
+    setTodayLoading(true);
+    deps.setStatsLoading(true);
+    try {
+      const [stateRes, historyRes, journalRes, weightRes] = await Promise.all([
+        state.sb.from('state').select('*').eq('user_id', state.currentUser?.id)
+          .order('id', { ascending: false }).limit(1).maybeSingle(),
+        state.sb.from('history').select('*').eq('user_id', state.currentUser?.id)
+          .order('sequence', { ascending: true, nullsFirst: true }),
+        state.sb.from('journal').select('*').eq('user_id', state.currentUser?.id)
+          .order('date', { ascending: false }),
+        state.sb.from('weight').select('date, value_lbs').eq('user_id', state.currentUser?.id)
+          .order('date', { ascending: false }),
+        data.loadWorkoutLibrary(),
+        data.loadUserRotation(),
+      ]);
+      if (stateRes.error) throw stateRes.error;
+      if (historyRes.error) throw historyRes.error;
+      if (journalRes.error) throw journalRes.error;
+      if (weightRes.error) throw weightRes.error;
 
-    state.cachedJournal = (journalRes.data || []).map(row => ({
-      date: row.date,
-      intention: row.intention || '',
-      gratitude: row.gratitude || '',
-      one_thing: row.one_thing || '',
-    }));
-    state.cachedWeight = (weightRes.data || []).map(row => ({ date: row.date, value_lbs: parseFloat(row.value_lbs) }));
-    data.writeCachedJSON(BASE_JOURNAL_KEY, state.cachedJournal);
-    data.writeCachedJSON(BASE_WEIGHT_KEY, state.cachedWeight);
-
-    const stateRow = stateRes.data ?? { rotation_index: 0, action_date: null };
-    const historyRows = historyRes.data || [];
-    const loaded = {
-      rotationIndex: stateRow.rotation_index ?? 0,
-      actionDate: stateRow.action_date ?? null,
-      _maxSeq: historyRows.reduce((max, row) => Math.max(max, row.sequence ?? -1), -1),
-      history: historyRows.map(row => ({
-        type: row.type,
+      state.cachedJournal = (journalRes.data || []).map(row => ({
         date: row.date,
-        advanced: row.advanced,
-        note: row.note ?? undefined,
-        _sid: row.id,
-      })),
-    };
-    for (const { type, date } of historyRows) {
-      if (type !== 'off' && (!loaded[type] || date > loaded[type])) {
-        loaded[type] = date;
+        intention: row.intention || '',
+        gratitude: row.gratitude || '',
+        one_thing: row.one_thing || '',
+      }));
+      state.cachedWeight = (weightRes.data || []).map(row => ({ date: row.date, value_lbs: parseFloat(row.value_lbs) }));
+      data.writeCachedJSON(BASE_JOURNAL_KEY, state.cachedJournal);
+      data.writeCachedJSON(BASE_WEIGHT_KEY, state.cachedWeight);
+
+      const stateRow = stateRes.data ?? { rotation_index: 0, action_date: null };
+      const historyRows = historyRes.data || [];
+      const loaded = {
+        rotationIndex: stateRow.rotation_index ?? 0,
+        actionDate: stateRow.action_date ?? null,
+        _maxSeq: historyRows.reduce((max, row) => Math.max(max, row.sequence ?? -1), -1),
+        history: historyRows.map(row => ({
+          type: row.type,
+          date: row.date,
+          advanced: row.advanced,
+          note: row.note ?? undefined,
+          _sid: row.id,
+        })),
+      };
+      for (const { type, date } of historyRows) {
+        if (type !== 'off' && (!loaded[type] || date > loaded[type])) {
+          loaded[type] = date;
+        }
       }
+      state.cachedData = loaded;
+      deps.renderSettingsTodayTab();
+      await render(loaded);
+    } finally {
+      setTodayLoading(false);
+      deps.setStatsLoading(false);
     }
-    state.cachedData = loaded;
-    deps.renderSettingsTodayTab();
-    await render(loaded);
   }
 
   async function saveWeightEntry(date, valueLbs) {
@@ -716,6 +740,7 @@ window.HabitsApp.registerTodayModule = function registerTodayModule(ctx) {
 
   async function render(preloadedData = null) {
     const loaded = preloadedData || await data.loadData();
+    setTodayLoading(false);
     state.cachedData = loaded;
     const preferences = state.userPreferences || DEFAULT_USER_PREFERENCES;
 
@@ -907,6 +932,7 @@ window.HabitsApp.registerTodayModule = function registerTodayModule(ctx) {
 
   return {
     bindEvents,
+    setTodayLoading,
     markDone,
     logSkip,
     undoLastEntry,

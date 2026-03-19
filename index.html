@@ -27,6 +27,19 @@
 </head>
 <body>
 
+  <div id="splash-screen" aria-hidden="true">
+    <div class="splash-screen-inner">
+      <div class="splash-icon-stack" aria-hidden="true">
+        <div class="splash-icon splash-icon--1"><i data-lucide="dumbbell"></i></div>
+        <div class="splash-icon splash-icon--2"><i data-lucide="bike"></i></div>
+        <div class="splash-icon splash-icon--3"><i data-lucide="flower-2"></i></div>
+        <div class="splash-icon splash-icon--4"><i data-lucide="footprints"></i></div>
+        <div class="splash-icon splash-icon--5"><i data-lucide="moon"></i></div>
+      </div>
+      <div class="splash-app-name">Habits</div>
+    </div>
+  </div>
+
   <!-- ── Auth Screen ────────────────────────────────────────────────────── -->
   <div id="auth-screen">
 
@@ -171,6 +184,14 @@ focus on. Takes about 60 seconds and helps ground you in being mindful and prese
           <button class="undo-btn" id="undo-btn" hidden></button>
         </div>
       </div>
+      <div class="suggestion-card suggestion-card--loading" id="suggestion-card-loading" hidden aria-hidden="true">
+        <div class="loading-chip shimmer-block"></div>
+        <div class="loading-icon shimmer-block"></div>
+        <div class="loading-line loading-line--title shimmer-block"></div>
+        <div class="loading-line loading-line--body shimmer-block"></div>
+        <div class="loading-button shimmer-block"></div>
+        <div class="loading-button loading-button--secondary shimmer-block"></div>
+      </div>
 
       <div id="first-use-prompt" class="first-use-prompt" hidden>
         Tap <strong>Done!</strong> after your workout to start tracking your streak.
@@ -273,16 +294,16 @@ focus on. Takes about 60 seconds and helps ground you in being mindful and prese
       <div class="settings-section">
         <div class="settings-section-title">My Workout Rotation</div>
         <div class="settings-card" id="settings-rotation-card">
-          <button class="settings-secondary-btn" id="reset-program-btn" type="button">
-            <i data-lucide="rotate-ccw"></i>
-            Reset to a program
-          </button>
           <div class="settings-rotation-empty" id="settings-rotation-empty" hidden>
             <div class="settings-rotation-empty-title">Using default rotation</div>
             <div class="settings-rotation-empty-note">Build your own workout order and save it to your account.</div>
           </div>
           <div class="settings-rotation-list" id="settings-rotation-list" hidden></div>
           <button class="settings-secondary-btn" id="rotation-builder-open-btn">Customize my workout rotation</button>
+          <button class="settings-secondary-btn" id="reset-program-btn" type="button">
+            <i data-lucide="rotate-ccw"></i>
+            Reset to a program
+          </button>
         </div>
       </div>
       <div class="settings-section">
@@ -331,6 +352,31 @@ focus on. Takes about 60 seconds and helps ground you in being mindful and prese
         <button class="stats-toggle-btn" id="stats-btn-all">All Time</button>
       </div>
       <div id="stats-content"></div>
+      <div class="stats-loading" id="stats-loading" hidden aria-hidden="true">
+        <div class="stats-loading-card">
+          <div class="loading-line loading-line--section shimmer-block"></div>
+          <div class="loading-line loading-line--stat shimmer-block"></div>
+          <div class="loading-line loading-line--meta shimmer-block"></div>
+        </div>
+        <div class="stats-loading-pair">
+          <div class="stats-loading-card">
+            <div class="loading-line loading-line--section shimmer-block"></div>
+            <div class="loading-line loading-line--stat shimmer-block"></div>
+            <div class="loading-line loading-line--meta shimmer-block"></div>
+          </div>
+          <div class="stats-loading-card">
+            <div class="loading-line loading-line--section shimmer-block"></div>
+            <div class="loading-line loading-line--stat shimmer-block"></div>
+            <div class="loading-line loading-line--meta shimmer-block"></div>
+          </div>
+        </div>
+        <div class="stats-loading-card">
+          <div class="loading-line loading-line--section shimmer-block"></div>
+          <div class="loading-bar shimmer-block"></div>
+          <div class="loading-bar shimmer-block"></div>
+          <div class="loading-bar shimmer-block"></div>
+        </div>
+      </div>
       <div class="stats-section" id="weight-chart-section">
         <div class="stats-section-label">Weight Trend</div>
         <div class="stats-card weight-chart-card">
