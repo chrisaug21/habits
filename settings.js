@@ -18,6 +18,8 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
   let pendingProgramResetId = null;
   let builderReturnToProgramPicker = false;
   let programPickerSaving = false;
+  let onboardingStep = 1;
+  const TOTAL_ONBOARDING_STEPS = 6;
 
   function renderSettingsTodayTab() {
     document.getElementById('toggle-workout-card').checked = !!state.userPreferences.show_workout_card;
@@ -167,28 +169,87 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
     if (typeof lucide !== 'undefined') lucide.createIcons();
   }
 
-  function openProgramPickerScreen() {
-    programPickerFlow = 'ftux';
-    selectedProgramId = getDefaultProgramId();
-    renderProgramPickerScreen();
-    const screen = document.getElementById('program-picker-screen');
-    screen.hidden = false;
-    document.getElementById('app-container').inert = true;
-    document.getElementById('bottom-nav').inert = true;
+  function renderOnboardingStep() {
+    const screen = document.getElementById('welcome-screen');
+    const steps = [...screen.querySelectorAll('[data-onboarding-step]')];
+    const resolvedStep = Math.min(Math.max(onboardingStep, 1), TOTAL_ONBOARDING_STEPS);
+    onboardingStep = resolvedStep;
+
+    let activeStepEl = null;
+    steps.forEach(stepEl => {
+      const isActive = Number(stepEl.dataset.onboardingStep) === resolvedStep;
+      stepEl.hidden = !isActive;
+      const titleEl = stepEl.querySelector('.welcome-title');
+      if (titleEl) {
+        if (isActive) titleEl.id = 'welcome-title';
+        else if (titleEl.id === 'welcome-title') titleEl.removeAttribute('id');
+      }
+      if (isActive) activeStepEl = stepEl;
+    });
+    if (!activeStepEl) return;
+
+    document.getElementById('onboarding-progress-text').textContent = `${resolvedStep} / ${TOTAL_ONBOARDING_STEPS}`;
+    document.querySelectorAll('.onboarding-dot').forEach((dot, index) => {
+      dot.classList.toggle('is-active', index === resolvedStep - 1);
+    });
+
+    document.getElementById('onboarding-badge-label').textContent = activeStepEl.dataset.badgeLabel || `Step ${resolvedStep}`;
+    document.getElementById('onboarding-badge-icon').setAttribute('data-lucide', activeStepEl.dataset.badgeIcon || 'sparkles');
+    document.getElementById('onboarding-hero-icon').innerHTML = `<i data-lucide="${activeStepEl.dataset.heroIcon || 'sparkles'}"></i>`;
+
+    if (resolvedStep === 3) {
+      renderProgramPickerScreen();
+    }
+
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+
+  function setOnboardingStep(step, options = {}) {
+    const { focusPrimary = false } = options;
+    onboardingStep = Math.min(Math.max(step, 1), TOTAL_ONBOARDING_STEPS);
+    renderOnboardingStep();
+
+    const screen = document.getElementById('welcome-screen');
     requestAnimationFrame(() => {
       screen.scrollTop = 0;
-      const focusTarget = document.getElementById('program-picker-confirm-btn').disabled
-        ? document.getElementById('program-picker-custom-btn')
-        : document.getElementById('program-picker-confirm-btn');
+      if (!focusPrimary) return;
+      const activeStepEl = screen.querySelector(`[data-onboarding-step="${onboardingStep}"]`);
+      const focusTarget = activeStepEl?.querySelector(
+        '#program-picker-confirm-btn, #welcome-continue-btn, [data-onboarding-next], [data-onboarding-back]'
+      );
       focusTarget?.focus({ preventScroll: true });
     });
   }
 
-  function closeProgramPickerScreen(options = {}) {
-    const { preserveFlow = false } = options;
-    document.getElementById('program-picker-screen').hidden = true;
+  function hideOnboardingScreen(options = {}) {
+    const { preserveStep = false, markDismissed = false } = options;
+    const screen = document.getElementById('welcome-screen');
+    screen.hidden = true;
     document.getElementById('app-container').inert = false;
     document.getElementById('bottom-nav').inert = false;
+
+    if (markDismissed) {
+      deps.markWelcomeDismissed(state.currentUser?.id);
+    }
+
+    if (!preserveStep) {
+      onboardingStep = 1;
+      if (state.lastFocusedBeforeWelcome && typeof state.lastFocusedBeforeWelcome.focus === 'function') {
+        state.lastFocusedBeforeWelcome.focus();
+      }
+      state.lastFocusedBeforeWelcome = null;
+    }
+  }
+
+  function openProgramPickerScreen() {
+    programPickerFlow = 'ftux';
+    selectedProgramId = getDefaultProgramId();
+    openWelcomeScreen(3);
+  }
+
+  function closeProgramPickerScreen(options = {}) {
+    const { preserveFlow = false } = options;
+    hideOnboardingScreen({ preserveStep: preserveFlow });
     selectedProgramId = null;
     if (!preserveFlow) {
       programPickerFlow = null;
@@ -224,7 +285,7 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
     const program = getProgramById(programId);
     if (!program) return;
     pendingProgramResetId = programId;
-    document.getElementById('program-reset-confirm-copy').textContent = `Replace your current rotation with ${program.name}? This cannot be undone.`;
+    document.getElementById('program-reset-confirm-copy').textContent = `Replace your current sequence with ${program.name}? This cannot be undone.`;
     document.getElementById('program-reset-confirm-btn').disabled = false;
     document.getElementById('program-reset-confirm-modal').hidden = false;
   }
@@ -235,11 +296,8 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
   }
 
   function finishFtuxProgramFlow() {
-    closeProgramPickerScreen();
     deps.switchMainTab('today');
-    if (deps.hasPendingWelcome() && !deps.hasDismissedWelcome()) {
-      deps.openWelcomeScreen();
-    }
+    openWelcomeScreen(4);
   }
 
   async function applyProgramSelection(programId, flow) {
@@ -259,21 +317,21 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
 
       if (flow === 'ftux') {
         finishFtuxProgramFlow();
-        utils.showToast('Starting rotation saved');
+        utils.showToast('Starting sequence saved');
       } else {
         closeProgramResetConfirm();
         closeProgramResetPicker();
-        utils.showToast('Rotation replaced');
+        utils.showToast('Sequence replaced');
       }
     } catch (err) {
       console.error('[program-picker] save failed:', err);
-      utils.showToast('Could not save rotation');
+      utils.showToast('Could not save sequence');
       if (flow === 'reset') {
         document.getElementById('program-reset-confirm-btn').disabled = false;
       }
     } finally {
       programPickerSaving = false;
-      if (flow === 'ftux' && !document.getElementById('program-picker-screen').hidden) {
+      if (flow === 'ftux' && !document.getElementById('welcome-screen').hidden && onboardingStep === 3) {
         renderProgramPickerScreen();
       } else if (flow === 'reset' && !document.getElementById('program-reset-modal').hidden) {
         renderProgramResetPicker();
@@ -302,7 +360,7 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
       emptyEl.hidden = false;
       listEl.hidden = true;
       listEl.innerHTML = '';
-      buttonEl.textContent = 'Customize my rotation';
+      buttonEl.textContent = 'Customize my sequence';
       return;
     }
 
@@ -319,7 +377,7 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
         </div>
       </div>
     `).join('');
-    buttonEl.textContent = 'Edit rotation';
+    buttonEl.textContent = 'Edit sequence';
     if (typeof lucide !== 'undefined') lucide.createIcons();
   }
 
@@ -461,13 +519,13 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
       await deps.render(state.cachedData);
       if (completesFtuxProgramFlow) {
         finishFtuxProgramFlow();
-        utils.showToast('Rotation saved');
+        utils.showToast('Sequence saved');
       } else {
-        utils.showToast('Rotation saved');
+        utils.showToast('Sequence saved');
       }
     } catch (err) {
       console.error('[rotation-builder] save failed:', err);
-      utils.showToast('Failed to save rotation — please try again');
+      utils.showToast('Failed to save sequence — please try again');
     } finally {
       rotationBuilderSaving = false;
       if (!document.getElementById('rotation-builder-modal').hidden) {
@@ -555,33 +613,19 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
     deps.setProfileEditing(!deps.hasSavedProfileName(meta));
   }
 
-  function openWelcomeScreen() {
+  function openWelcomeScreen(startStep = 1) {
     const screen = document.getElementById('welcome-screen');
-    state.lastFocusedBeforeWelcome = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    if (screen.hidden && !state.lastFocusedBeforeWelcome) {
+      state.lastFocusedBeforeWelcome = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    }
     screen.hidden = false;
     document.getElementById('app-container').inert = true;
     document.getElementById('bottom-nav').inert = true;
-    if (typeof lucide !== 'undefined') lucide.createIcons();
-    requestAnimationFrame(() => {
-      screen.scrollTop = 0;
-      screen.scrollTo(0, 0);
-      const card = screen.querySelector('.welcome-card');
-      if (card) card.scrollIntoView({ block: 'start' });
-      const continueBtn = document.getElementById('welcome-continue-btn');
-      if (continueBtn) continueBtn.focus({ preventScroll: true });
-    });
+    setOnboardingStep(startStep, { focusPrimary: true });
   }
 
   function closeWelcomeScreen() {
-    deps.markWelcomeDismissed(state.currentUser?.id);
-    const screen = document.getElementById('welcome-screen');
-    screen.hidden = true;
-    document.getElementById('app-container').inert = false;
-    document.getElementById('bottom-nav').inert = false;
-    if (state.lastFocusedBeforeWelcome && typeof state.lastFocusedBeforeWelcome.focus === 'function') {
-      state.lastFocusedBeforeWelcome.focus();
-    }
-    state.lastFocusedBeforeWelcome = null;
+    hideOnboardingScreen({ markDismissed: true });
   }
 
   function openFeedbackModal() {
@@ -795,7 +839,18 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
 
   function bindEvents() {
     document.getElementById('welcome-continue-btn').onclick = () => closeWelcomeScreen();
-    document.getElementById('tutorial-btn').onclick = () => openWelcomeScreen();
+    document.getElementById('tutorial-btn').onclick = () => openWelcomeScreen(1);
+    document.getElementById('welcome-screen').addEventListener('click', e => {
+      const nextBtn = e.target.closest('[data-onboarding-next]');
+      if (nextBtn) {
+        setOnboardingStep(Number(nextBtn.dataset.onboardingNext), { focusPrimary: true });
+        return;
+      }
+      const backBtn = e.target.closest('[data-onboarding-back]');
+      if (backBtn) {
+        setOnboardingStep(Number(backBtn.dataset.onboardingBack), { focusPrimary: true });
+      }
+    });
 
     document.getElementById('save-profile-btn').onclick = () => saveProfile();
     document.getElementById('toggle-workout-card').addEventListener('change', e => {
@@ -829,7 +884,7 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
     document.getElementById('rotation-builder-open-btn').onclick = () => openRotationBuilder();
     document.getElementById('program-picker-confirm-btn').onclick = () => confirmSelectedProgram();
     document.getElementById('program-picker-custom-btn').onclick = () => openCustomBuilderFromFtux();
-    document.getElementById('program-picker-screen').addEventListener('click', e => {
+    document.getElementById('program-picker-screen-list').addEventListener('click', e => {
       if (programPickerSaving) return;
       const card = e.target.closest('[data-program-id]');
       if (!card) return;

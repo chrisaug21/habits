@@ -15,6 +15,10 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
     utils.showToast('Could not connect to the server');
   }
 
+  function shouldShowSignupByDefault() {
+    return !state.currentUser && new URLSearchParams(window.location.search).get('signup') === 'true';
+  }
+
   async function sendPasswordReset() {
     const errorEl = document.getElementById('login-error');
     if (!state.sb) {
@@ -70,14 +74,14 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
     document.getElementById('password-modal').hidden = true;
     document.getElementById('delete-account-modal').hidden = true;
     document.getElementById('welcome-screen').hidden = true;
-    document.getElementById('program-picker-screen').hidden = true;
     document.getElementById('program-reset-modal').hidden = true;
     document.getElementById('program-reset-confirm-modal').hidden = true;
     document.getElementById('app-container').inert = false;
     document.getElementById('bottom-nav').inert = false;
     state.lastFocusedBeforeWelcome = null;
-    document.getElementById('login-panel').hidden = false;
-    document.getElementById('signup-panel').hidden = true;
+    const showSignup = shouldShowSignupByDefault();
+    document.getElementById('login-panel').hidden = showSignup;
+    document.getElementById('signup-panel').hidden = !showSignup;
   }
 
   function resolveInitialAuth(nextScreen) {
@@ -130,9 +134,7 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
     await data.loadUserPreferences();
     deps.renderSettingsTodayTab();
     await deps.render();
-    if (deps.hasPendingWelcome() && !utils.hasCustomRotation()) {
-      deps.openProgramPickerScreen();
-    } else if (deps.hasPendingWelcome() && !deps.hasDismissedWelcome()) {
+    if (deps.hasPendingWelcome() && !deps.hasDismissedWelcome()) {
       deps.openWelcomeScreen();
     }
     deps.loadJournal().then(() => {

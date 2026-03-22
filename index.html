@@ -66,7 +66,7 @@
       <h1 class="auth-app-name">Habits</h1>
       <p class="auth-description">A personal daily habits tracker for workouts, weight logging, and daily journaling.</p>
       <ul class="auth-features">
-        <li>Smart workout rotation that tells you what to do each day</li>
+        <li>Smart workout sequence that tells you what to do each day</li>
         <li>Daily weight tracking with trend chart</li>
         <li>Morning journal for intention, gratitude, and focus</li>
       </ul>
@@ -88,70 +88,135 @@
   </div>
 
   <div id="welcome-screen" hidden role="dialog" aria-modal="true" aria-labelledby="welcome-title">
-    <div class="welcome-card">
-      <div class="welcome-badge">
-        <i data-lucide="sparkles"></i>
-        Welcome
-      </div>
-      <h2 class="welcome-title" id="welcome-title">Welcome to Habits</h2>
-      <div class="welcome-section">
-        <p class="welcome-copy">Habits is a simple daily tracker built around three things:
-tracking workouts (with suggestions!), tracking your weight (optionally), and completing your morning journal for better mindfulness.</p>
-      </div>
-      <div class="welcome-section">
-        <div class="welcome-section-head">
-          <i data-lucide="repeat"></i>
-          <span>Your workout rotation</span>
+    <div class="welcome-card onboarding-card">
+      <div class="onboarding-progress-row">
+        <div class="welcome-badge" id="onboarding-badge">
+          <i data-lucide="trending-up" id="onboarding-badge-icon"></i>
+          <span id="onboarding-badge-label">Step 1</span>
         </div>
-        <p class="welcome-copy">The app suggests workouts each day based on your workout rotation. New accounts start by picking a pre-built program or building a custom rotation from scratch, and you can reset or customize that setup anytime in Settings.</p>
-      </div>
-      <div class="welcome-section">
-        <div class="welcome-section-head">
-          <i data-lucide="book-open"></i>
-          <span>Daily journal</span>
+        <div class="onboarding-progress">
+          <div class="onboarding-progress-text" id="onboarding-progress-text">1 / 6</div>
+          <div class="onboarding-dots" aria-hidden="true">
+            <span class="onboarding-dot is-active"></span>
+            <span class="onboarding-dot"></span>
+            <span class="onboarding-dot"></span>
+            <span class="onboarding-dot"></span>
+            <span class="onboarding-dot"></span>
+            <span class="onboarding-dot"></span>
+          </div>
         </div>
-        <p class="welcome-copy">Each day has a short journal with three prompts: your intention for
-the day, something you're grateful for, and one thing you want to
-focus on. Takes about 60 seconds and helps ground you in being mindful and present each day.</p>
       </div>
-      <div class="welcome-section">
-        <div class="welcome-section-head">
-          <i data-lucide="scale"></i>
-          <span>Weight tracking</span>
+      <div class="onboarding-hero">
+        <div class="onboarding-hero-icon" id="onboarding-hero-icon">
+          <i data-lucide="trending-up"></i>
         </div>
-        <p class="welcome-copy">Log your weight each morning from the Today tab. Whether your goal is losing, gaining or maintaining, tracking your weight regularly helps achieve results! Over time you'll see a trend chart on the Stats tab showing your progress.</p>
       </div>
-      <div class="welcome-section">
-        <div class="welcome-section-head">
-          <i data-lucide="settings"></i>
-          <span>Settings</span>
-        </div>
-        <p class="welcome-copy">Use the Settings panel to manage your account details, reset or customize your workout rotation, and choose which Today tab cards you want to see for workouts, journaling, and weight. You can also change your password, send feedback, reopen this tutorial, sync data, or sign out.</p>
-      </div>
-      <button class="welcome-cta" id="welcome-continue-btn">
-        <span>Got it, let's go</span>
-        <i data-lucide="arrow-right"></i>
-      </button>
-    </div>
-  </div>
 
-  <div id="program-picker-screen" hidden role="dialog" aria-modal="true" aria-labelledby="program-picker-title">
-    <div class="welcome-card program-picker-screen-card">
-      <div class="welcome-badge">
-        <i data-lucide="repeat"></i>
-        Starting Rotation
-      </div>
-      <h2 class="welcome-title" id="program-picker-title">Choose a starting rotation</h2>
-      <p class="welcome-copy">Pick a program to get started. You can customize it anytime.</p>
-      <div class="program-picker-list" id="program-picker-screen-list"></div>
-      <button class="program-picker-custom-btn" id="program-picker-custom-btn" type="button">
-        <span>Build my own from scratch</span>
-        <i data-lucide="chevron-right"></i>
-      </button>
-      <button class="welcome-cta" id="program-picker-confirm-btn" type="button">
-        <span>Start with Balanced</span>
-        <i data-lucide="arrow-right"></i>
-      </button>
+      <section class="welcome-step" data-onboarding-step="1" data-badge-icon="trending-up" data-badge-label="Why Habits" data-hero-icon="trending-up">
+        <h2 class="welcome-title" id="welcome-title">Small actions. Big change.</h2>
+        <div class="welcome-section">
+          <p class="welcome-copy">The science is clear: consistency beats intensity every time. A short workout today is worth more than a perfect workout someday. Habits sets you up with a workout sequence and helps you stay on track — day by day, at your own pace.</p>
+        </div>
+        <div class="modal-actions welcome-actions">
+          <button class="welcome-cta" type="button" data-onboarding-next="2">
+            <span>Next</span>
+            <i data-lucide="arrow-right"></i>
+          </button>
+        </div>
+      </section>
+
+      <section class="welcome-step" data-onboarding-step="2" data-badge-icon="repeat" data-badge-label="How It Works" data-hero-icon="repeat" hidden>
+        <h2 class="welcome-title">Your sequence. Your pace.</h2>
+        <div class="welcome-section">
+          <p class="welcome-copy">Habits gives you a personalized workout sequence — an ordered list of workouts that cycles day by day. Finish one, the next is waiting. Miss a day? No problem. Your sequence picks up exactly where you left off.</p>
+          <p class="welcome-copy">No fixed days. No guilt. Just your next step, always ready.</p>
+        </div>
+        <div class="modal-actions welcome-actions welcome-actions--split">
+          <button class="modal-cancel-btn" type="button" data-onboarding-back="1">Back</button>
+          <button class="welcome-cta" type="button" data-onboarding-next="3">
+            <span>Next</span>
+            <i data-lucide="arrow-right"></i>
+          </button>
+        </div>
+      </section>
+
+      <section class="welcome-step" data-onboarding-step="3" data-badge-icon="list-ordered" data-badge-label="Pick A Sequence" data-hero-icon="list-ordered" hidden>
+        <h2 class="welcome-title" id="program-picker-title">Choose your starting point.</h2>
+        <p class="welcome-copy">Pick a pre-built sequence or build your own. You can customize it anytime from Settings.</p>
+        <div class="program-picker-list" id="program-picker-screen-list"></div>
+        <button class="program-picker-custom-btn" id="program-picker-custom-btn" type="button">
+          <span>Build my own from scratch</span>
+          <i data-lucide="chevron-right"></i>
+        </button>
+        <div class="modal-actions welcome-actions welcome-actions--split">
+          <button class="modal-cancel-btn" type="button" data-onboarding-back="2">Back</button>
+          <button class="welcome-cta" id="program-picker-confirm-btn" type="button">
+            <span>Start with Balanced</span>
+            <i data-lucide="arrow-right"></i>
+          </button>
+        </div>
+      </section>
+
+      <section class="welcome-step" data-onboarding-step="4" data-badge-icon="book-open" data-badge-label="Journaling" data-hero-icon="book-open" hidden>
+        <h2 class="welcome-title">Three questions. Sixty seconds.</h2>
+        <div class="welcome-section">
+          <p class="welcome-copy">Research shows that writing down your intentions and gratitude — even briefly — meaningfully improves follow-through and wellbeing. Every day, Habits asks you three things:</p>
+        </div>
+        <div class="welcome-section">
+          <div class="welcome-section-head"><span>Intention</span></div>
+          <p class="welcome-copy">Who do you want to be today? Before the noise of the day takes over, intention asks you to pause and be deliberate. Not just what you'll do — but how you'll show up. Mindful. Present. Aligned with the person you're working to become.</p>
+        </div>
+        <div class="welcome-section">
+          <div class="welcome-section-head"><span>Gratitude</span></div>
+          <p class="welcome-copy">What are you grateful for? It's easy to fixate on what went wrong or what's still undone. Gratitude practice pushes back. When you stop to name something you're grateful for — even something small you usually take for granted — you start to see how much you've actually built. A hard day looks different when you can also name what's going right.</p>
+        </div>
+        <div class="welcome-section">
+          <div class="welcome-section-head"><span>One thing</span></div>
+          <p class="welcome-copy">What's the single most important thing you'll accomplish today? Your to-do list is probably long and will never be fully done — that's normal. This isn't about shrinking your ambitions. It's about being intentional. If you only clear one item today, which one would make everything else feel worth it?</p>
+        </div>
+        <div class="welcome-section">
+          <p class="welcome-copy">Sixty seconds. Compounding returns.</p>
+          <p class="welcome-copy"><em>Not feeling journaling every day? You can turn it off in Settings.</em></p>
+        </div>
+        <div class="modal-actions welcome-actions welcome-actions--split">
+          <button class="modal-cancel-btn" type="button" data-onboarding-back="3">Back</button>
+          <button class="welcome-cta" type="button" data-onboarding-next="5">
+            <span>Next</span>
+            <i data-lucide="arrow-right"></i>
+          </button>
+        </div>
+      </section>
+
+      <section class="welcome-step" data-onboarding-step="5" data-badge-icon="activity" data-badge-label="Weight Tracking" data-hero-icon="activity" hidden>
+        <h2 class="welcome-title">Daily tracking reveals what sporadic weigh-ins hide.</h2>
+        <div class="welcome-section">
+          <p class="welcome-copy">Your weight fluctuates by 2–4 lbs every single day based on water, food, sleep, and stress. A single weigh-in can mislead you — whether you're losing, gaining, or maintaining. Catch yourself on a rough day and you feel like you're failing; catch a favorable day and you feel like you've arrived. Neither is the full picture.</p>
+          <p class="welcome-copy">Daily tracking gives you the truth. Habits shows your weight trend over time and your 7-day rolling average — the signal, not the noise. That's the number worth paying attention to, whatever direction you're headed.</p>
+          <p class="welcome-copy"><em>Not ready to track weight yet? You can turn it off in Settings.</em></p>
+        </div>
+        <div class="modal-actions welcome-actions welcome-actions--split">
+          <button class="modal-cancel-btn" type="button" data-onboarding-back="4">Back</button>
+          <button class="welcome-cta" type="button" data-onboarding-next="6">
+            <span>Next</span>
+            <i data-lucide="arrow-right"></i>
+          </button>
+        </div>
+      </section>
+
+      <section class="welcome-step" data-onboarding-step="6" data-badge-icon="check-circle" data-badge-label="Ready" data-hero-icon="check-circle" hidden>
+        <h2 class="welcome-title">You're all set.</h2>
+        <div class="welcome-section">
+          <p class="welcome-copy">Your sequence is loaded. Your habits are waiting. Let's go.</p>
+          <p class="welcome-copy">Not ready to track everything at once? That's completely fine. Head to Settings to choose which habits are right for you — workouts, journaling, and weight tracking can each be turned on or off independently.</p>
+        </div>
+        <div class="modal-actions welcome-actions welcome-actions--split">
+          <button class="modal-cancel-btn" type="button" data-onboarding-back="5">Back</button>
+          <button class="welcome-cta" id="welcome-continue-btn" type="button">
+            <span>Get started</span>
+            <i data-lucide="arrow-right"></i>
+          </button>
+        </div>
+      </section>
     </div>
   </div>
 
@@ -292,14 +357,14 @@ focus on. Takes about 60 seconds and helps ground you in being mindful and prese
         </div>
       </div>
       <div class="settings-section">
-        <div class="settings-section-title">My Workout Rotation</div>
+        <div class="settings-section-title">My Workout Sequence</div>
         <div class="settings-card" id="settings-rotation-card">
           <div class="settings-rotation-empty" id="settings-rotation-empty" hidden>
-            <div class="settings-rotation-empty-title">Using default rotation</div>
+            <div class="settings-rotation-empty-title">Using default sequence</div>
             <div class="settings-rotation-empty-note">Build your own workout order and save it to your account.</div>
           </div>
           <div class="settings-rotation-list" id="settings-rotation-list" hidden></div>
-          <button class="settings-secondary-btn" id="rotation-builder-open-btn">Customize my workout rotation</button>
+          <button class="settings-secondary-btn" id="rotation-builder-open-btn">Customize my workout sequence</button>
           <button class="settings-secondary-btn" id="reset-program-btn" type="button">
             <i data-lucide="rotate-ccw"></i>
             Reset to a program
@@ -504,7 +569,7 @@ focus on. Takes about 60 seconds and helps ground you in being mindful and prese
         <button class="rotation-builder-close-btn" id="rotation-builder-close-btn" type="button" aria-label="Close">
           <i data-lucide="x"></i>
         </button>
-        <div class="modal-title rotation-builder-title" id="rotation-builder-title">My Workout Rotation</div>
+        <div class="modal-title rotation-builder-title" id="rotation-builder-title">My Workout Sequence</div>
         <div class="rotation-builder-spacer" aria-hidden="true"></div>
       </div>
 
@@ -512,8 +577,8 @@ focus on. Takes about 60 seconds and helps ground you in being mindful and prese
         <section class="rotation-builder-section">
           <div class="rotation-builder-section-head">
             <div>
-              <div class="rotation-builder-section-title">Current rotation</div>
-              <div class="rotation-builder-section-note">Keep at least 2 workouts in your rotation.</div>
+              <div class="rotation-builder-section-title">Current sequence</div>
+              <div class="rotation-builder-section-note">Keep at least 2 workouts in your sequence.</div>
             </div>
           </div>
           <div class="rotation-builder-current-list" id="rotation-builder-current-list"></div>
@@ -565,7 +630,7 @@ focus on. Takes about 60 seconds and helps ground you in being mindful and prese
 
       <div class="modal-actions rotation-builder-actions">
         <button class="modal-cancel-btn" id="rotation-builder-cancel-btn" type="button">Cancel</button>
-        <button class="modal-confirm-btn" id="rotation-builder-save-btn" type="button">Save rotation</button>
+        <button class="modal-confirm-btn" id="rotation-builder-save-btn" type="button">Save sequence</button>
       </div>
     </div>
   </div>
@@ -573,7 +638,7 @@ focus on. Takes about 60 seconds and helps ground you in being mindful and prese
   <div class="modal-overlay" id="program-reset-modal" hidden role="dialog" aria-modal="true" aria-labelledby="program-reset-title">
     <div class="modal-sheet">
       <div class="modal-title" id="program-reset-title">Choose a program</div>
-      <div class="program-picker-sheet-copy">Pick a saved program to replace your current rotation.</div>
+      <div class="program-picker-sheet-copy">Pick a saved program to replace your current sequence.</div>
       <div class="program-picker-list program-picker-list--sheet" id="program-reset-list"></div>
       <button class="program-picker-custom-btn program-picker-custom-btn--sheet" id="program-reset-custom-btn" type="button">
         <span>Build my own from scratch</span>
@@ -585,7 +650,7 @@ focus on. Takes about 60 seconds and helps ground you in being mindful and prese
 
   <div class="modal-overlay" id="program-reset-confirm-modal" hidden role="dialog" aria-modal="true" aria-labelledby="program-reset-confirm-title">
     <div class="modal-sheet">
-      <div class="modal-title" id="program-reset-confirm-title">Replace your current rotation?</div>
+      <div class="modal-title" id="program-reset-confirm-title">Replace your current sequence?</div>
       <div class="program-picker-confirm-copy" id="program-reset-confirm-copy">This cannot be undone.</div>
       <div class="modal-actions">
         <button class="modal-cancel-btn" id="program-reset-confirm-cancel-btn" type="button">Cancel</button>

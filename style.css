@@ -621,6 +621,79 @@
       margin: 0 auto;
     }
 
+    .onboarding-card {
+      gap: 16px;
+    }
+
+    .onboarding-progress-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .onboarding-progress {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    .onboarding-progress-text {
+      color: var(--text-secondary);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .onboarding-dots {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .onboarding-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.14);
+      transition: transform 0.15s, background 0.15s;
+    }
+
+    .onboarding-dot.is-active {
+      background: var(--accent);
+      transform: scale(1.15);
+    }
+
+    .onboarding-hero {
+      display: flex;
+      justify-content: center;
+    }
+
+    .onboarding-hero-icon {
+      width: 68px;
+      height: 68px;
+      border-radius: 22px;
+      display: grid;
+      place-items: center;
+      background: rgba(108, 99, 255, 0.16);
+      color: #d4d0ff;
+      border: 1px solid rgba(108, 99, 255, 0.22);
+    }
+
+    .onboarding-hero-icon svg,
+    .onboarding-hero-icon i {
+      width: 30px;
+      height: 30px;
+    }
+
+    .welcome-step {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
     .welcome-badge {
       display: inline-flex;
       align-items: center;
@@ -680,6 +753,21 @@
       line-height: 1.6;
     }
 
+    .welcome-actions {
+      margin-top: 4px;
+    }
+
+    .welcome-actions--split {
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .welcome-actions--split .modal-cancel-btn,
+    .welcome-actions--split .welcome-cta {
+      width: 100%;
+    }
+
     .welcome-cta {
       display: flex;
       align-items: center;
@@ -703,22 +791,6 @@
     .welcome-cta:active {
       background: var(--accent-dark);
       transform: translateY(1px);
-    }
-
-    #program-picker-screen {
-      position: fixed;
-      inset: 0;
-      z-index: 330;
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
-      padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px
-               calc(env(safe-area-inset-bottom, 0px) + 20px);
-      background:
-        radial-gradient(circle at top, rgba(108, 99, 255, 0.22), transparent 38%),
-        rgba(13, 13, 20, 0.92);
-      backdrop-filter: blur(10px);
-      overflow-y: auto;
     }
 
     .program-picker-screen-card {

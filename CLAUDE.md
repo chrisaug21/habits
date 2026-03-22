@@ -26,7 +26,8 @@ intentionally simple. Live at https://habits.chrisaug.com.
 - Read workout icons from `workout_library.icon` when workout rows are already loaded; do not re-derive display icons from category in app code
 - Today and Stats should show explicit dark loading placeholders during Supabase reads and manual syncs instead of rendering partial empty content
 - Persist saved user rotations through the `save_user_rotation` Supabase RPC instead of separate client-side delete/insert calls
-- Keep tutorial copy aligned with the live product: custom workout rotation controls and Today tab card visibility should be reflected in onboarding text
+- Keep tutorial copy aligned with the live product: custom workout sequence controls and Today tab card visibility should be reflected in onboarding text
+- FTUX and Tutorial now share a single 6-step onboarding overlay; screen 3 is the live starting-sequence picker, and the custom builder should return to onboarding step 3 on cancel or step 4 after a successful save
 - Keep `app.js` as the runtime spine; shared helpers may live in small support files like `shared.js` and `data.js`, while feature code belongs in feature modules
 - Supabase JS `.upsert()` calls must pass `onConflict` as a comma-separated string, not an array
 - Reuse shared "last done" thresholds and labels across surfaces instead of re-inventing per-view logic
