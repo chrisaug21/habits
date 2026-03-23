@@ -20,6 +20,7 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
   let programPickerSaving = false;
   let onboardingStep = 1;
   const TOTAL_ONBOARDING_STEPS = 6;
+  let onboardingMode = 'first-run';
 
   function renderSettingsTodayTab() {
     document.getElementById('toggle-workout-card').checked = !!state.userPreferences.show_workout_card;
@@ -169,10 +170,26 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
     if (typeof lucide !== 'undefined') lucide.createIcons();
   }
 
+  function getOnboardingVisibleSteps() {
+    return onboardingMode === 'tutorial'
+      ? [1, 2, 4, 5, 6]
+      : [1, 2, 3, 4, 5, 6];
+  }
+
+  function resolveOnboardingTarget(targetStep, direction) {
+    if (onboardingMode !== 'tutorial') return targetStep;
+    if (targetStep !== 3) return targetStep;
+    return direction === 'back' ? 2 : 4;
+  }
+
   function renderOnboardingStep() {
     const screen = document.getElementById('welcome-screen');
     const steps = [...screen.querySelectorAll('[data-onboarding-step]')];
-    const resolvedStep = Math.min(Math.max(onboardingStep, 1), TOTAL_ONBOARDING_STEPS);
+    const visibleSteps = getOnboardingVisibleSteps();
+    const fallbackStep = visibleSteps[0];
+    const requestedStep = Math.min(Math.max(onboardingStep, 1), TOTAL_ONBOARDING_STEPS);
+    const resolvedStep = visibleSteps.includes(requestedStep) ? requestedStep : fallbackStep;
+    const visibleStepIndex = visibleSteps.indexOf(resolvedStep);
     onboardingStep = resolvedStep;
 
     let activeStepEl = null;
@@ -188,14 +205,15 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
     });
     if (!activeStepEl) return;
 
-    document.getElementById('onboarding-progress-text').textContent = `${resolvedStep} / ${TOTAL_ONBOARDING_STEPS}`;
+    document.getElementById('onboarding-progress-text').textContent = `${visibleStepIndex + 1} / ${visibleSteps.length}`;
     document.querySelectorAll('.onboarding-dot').forEach((dot, index) => {
-      dot.classList.toggle('is-active', index === resolvedStep - 1);
+      const isVisible = index < visibleSteps.length;
+      dot.hidden = !isVisible;
+      dot.classList.toggle('is-active', isVisible && index === visibleStepIndex);
     });
 
     document.getElementById('onboarding-badge-label').textContent = activeStepEl.dataset.badgeLabel || `Step ${resolvedStep}`;
     document.getElementById('onboarding-badge-icon').setAttribute('data-lucide', activeStepEl.dataset.badgeIcon || 'sparkles');
-    document.getElementById('onboarding-hero-icon').innerHTML = `<i data-lucide="${activeStepEl.dataset.heroIcon || 'sparkles'}"></i>`;
 
     if (resolvedStep === 3) {
       renderProgramPickerScreen();
@@ -234,6 +252,7 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
 
     if (!preserveStep) {
       onboardingStep = 1;
+      onboardingMode = 'first-run';
       if (state.lastFocusedBeforeWelcome && typeof state.lastFocusedBeforeWelcome.focus === 'function') {
         state.lastFocusedBeforeWelcome.focus();
       }
@@ -244,7 +263,7 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
   function openProgramPickerScreen() {
     programPickerFlow = 'ftux';
     selectedProgramId = getDefaultProgramId();
-    openWelcomeScreen(3);
+    openWelcomeScreen(3, { mode: 'first-run' });
   }
 
   function closeProgramPickerScreen(options = {}) {
@@ -613,11 +632,13 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
     deps.setProfileEditing(!deps.hasSavedProfileName(meta));
   }
 
-  function openWelcomeScreen(startStep = 1) {
+  function openWelcomeScreen(startStep = 1, options = {}) {
+    const { mode = onboardingMode } = options;
     const screen = document.getElementById('welcome-screen');
     if (screen.hidden && !state.lastFocusedBeforeWelcome) {
       state.lastFocusedBeforeWelcome = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     }
+    onboardingMode = mode;
     screen.hidden = false;
     document.getElementById('app-container').inert = true;
     document.getElementById('bottom-nav').inert = true;
@@ -839,16 +860,16 @@ window.HabitsApp.registerSettingsModule = function registerSettingsModule(ctx) {
 
   function bindEvents() {
     document.getElementById('welcome-continue-btn').onclick = () => closeWelcomeScreen();
-    document.getElementById('tutorial-btn').onclick = () => openWelcomeScreen(1);
+    document.getElementById('tutorial-btn').onclick = () => openWelcomeScreen(1, { mode: 'tutorial' });
     document.getElementById('welcome-screen').addEventListener('click', e => {
       const nextBtn = e.target.closest('[data-onboarding-next]');
       if (nextBtn) {
-        setOnboardingStep(Number(nextBtn.dataset.onboardingNext), { focusPrimary: true });
+        setOnboardingStep(resolveOnboardingTarget(Number(nextBtn.dataset.onboardingNext), 'next'), { focusPrimary: true });
         return;
       }
       const backBtn = e.target.closest('[data-onboarding-back]');
       if (backBtn) {
-        setOnboardingStep(Number(backBtn.dataset.onboardingBack), { focusPrimary: true });
+        setOnboardingStep(resolveOnboardingTarget(Number(backBtn.dataset.onboardingBack), 'back'), { focusPrimary: true });
       }
     });
 

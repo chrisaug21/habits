@@ -666,28 +666,6 @@
       transform: scale(1.15);
     }
 
-    .onboarding-hero {
-      display: flex;
-      justify-content: center;
-    }
-
-    .onboarding-hero-icon {
-      width: 68px;
-      height: 68px;
-      border-radius: 22px;
-      display: grid;
-      place-items: center;
-      background: rgba(108, 99, 255, 0.16);
-      color: #d4d0ff;
-      border: 1px solid rgba(108, 99, 255, 0.22);
-    }
-
-    .onboarding-hero-icon svg,
-    .onboarding-hero-icon i {
-      width: 30px;
-      height: 30px;
-    }
-
     .welcome-step {
       display: flex;
       flex-direction: column;
