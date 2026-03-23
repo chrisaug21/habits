@@ -409,7 +409,7 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
     const orderedIds = Array.isArray(rotationArray)
       ? rotationArray.filter(id => typeof id === 'string' && id)
       : [];
-    if (orderedIds.length < 2) throw new Error('Rotation must contain at least 2 workouts');
+    if (orderedIds.length < 2) throw new Error('Workout sequence must contain at least 2 workouts');
 
     const nextRotation = orderedIds
       .map((id, index) => {
@@ -425,7 +425,7 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
       })
       .filter(Boolean);
     if (nextRotation.length !== orderedIds.length) {
-      throw new Error('Could not resolve all workouts in the rotation');
+      throw new Error('Could not resolve all workouts in the sequence');
     }
 
     if (TEST_MODE) {
@@ -445,7 +445,7 @@ window.HabitsApp.registerDataModule = function registerDataModule(ctx) {
       return state.userRotation;
     } catch (err) {
       console.error('[user-rotation] save failed:', err);
-      deps.showToast?.('Could not save rotation');
+      deps.showToast?.('Could not save sequence');
       throw err;
     }
   }
