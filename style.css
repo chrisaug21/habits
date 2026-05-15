@@ -3212,7 +3212,7 @@
       position: relative;
       z-index: 1;
       margin: 20px 0 0;
-      padding: 34px 0 28px;
+      padding: 28px 0 20px;
       max-width: 75%;
       margin-left: auto;
       margin-right: auto;
@@ -3220,7 +3220,7 @@
 
     .signup-quote-mark {
       display: block;
-      margin: 0 0 8px;
+      margin: 0 0 2px;
       color: #b98cff;
       font-family: "Playfair Display", Georgia, serif;
       font-size: clamp(4rem, 9vw, 5.2rem);
@@ -3241,8 +3241,8 @@
     }
 
     .signup-quote-attribution {
-      margin-top: 8px;
-      padding-top: 8px;
+      margin-top: 4px;
+      padding-top: 4px;
       color: rgba(232, 223, 255, 0.82);
       font-size: 0.82rem;
       line-height: 1.5;
