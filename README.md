@@ -2,7 +2,7 @@
 
 A mobile-first PWA for daily habits — workout tracking, journaling, and intention-setting.
 
-**Current version: 1.5.25**
+**Current version: 1.5.33**
 
 Live at: https://habits.chrisaug.com
 
