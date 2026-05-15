@@ -16,6 +16,9 @@
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
   <!-- Supabase JS client — defer so it doesn't block page render; crossorigin for SW caching -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer crossorigin="anonymous"></script>
   <!-- Lucide Icons — defer matches Supabase script; crossorigin for SW caching -->
@@ -93,7 +96,8 @@
           </article>
         </div>
         <blockquote class="signup-quote-card" id="signup-quote-card">
-          <p class="signup-quote-text" id="signup-quote-text">"Success is the product of daily habits — not once-in-a-lifetime transformations."</p>
+          <span class="signup-quote-mark" aria-hidden="true">“</span>
+          <p class="signup-quote-text" id="signup-quote-text">Success is the product of daily habits — not once-in-a-lifetime transformations.</p>
           <footer class="signup-quote-attribution" id="signup-quote-attribution">— James Clear, <cite>Atomic Habits</cite></footer>
         </blockquote>
       </div>
