@@ -3220,7 +3220,7 @@
 
     .signup-quote-mark {
       display: block;
-      margin: 0 0 2px;
+      margin: 0 0 -20px;
       color: #b98cff;
       font-family: "Playfair Display", Georgia, serif;
       font-size: clamp(4rem, 9vw, 5.2rem);
@@ -3241,8 +3241,8 @@
     }
 
     .signup-quote-attribution {
-      margin-top: 4px;
-      padding-top: 4px;
+      margin-top: 8px;
+      padding-top: 0;
       color: rgba(232, 223, 255, 0.82);
       font-size: 0.82rem;
       line-height: 1.5;
