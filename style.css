@@ -3446,13 +3446,20 @@
         bottom: 0;
         padding-bottom: env(safe-area-inset-bottom, 0px);
         z-index: 340;
+        opacity: 1;
+        pointer-events: auto;
+        transition: opacity 240ms ease;
       }
 
       .signup-sticky-cta-wrap.is-hidden {
-        display: none;
+        opacity: 0;
+        pointer-events: none;
       }
 
       .signup-sticky-cta {
+        width: calc(100% - 40px);
+        margin-left: 20px;
+        margin-right: 20px;
         margin-top: 0;
         margin-bottom: 14px;
         box-shadow: 0 18px 44px rgba(91, 33, 182, 0.35);
