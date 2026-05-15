@@ -83,6 +83,51 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
     }
   }
 
+  function disconnectSignupStickyObserver() {
+    if (state.signupStickyObserver) {
+      state.signupStickyObserver.disconnect();
+      state.signupStickyObserver = null;
+    }
+  }
+
+  function syncSignupStickyCta() {
+    const signupPanel = document.getElementById('signup-panel');
+    const inlineSignupBtn = document.getElementById('signup-btn');
+    const stickyWrap = document.getElementById('signup-sticky-cta-wrap');
+
+    if (!signupPanel || !inlineSignupBtn || !stickyWrap) return;
+
+    const isMobileViewport = window.matchMedia('(max-width: 768px)').matches;
+    const shouldHideSticky = signupPanel.hidden || !isMobileViewport;
+
+    if (shouldHideSticky) {
+      stickyWrap.classList.add('is-hidden');
+      disconnectSignupStickyObserver();
+      return;
+    }
+
+    if (!('IntersectionObserver' in window)) {
+      stickyWrap.classList.remove('is-hidden');
+      return;
+    }
+
+    stickyWrap.classList.remove('is-hidden');
+
+    if (state.signupStickyObserverTarget === inlineSignupBtn && state.signupStickyObserver) {
+      return;
+    }
+
+    disconnectSignupStickyObserver();
+    state.signupStickyObserverTarget = inlineSignupBtn;
+    state.signupStickyObserver = new window.IntersectionObserver((entries) => {
+      const [entry] = entries;
+      stickyWrap.classList.toggle('is-hidden', Boolean(entry?.isIntersecting));
+    }, {
+      threshold: 0.01,
+    });
+    state.signupStickyObserver.observe(inlineSignupBtn);
+  }
+
   async function sendPasswordReset() {
     const errorEl = document.getElementById('login-error');
     if (!state.sb) {
@@ -147,6 +192,7 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
     document.getElementById('login-panel').hidden = showSignup;
     document.getElementById('signup-panel').hidden = !showSignup;
     if (showSignup) runSignupQuoteAnimation();
+    syncSignupStickyCta();
   }
 
   function resolveInitialAuth(nextScreen) {
@@ -226,10 +272,12 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
       document.getElementById('login-panel').hidden = true;
       document.getElementById('signup-panel').hidden = false;
       runSignupQuoteAnimation();
+      syncSignupStickyCta();
     };
     document.getElementById('show-login-btn').onclick = () => {
       document.getElementById('signup-panel').hidden = true;
       document.getElementById('login-panel').hidden = false;
+      syncSignupStickyCta();
     };
     document.getElementById('forgot-password-btn').onclick = () => sendPasswordReset();
     document.getElementById('signup-sticky-cta').onclick = () => scrollToSignupForm();
@@ -237,6 +285,8 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
     if (!document.getElementById('signup-panel').hidden) {
       runSignupQuoteAnimation();
     }
+    syncSignupStickyCta();
+    window.addEventListener('resize', syncSignupStickyCta);
 
     ['login-email', 'login-password'].forEach(id => {
       document.getElementById(id).addEventListener('keydown', e => {
