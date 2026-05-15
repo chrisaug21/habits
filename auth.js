@@ -19,6 +19,70 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
     return !state.currentUser && new URLSearchParams(window.location.search).get('signup') === 'true';
   }
 
+  function runSignupQuoteAnimation() {
+    const cardEl = document.getElementById('signup-quote-card');
+    const quoteEl = document.getElementById('signup-quote-text');
+    const attributionEl = document.getElementById('signup-quote-attribution');
+    if (!cardEl || !quoteEl || !attributionEl) return;
+
+    const fullText = quoteEl.dataset.fullText || quoteEl.textContent.trim();
+    quoteEl.dataset.fullText = fullText;
+    quoteEl.setAttribute('aria-label', fullText);
+
+    if (cardEl._quoteTimer) {
+      window.clearTimeout(cardEl._quoteTimer);
+      cardEl._quoteTimer = null;
+    }
+    if (cardEl._quoteInterval) {
+      window.clearInterval(cardEl._quoteInterval);
+      cardEl._quoteInterval = null;
+    }
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    cardEl.classList.remove('is-animating', 'is-complete');
+    attributionEl.hidden = false;
+    quoteEl.textContent = '';
+
+    if (prefersReducedMotion) {
+      quoteEl.textContent = fullText;
+      cardEl.classList.add('is-complete');
+      return;
+    }
+
+    void cardEl.offsetHeight;
+    cardEl.classList.add('is-animating');
+
+    let index = 0;
+    const typeNext = () => {
+      index += 1;
+      quoteEl.textContent = fullText.slice(0, index);
+      if (index >= fullText.length) {
+        if (cardEl._quoteInterval) {
+          window.clearInterval(cardEl._quoteInterval);
+          cardEl._quoteInterval = null;
+        }
+        cardEl._quoteTimer = window.setTimeout(() => {
+          cardEl.classList.remove('is-animating');
+          cardEl.classList.add('is-complete');
+          cardEl._quoteTimer = null;
+        }, 120);
+      }
+    };
+
+    typeNext();
+    cardEl._quoteInterval = window.setInterval(typeNext, 28);
+  }
+
+  function scrollToSignupForm() {
+    const formEl = document.getElementById('signup-form-card');
+    if (!formEl) return;
+    formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const firstInput = document.getElementById('signup-email');
+    if (firstInput) {
+      window.setTimeout(() => firstInput.focus({ preventScroll: true }), 320);
+    }
+  }
+
   async function sendPasswordReset() {
     const errorEl = document.getElementById('login-error');
     if (!state.sb) {
@@ -82,6 +146,7 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
     const showSignup = shouldShowSignupByDefault();
     document.getElementById('login-panel').hidden = showSignup;
     document.getElementById('signup-panel').hidden = !showSignup;
+    if (showSignup) runSignupQuoteAnimation();
   }
 
   function resolveInitialAuth(nextScreen) {
@@ -160,12 +225,18 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
     document.getElementById('show-signup-btn').onclick = () => {
       document.getElementById('login-panel').hidden = true;
       document.getElementById('signup-panel').hidden = false;
+      runSignupQuoteAnimation();
     };
     document.getElementById('show-login-btn').onclick = () => {
       document.getElementById('signup-panel').hidden = true;
       document.getElementById('login-panel').hidden = false;
     };
     document.getElementById('forgot-password-btn').onclick = () => sendPasswordReset();
+    document.getElementById('signup-sticky-cta').onclick = () => scrollToSignupForm();
+
+    if (!document.getElementById('signup-panel').hidden) {
+      runSignupQuoteAnimation();
+    }
 
     ['login-email', 'login-password'].forEach(id => {
       document.getElementById(id).addEventListener('keydown', e => {
