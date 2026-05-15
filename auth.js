@@ -19,6 +19,51 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
     return !state.currentUser && new URLSearchParams(window.location.search).get('signup') === 'true';
   }
 
+  function startSignupHeroAnimation() {
+    const ringEl = document.querySelector('[data-streak-ring]');
+    const valueEl = document.querySelector('[data-streak-value]');
+    const progressEl = ringEl?.querySelector('.signup-streak-ring-progress');
+    if (!ringEl || !valueEl || !progressEl) return;
+
+    const target = Number(ringEl.dataset.target || 21);
+    const duration = Number(ringEl.dataset.duration || 1400);
+    const radius = Number(progressEl.getAttribute('r')) || 48;
+    const circumference = 2 * Math.PI * radius;
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    progressEl.style.strokeDasharray = `${circumference}`;
+    progressEl.style.strokeDashoffset = `${circumference}`;
+    valueEl.textContent = '0';
+
+    if (ringEl._signupAnimationFrame) {
+      cancelAnimationFrame(ringEl._signupAnimationFrame);
+      ringEl._signupAnimationFrame = null;
+    }
+
+    if (prefersReducedMotion) {
+      progressEl.style.strokeDashoffset = '0';
+      valueEl.textContent = String(target);
+      return;
+    }
+
+    const start = performance.now();
+    const animate = now => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const currentValue = Math.round(target * eased);
+      valueEl.textContent = String(currentValue);
+      progressEl.style.strokeDashoffset = `${circumference * (1 - eased)}`;
+      if (progress < 1) {
+        ringEl._signupAnimationFrame = requestAnimationFrame(animate);
+      } else {
+        ringEl._signupAnimationFrame = null;
+      }
+    };
+
+    ringEl._signupAnimationFrame = requestAnimationFrame(animate);
+  }
+
   async function sendPasswordReset() {
     const errorEl = document.getElementById('login-error');
     if (!state.sb) {
@@ -82,6 +127,7 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
     const showSignup = shouldShowSignupByDefault();
     document.getElementById('login-panel').hidden = showSignup;
     document.getElementById('signup-panel').hidden = !showSignup;
+    if (showSignup) startSignupHeroAnimation();
   }
 
   function resolveInitialAuth(nextScreen) {
@@ -160,12 +206,15 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
     document.getElementById('show-signup-btn').onclick = () => {
       document.getElementById('login-panel').hidden = true;
       document.getElementById('signup-panel').hidden = false;
+      startSignupHeroAnimation();
     };
     document.getElementById('show-login-btn').onclick = () => {
       document.getElementById('signup-panel').hidden = true;
       document.getElementById('login-panel').hidden = false;
     };
     document.getElementById('forgot-password-btn').onclick = () => sendPasswordReset();
+
+    startSignupHeroAnimation();
 
     ['login-email', 'login-password'].forEach(id => {
       document.getElementById(id).addEventListener('keydown', e => {

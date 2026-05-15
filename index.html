@@ -23,6 +23,13 @@
   <!-- Chart.js — used for the weight trend chart on Stats -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js" defer crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js" defer crossorigin="anonymous"></script>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-KMY855QCZ8"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-KMY855QCZ8');
+  </script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -63,14 +70,46 @@
 
     <!-- Signup Panel -->
     <div id="signup-panel" class="auth-panel" hidden>
-      <h1 class="auth-app-name">Habits</h1>
-      <p class="auth-description">A personal daily habits tracker for workouts, weight logging, and daily journaling.</p>
-      <ul class="auth-features">
-        <li>Smart workout sequence that tells you what to do each day</li>
-        <li>Daily weight tracking with trend chart</li>
-        <li>Morning journal for intention, gratitude, and focus</li>
-      </ul>
-      <div class="auth-form">
+      <div class="signup-hero">
+        <div class="signup-hero-header">
+          <h1 class="auth-app-name">Habits</h1>
+          <p class="auth-description">A personal daily habits tracker for workouts, weight logging, and daily journaling.</p>
+        </div>
+        <div class="signup-feature-grid" aria-label="Habits features">
+          <article class="signup-feature-card">
+            <div class="signup-feature-icon" aria-hidden="true"><i data-lucide="dumbbell"></i></div>
+            <div class="signup-feature-label">Smart Workouts</div>
+            <p class="signup-feature-copy">A rotating sequence tells you exactly what to do each day.</p>
+          </article>
+          <article class="signup-feature-card">
+            <div class="signup-feature-icon" aria-hidden="true"><i data-lucide="scale"></i></div>
+            <div class="signup-feature-label">Weight Tracking</div>
+            <p class="signup-feature-copy">Log daily and watch your trend line move in the right direction.</p>
+          </article>
+          <article class="signup-feature-card">
+            <div class="signup-feature-icon" aria-hidden="true"><i data-lucide="notebook-pen"></i></div>
+            <div class="signup-feature-label">Morning Journal</div>
+            <p class="signup-feature-copy">Set intentions, note gratitude, and stay focused.</p>
+          </article>
+        </div>
+        <div class="signup-streak-card" aria-label="21 day streak preview">
+          <div class="signup-streak-ring" data-streak-ring data-target="21" data-duration="1400">
+            <svg class="signup-streak-ring-svg" viewBox="0 0 120 120" aria-hidden="true">
+              <circle class="signup-streak-ring-track" cx="60" cy="60" r="48"></circle>
+              <circle class="signup-streak-ring-progress" cx="60" cy="60" r="48"></circle>
+            </svg>
+            <div class="signup-streak-value-wrap">
+              <div class="signup-streak-value" data-streak-value>0</div>
+              <div class="signup-streak-unit">days</div>
+            </div>
+          </div>
+          <div class="signup-streak-meta">
+            <div class="signup-streak-label">day streak</div>
+            <p class="signup-streak-copy">Build momentum with a routine that stays visible every morning.</p>
+          </div>
+        </div>
+      </div>
+      <div class="auth-form signup-form-card">
         <input class="auth-input" id="signup-email" type="email"
                placeholder="Email" autocomplete="email" inputmode="email">
         <input class="auth-input" id="signup-password" type="password"
