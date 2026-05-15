@@ -3213,6 +3213,9 @@
       z-index: 1;
       margin: 20px 0 0;
       padding: 34px 0 28px;
+      max-width: 75%;
+      margin-left: auto;
+      margin-right: auto;
     }
 
     .signup-quote-mark {
@@ -3232,16 +3235,19 @@
       color: #f5f1ff;
       font-family: "Playfair Display", Georgia, serif;
       font-style: italic;
-      font-size: clamp(1.5rem, 3.2vw, 2rem);
-      line-height: 1.34;
-      letter-spacing: -0.02em;
+      font-size: clamp(1.48rem, 3vw, 1.92rem);
+      line-height: 1.32;
+      letter-spacing: -0.022em;
     }
 
     .signup-quote-attribution {
-      margin-top: 2px;
-      color: var(--text-dim);
+      margin-top: 8px;
+      padding-top: 8px;
+      color: rgba(232, 223, 255, 0.82);
       font-size: 0.82rem;
       line-height: 1.5;
+      border-left: 1px solid rgba(168, 85, 247, 0.45);
+      padding-left: 10px;
       opacity: 0;
       transform: translateY(6px);
       transition: opacity 0.42s ease, transform 0.42s ease;
@@ -3254,7 +3260,7 @@
 
     .signup-quote-attribution cite {
       font-style: normal;
-      color: var(--text-secondary);
+      color: rgba(245, 241, 255, 0.9);
     }
 
     .signup-feature-card .signup-feature-copy {
@@ -3421,10 +3427,11 @@
 
       .signup-quote-card {
         padding: 24px 0 18px;
+        max-width: 100%;
       }
 
       .signup-quote-text {
-        min-height: 5.5em;
+        min-height: 5.3em;
       }
 
       .signup-sticky-cta {
