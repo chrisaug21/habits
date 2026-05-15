@@ -16,6 +16,9 @@
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
   <!-- Supabase JS client — defer so it doesn't block page render; crossorigin for SW caching -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer crossorigin="anonymous"></script>
   <!-- Lucide Icons — defer matches Supabase script; crossorigin for SW caching -->
@@ -23,6 +26,13 @@
   <!-- Chart.js — used for the weight trend chart on Stats -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js" defer crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js" defer crossorigin="anonymous"></script>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-KMY855QCZ8"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-KMY855QCZ8');
+  </script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -63,14 +73,35 @@
 
     <!-- Signup Panel -->
     <div id="signup-panel" class="auth-panel" hidden>
-      <h1 class="auth-app-name">Habits</h1>
-      <p class="auth-description">A personal daily habits tracker for workouts, weight logging, and daily journaling.</p>
-      <ul class="auth-features">
-        <li>Smart workout sequence that tells you what to do each day</li>
-        <li>Daily weight tracking with trend chart</li>
-        <li>Morning journal for intention, gratitude, and focus</li>
-      </ul>
-      <div class="auth-form">
+      <div class="signup-hero">
+        <div class="signup-hero-header">
+          <h1 class="auth-app-name">Habits</h1>
+          <p class="auth-description">A personal daily habits tracker. Build the systems that make a healthy life feel automatic.</p>
+        </div>
+        <div class="signup-feature-grid" aria-label="Habits features">
+          <article class="signup-feature-card">
+            <div class="signup-feature-icon" aria-hidden="true"><i data-lucide="dumbbell"></i></div>
+            <div class="signup-feature-label">Smart Workouts</div>
+            <p class="signup-feature-copy">A customizable rotating sequence tells you exactly what to do each day — no decisions, just show up.</p>
+          </article>
+          <article class="signup-feature-card">
+            <div class="signup-feature-icon" aria-hidden="true"><i data-lucide="trending-up"></i></div>
+            <div class="signup-feature-label">Track Your Trends</div>
+            <p class="signup-feature-copy">Streaks, workout frequency, weight over time — see the patterns that show you're actually making progress.</p>
+          </article>
+          <article class="signup-feature-card">
+            <div class="signup-feature-icon" aria-hidden="true"><i data-lucide="notebook-pen"></i></div>
+            <div class="signup-feature-label">Morning Journal</div>
+            <p class="signup-feature-copy">Set intentions, note gratitude, and stay focused.</p>
+          </article>
+        </div>
+        <blockquote class="signup-quote-card" id="signup-quote-card">
+          <span class="signup-quote-mark" aria-hidden="true">“</span>
+          <p class="signup-quote-text" id="signup-quote-text">Success is the product of daily habits — not once-in-a-lifetime transformations.</p>
+          <footer class="signup-quote-attribution" id="signup-quote-attribution">— James Clear, <cite>Atomic Habits</cite></footer>
+        </blockquote>
+      </div>
+      <div class="auth-form signup-form-card" id="signup-form-card">
         <input class="auth-input" id="signup-email" type="email"
                placeholder="Email" autocomplete="email" inputmode="email">
         <input class="auth-input" id="signup-password" type="password"
@@ -82,6 +113,7 @@
           <button class="auth-link-btn" id="show-login-btn">Sign in</button>
         </p>
       </div>
+      <button class="auth-primary-btn signup-sticky-cta" id="signup-sticky-cta" type="button">Create account</button>
       <div class="auth-version-stamp" id="signup-version-stamp"></div>
     </div>
 
