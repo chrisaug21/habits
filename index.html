@@ -65,7 +65,7 @@
         <div class="auth-error" id="login-error" hidden></div>
         <button class="auth-primary-btn" id="login-btn">Sign in</button>
         <p class="auth-switch">Don't have an account?
-          <button class="auth-link-btn" id="show-signup-btn">Sign up</button>
+          <a class="auth-link-btn" id="show-signup-btn" href="/">Sign up</a>
         </p>
       </div>
       <div class="auth-version-stamp" id="login-version-stamp"></div>
@@ -77,6 +77,10 @@
         <div class="signup-hero-header">
           <h1 class="auth-app-name">Habits</h1>
           <p class="auth-description">A personal daily habits tracker. Build the systems that make a healthy life feel automatic.</p>
+          <div class="signup-hero-actions">
+            <a class="auth-primary-btn signup-hero-cta" id="signup-hero-get-started" href="#signup-form-card">Sign up</a>
+            <a class="signup-hero-secondary-btn" id="signup-hero-sign-in" href="/login">Sign in</a>
+          </div>
         </div>
         <div class="signup-feature-grid" aria-label="Habits features">
           <article class="signup-feature-card">
@@ -110,11 +114,8 @@
         <div class="auth-error" id="signup-error" hidden></div>
         <button class="auth-primary-btn" id="signup-btn">Create account</button>
         <p class="auth-switch">Already have an account?
-          <button class="auth-link-btn" id="show-login-btn">Sign in</button>
+          <a class="auth-link-btn" id="show-login-btn" href="/login">Sign in</a>
         </p>
-      </div>
-      <div class="signup-sticky-cta-wrap" id="signup-sticky-cta-wrap">
-        <button class="auth-primary-btn signup-sticky-cta" id="signup-sticky-cta" type="button">Create account</button>
       </div>
       <div class="auth-version-stamp" id="signup-version-stamp"></div>
     </div>
