@@ -2,7 +2,7 @@
 
 A mobile-first PWA for daily habits — workout tracking, journaling, and intention-setting.
 
-**Current version: 1.5.34**
+**Current version: 1.5.35**
 
 Live at: https://habits.chrisaug.com
 
@@ -87,8 +87,8 @@ The Today tab is a daily habit dashboard with customizable cards. All entry happ
 ### Other
 - Offline-capable PWA, installable on iPhone home screen; entries logged while offline are automatically synced to Supabase the next time the app loads with a connection
 - **Account + Settings** — Settings shows the signed-in email, avatar initial, optional first/last name fields stored in Supabase auth metadata, Today Tab card toggles, a My Workout Sequence area with reset-to-program and custom-builder flows, a Tutorial shortcut, Sync data now, Change password, Send feedback, Sign out, and a Danger Zone delete-account flow
-- **Auth recovery** — login includes a Forgot password link that sends a Supabase password reset email; recovery links open the app and prompt for a new password
-- **Direct signup link** — visiting `https://habits.chrisaug.com?signup=true` opens the signup form by default for unauthenticated users
+- **Auth recovery** — login at `https://habits.chrisaug.com/login` includes a Forgot password link that sends a Supabase password reset email; recovery links return to `/login` and prompt for a new password
+- **Public auth routes** — unauthenticated visitors land on the marketing/signup page at `https://habits.chrisaug.com/`, while the sparse sign-in screen lives at `https://habits.chrisaug.com/login`
 - **First-time onboarding** — brand-new signups see a one-time 6-screen onboarding flow before the Today tab. It explains the app's purpose, explains how workout sequences work, reuses the live starting-sequence picker, covers journaling and weight tracking, and ends with a final "Get started" step. Dismiss state is stored per user in localStorage, and the same flow stays available from Settings → Tutorial
 - **Test mode** — hidden feature; triple-tap the version stamp (bottom of Today screen) or press Alt+Shift+T to toggle; shows an amber banner confirming no real data is affected; uses isolated localStorage keys (`habits_test`, `habits_test_other_activities`, `habits_test_journal`) and skips all Supabase calls
 - **Sync status** — the version stamp at the bottom of the Today screen shows `synced just now` / `synced Xm ago` / `offline`; updates after every successful or failed Supabase read/write

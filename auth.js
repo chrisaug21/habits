@@ -6,6 +6,7 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
   const utils = ctx.utils;
   const data = ctx.data;
   const deps = ctx.deps;
+  const LOGIN_PATH = '/login';
 
   function showConnectivityError(errorEl) {
     if (errorEl) {
@@ -16,7 +17,22 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
   }
 
   function shouldShowSignupByDefault() {
-    return !state.currentUser && new URLSearchParams(window.location.search).get('signup') === 'true';
+    return !state.currentUser && window.location.pathname !== LOGIN_PATH;
+  }
+
+  function setAuthRoute(route, { replace = false } = {}) {
+    const pathname = route === 'login' ? LOGIN_PATH : '/';
+    const nextUrl = `${pathname}${window.location.search}${window.location.hash}`;
+    if (`${window.location.pathname}${window.location.search}${window.location.hash}` === nextUrl) return;
+    window.history[replace ? 'replaceState' : 'pushState']({}, '', nextUrl);
+  }
+
+  function syncAuthPanelsToRoute() {
+    const showSignup = shouldShowSignupByDefault();
+    document.getElementById('login-panel').hidden = showSignup;
+    document.getElementById('signup-panel').hidden = !showSignup;
+    if (showSignup) runSignupQuoteAnimation();
+    syncSignupStickyCta();
   }
 
   function runSignupQuoteAnimation() {
@@ -143,7 +159,7 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
     }
     try {
       const { error } = await state.sb.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}${window.location.pathname}`,
+        redirectTo: `${window.location.origin}${LOGIN_PATH}`,
       });
       if (error) throw error;
       utils.showToast('Password reset email sent');
@@ -188,11 +204,7 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
     document.getElementById('app-container').inert = false;
     document.getElementById('bottom-nav').inert = false;
     state.lastFocusedBeforeWelcome = null;
-    const showSignup = shouldShowSignupByDefault();
-    document.getElementById('login-panel').hidden = showSignup;
-    document.getElementById('signup-panel').hidden = !showSignup;
-    if (showSignup) runSignupQuoteAnimation();
-    syncSignupStickyCta();
+    syncAuthPanelsToRoute();
   }
 
   function resolveInitialAuth(nextScreen) {
@@ -268,25 +280,38 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
   }
 
   function bindEvents() {
-    document.getElementById('show-signup-btn').onclick = () => {
-      document.getElementById('login-panel').hidden = true;
-      document.getElementById('signup-panel').hidden = false;
-      runSignupQuoteAnimation();
-      syncSignupStickyCta();
+    document.getElementById('show-signup-btn').onclick = e => {
+      e.preventDefault();
+      setAuthRoute('signup');
+      syncAuthPanelsToRoute();
     };
-    document.getElementById('show-login-btn').onclick = () => {
-      document.getElementById('signup-panel').hidden = true;
-      document.getElementById('login-panel').hidden = false;
-      syncSignupStickyCta();
+    document.getElementById('show-login-btn').onclick = e => {
+      e.preventDefault();
+      setAuthRoute('login');
+      syncAuthPanelsToRoute();
     };
     document.getElementById('forgot-password-btn').onclick = () => sendPasswordReset();
     document.getElementById('signup-sticky-cta').onclick = () => scrollToSignupForm();
+    document.getElementById('signup-hero-get-started').onclick = e => {
+      e.preventDefault();
+      scrollToSignupForm();
+    };
+    document.getElementById('signup-hero-sign-in').onclick = e => {
+      e.preventDefault();
+      setAuthRoute('login');
+      syncAuthPanelsToRoute();
+    };
 
     if (!document.getElementById('signup-panel').hidden) {
       runSignupQuoteAnimation();
     }
     syncSignupStickyCta();
     window.addEventListener('resize', syncSignupStickyCta);
+    window.addEventListener('popstate', () => {
+      if (!state.currentUser && !document.getElementById('auth-screen').hidden) {
+        syncAuthPanelsToRoute();
+      }
+    });
 
     ['login-email', 'login-password'].forEach(id => {
       document.getElementById(id).addEventListener('keydown', e => {
@@ -342,7 +367,13 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
       const btn = document.getElementById('signup-btn');
       btn.disabled = true;
       try {
-        const { data: userData, error } = await state.sb.auth.signUp({ email, password });
+        const { data: userData, error } = await state.sb.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}${LOGIN_PATH}`,
+          },
+        });
         if (error) throw error;
         deps.markWelcomePending(userData.user?.id);
         if (!userData.session) {

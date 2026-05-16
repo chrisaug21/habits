@@ -9,6 +9,11 @@
   # Skip secrets scanning for these files to prevent a false-positive build failure.
   SECRETS_SCAN_OMIT_PATHS = "app.js"
 
+[[redirects]]
+  from = "/login"
+  to = "/index.html"
+  status = 200
+
 [functions."keep-alive"]
   # Run once a day to prevent the Supabase free-tier project from pausing.
   # SUPABASE_URL and SUPABASE_KEY are read from Netlify environment variables at runtime.

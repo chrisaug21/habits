@@ -3141,6 +3141,13 @@
       margin-bottom: 22px;
     }
 
+    .signup-hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 6px;
+    }
+
     #signup-panel .auth-app-name,
     #signup-panel .auth-description {
       text-align: left;
@@ -3338,6 +3345,9 @@
     }
 
     .auth-primary-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       background: var(--accent);
       color: #fff;
       border: none;
@@ -3352,7 +3362,36 @@
       touch-action: manipulation;
       font-family: inherit;
       margin-top: 4px;
+      text-decoration: none;
       transition: background 0.15s, opacity 0.15s;
+    }
+
+    .signup-hero-cta {
+      width: auto;
+      margin-top: 0;
+      padding-left: 22px;
+      padding-right: 22px;
+    }
+
+    .signup-hero-secondary-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 52px;
+      padding: 0 22px;
+      border-radius: 14px;
+      border: 2px solid rgba(196, 181, 253, 0.28);
+      background: transparent;
+      color: var(--text-primary);
+      font-size: 1rem;
+      font-weight: 700;
+      text-decoration: none;
+      transition: background-color 0.15s, border-color 0.15s, opacity 0.15s;
+    }
+
+    .signup-hero-secondary-btn:active {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(216, 193, 255, 0.5);
     }
 
     .auth-primary-btn:active {
@@ -3394,6 +3433,7 @@
       padding: 0;
       font-family: inherit;
       -webkit-tap-highlight-color: transparent;
+      text-decoration: none;
     }
 
     .auth-inline-link {
@@ -3423,6 +3463,15 @@
 
       .signup-feature-grid {
         grid-template-columns: 1fr;
+      }
+
+      .signup-hero-actions {
+        flex-direction: column;
+      }
+
+      .signup-hero-cta,
+      .signup-hero-secondary-btn {
+        width: 100%;
       }
 
       .signup-feature-card {
