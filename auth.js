@@ -32,7 +32,6 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
     document.getElementById('login-panel').hidden = showSignup;
     document.getElementById('signup-panel').hidden = !showSignup;
     if (showSignup) runSignupQuoteAnimation();
-    syncSignupStickyCta();
   }
 
   function runSignupQuoteAnimation() {
@@ -97,51 +96,6 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
     if (firstInput) {
       window.setTimeout(() => firstInput.focus({ preventScroll: true }), 320);
     }
-  }
-
-  function disconnectSignupStickyObserver() {
-    if (state.signupStickyObserver) {
-      state.signupStickyObserver.disconnect();
-      state.signupStickyObserver = null;
-    }
-  }
-
-  function syncSignupStickyCta() {
-    const signupPanel = document.getElementById('signup-panel');
-    const inlineSignupBtn = document.getElementById('signup-btn');
-    const stickyWrap = document.getElementById('signup-sticky-cta-wrap');
-
-    if (!signupPanel || !inlineSignupBtn || !stickyWrap) return;
-
-    const isMobileViewport = window.matchMedia('(max-width: 768px)').matches;
-    const shouldHideSticky = signupPanel.hidden || !isMobileViewport;
-
-    if (shouldHideSticky) {
-      stickyWrap.classList.add('is-hidden');
-      disconnectSignupStickyObserver();
-      return;
-    }
-
-    if (!('IntersectionObserver' in window)) {
-      stickyWrap.classList.remove('is-hidden');
-      return;
-    }
-
-    stickyWrap.classList.remove('is-hidden');
-
-    if (state.signupStickyObserverTarget === inlineSignupBtn && state.signupStickyObserver) {
-      return;
-    }
-
-    disconnectSignupStickyObserver();
-    state.signupStickyObserverTarget = inlineSignupBtn;
-    state.signupStickyObserver = new window.IntersectionObserver((entries) => {
-      const [entry] = entries;
-      stickyWrap.classList.toggle('is-hidden', Boolean(entry?.isIntersecting));
-    }, {
-      threshold: 0.01,
-    });
-    state.signupStickyObserver.observe(inlineSignupBtn);
   }
 
   async function sendPasswordReset() {
@@ -291,7 +245,6 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
       syncAuthPanelsToRoute();
     };
     document.getElementById('forgot-password-btn').onclick = () => sendPasswordReset();
-    document.getElementById('signup-sticky-cta').onclick = () => scrollToSignupForm();
     document.getElementById('signup-hero-get-started').onclick = e => {
       e.preventDefault();
       scrollToSignupForm();
@@ -305,8 +258,6 @@ window.HabitsApp.registerAuthModule = function registerAuthModule(ctx) {
     if (!document.getElementById('signup-panel').hidden) {
       runSignupQuoteAnimation();
     }
-    syncSignupStickyCta();
-    window.addEventListener('resize', syncSignupStickyCta);
     window.addEventListener('popstate', () => {
       if (!state.currentUser && !document.getElementById('auth-screen').hidden) {
         syncAuthPanelsToRoute();

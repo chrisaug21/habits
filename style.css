@@ -3315,14 +3315,6 @@
         0 18px 50px rgba(0, 0, 0, 0.24);
     }
 
-    .signup-sticky-cta-wrap {
-      display: none;
-    }
-
-    .signup-sticky-cta {
-      margin-top: 0;
-    }
-
     .auth-input {
       background: var(--surface2);
       border: 1px solid var(--border);
@@ -3380,7 +3372,7 @@
       min-height: 52px;
       padding: 0 22px;
       border-radius: 14px;
-      border: 2px solid rgba(196, 181, 253, 0.28);
+      border: 2px solid rgba(216, 193, 255, 0.58);
       background: transparent;
       color: var(--text-primary);
       font-size: 1rem;
@@ -3448,7 +3440,7 @@
     @media (max-width: 768px) {
       #auth-screen {
         padding-top: calc(env(safe-area-inset-top, 0px) + 28px);
-        padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 124px);
+        padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 28px);
       }
 
       .signup-hero {
@@ -3456,22 +3448,18 @@
         border-radius: 26px;
       }
 
-      #signup-panel .auth-app-name,
-      #signup-panel .auth-description {
-        text-align: center;
-      }
-
       .signup-feature-grid {
         grid-template-columns: 1fr;
       }
 
       .signup-hero-actions {
-        flex-direction: column;
+        flex-wrap: nowrap;
       }
 
       .signup-hero-cta,
       .signup-hero-secondary-btn {
-        width: 100%;
+        width: calc(50% - 6px);
+        flex: 1 1 0;
       }
 
       .signup-feature-card {
@@ -3485,33 +3473,6 @@
 
       .signup-quote-text {
         min-height: 5.3em;
-      }
-
-      .signup-sticky-cta-wrap {
-        display: block;
-        position: fixed;
-        left: 16px;
-        right: 16px;
-        bottom: 0;
-        padding-bottom: env(safe-area-inset-bottom, 0px);
-        z-index: 340;
-        opacity: 1;
-        pointer-events: auto;
-        transition: opacity 240ms ease;
-      }
-
-      .signup-sticky-cta-wrap.is-hidden {
-        opacity: 0;
-        pointer-events: none;
-      }
-
-      .signup-sticky-cta {
-        width: calc(100% - 40px);
-        margin-left: 20px;
-        margin-right: 20px;
-        margin-top: 0;
-        margin-bottom: 14px;
-        box-shadow: 0 18px 44px rgba(91, 33, 182, 0.35);
       }
     }
 
